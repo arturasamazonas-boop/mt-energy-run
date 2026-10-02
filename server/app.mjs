@@ -75,7 +75,7 @@ function limiter(max, windowMs) {
   };
 }
 
-export function createApp({ store, adminToken = '', birthdayMode = 'auto', trustProxy = true, log = console } = {}) {
+export function createApp({ store, adminToken = '', birthdayMode = 'auto', trustProxy = true, log = console, clock = () => new Date() } = {}) {
   const limits = {
     register: limiter(12, 60 * 60 * 1000),
     recover: limiter(20, 10 * 60 * 1000),
@@ -85,7 +85,7 @@ export function createApp({ store, adminToken = '', birthdayMode = 'auto', trust
   const boardCache = new Map();
   const BOARD_TTL = 4000;
 
-  const birthdayActive = (now = new Date()) => birthdayMode === 'on' || (birthdayMode !== 'off' && isBirthday(now));
+  const birthdayActive = (now = clock()) => birthdayMode === 'on' || (birthdayMode !== 'off' && isBirthday(now));
 
   function clientIp(req) {
     if (trustProxy) {
@@ -163,7 +163,7 @@ export function createApp({ store, adminToken = '', birthdayMode = 'auto', trust
     setSessionCookie(req, res, token);
   }
 
-  async function board(kind, now = new Date()) {
+  async function board(kind, now = clock()) {
     let opts;
     if (kind === 'week') opts = { week: isoWeekKey(now) };
     else if (kind === 'daily') opts = { day: vilniusDay(now), mode: 'daily' };
@@ -186,7 +186,7 @@ export function createApp({ store, adminToken = '', birthdayMode = 'auto', trust
   // ---------------------------------------------------------------------------
   const routes = {
     'GET /api/config': async (req) => {
-      const now = new Date();
+      const now = clock();
       return { version: GAME_VERSION, birthday: birthdayActive(now), today: vilniusDay(now), week: isoWeekKey(now), serverTime: now.toISOString(), storage: store.kind };
     },
 
@@ -270,7 +270,7 @@ export function createApp({ store, adminToken = '', birthdayMode = 'auto', trust
       if (!p) return [401, { error: 'no_session' }];
       if (!limits.runStart(p.id)) return [429, { error: 'rate_limited' }];
       const mode = body.mode === 'daily' ? 'daily' : 'normal';
-      const now = new Date();
+      const now = clock();
       const seed = mode === 'daily' ? `daily-${vilniusDay(now)}` : crypto.randomBytes(8).toString('hex');
       const d = normalizeData(p.data);
       const run = { id: crypto.randomUUID(), playerId: p.id, seed, mode, upgrades: d.upgrades, startedAt: now.toISOString() };
@@ -285,7 +285,7 @@ export function createApp({ store, adminToken = '', birthdayMode = 'auto', trust
       if (!/^[0-9a-f-]{36}$/.test(runId)) return [400, { error: 'bad_run' }];
       const run = await store.getRun(runId);
       if (!run || run.playerId !== p.id) return [404, { error: 'bad_run' }];
-      const now = new Date();
+      const now = clock();
       const elapsed = (now - new Date(run.startedAt)) / 1000;
       // the daily seed is only valid on its own day (+ grace for runs crossing midnight)
       let { ok, reasons, summary } = validateRun(run, body.summary, elapsed);

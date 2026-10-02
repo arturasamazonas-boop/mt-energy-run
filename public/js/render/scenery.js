@@ -11,8 +11,8 @@ import {
 import { SpriteCache, mix, shade, rgba, smooth, clamp } from './util.js';
 
 const LAYERS = {
-  far: { f: 0.08, unit: 1 / 26, base: 0.655 },
-  mid: { f: 0.24, unit: 1 / 19, base: 0.735 },
+  far: { f: 0.08, unit: 1 / 21, base: 0.62 },
+  mid: { f: 0.24, unit: 1 / 25, base: 0.735 },
   near: { f: 0.55, unit: 1 / 12.5, base: 0.79 },
 };
 

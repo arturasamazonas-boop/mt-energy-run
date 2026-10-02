@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="lt">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Energy Run · Admin</title>
+  <link rel="stylesheet" href="/css/fonts.css">
+  <link rel="stylesheet" href="/css/admin.css">
+</head>
+<body>
+  <header><img src="/assets/mt-logo-light.png" alt="MT GROUP"><h1>Energy Run · administravimas</h1></header>
+  <main>
+    <form id="login" class="box">
+      <label>Administratoriaus raktas (ADMIN_TOKEN)<input type="password" name="token" autocomplete="off"></label>
+      <button>Prisijungti</button>
+      <p class="err"></p>
+    </form>
+    <section id="app" hidden>
+      <div class="kpis"></div>
+      <div class="box">
+        <div class="row"><h2>Žaidėjai</h2><input id="q" placeholder="Paieška…"><button id="reload">Atnaujinti</button></div>
+        <table id="players"><thead><tr><th>#</th><th>Vardas</th><th>Rekordas</th><th>Bėgimai</th><th>⚡</th><th>Sukurta</th><th>Paskutinį kartą</th><th></th></tr></thead><tbody></tbody></table>
+      </div>
+      <div class="box">
+        <h2>Neįskaityti (įtartini) rezultatai</h2>
+        <table id="flagged"><thead><tr><th>Vardas</th><th>Taškai</th><th>Atstumas</th><th>Priežastis</th><th>Laikas</th><th></th></tr></thead><tbody></tbody></table>
+      </div>
+    </section>
+  </main>
+  <script type="module" src="/js/admin.js"></script>
+</body>
+</html>

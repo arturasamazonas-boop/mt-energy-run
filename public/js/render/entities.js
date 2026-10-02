@@ -522,8 +522,8 @@ function birds(ctx, t, gulls) {
   for (const [x, y, ph] of pos) {
     const f = Math.sin(t * 16 + ph);
     ctx.save();
-    ctx.translate(x, DIM_BIRD_Y0 + y + 0.1 * Math.sin(t * 3 + ph));
-    ctx.scale(-1, 1); // facing left (towards the player)
+    ctx.translate(x, DIM_BIRD_Y0 + 0.15 + y * 0.8 + 0.08 * Math.sin(t * 3 + ph));
+    ctx.scale(-1.6, 1.6); // facing left (towards the player)
     ctx.beginPath();
     ctx.ellipse(0, 0, 0.22, 0.09, 0, 0, Math.PI * 2);
     ctx.fillStyle = body;

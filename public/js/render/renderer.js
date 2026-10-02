@@ -222,11 +222,11 @@ export class Renderer {
     }
     for (const e of sim.entities) {
       if (e.k !== 'gate') continue;
-      if (e.x < this.camX - 12 || e.x > this.camX + viewM + 12) continue;
+      if (e.x < this.camX - 22 || e.x > this.camX + viewM + 12) continue;
       const gi = cityAt(e.x - 1).index;
       const city = CITIES[gi % CITIES.length];
       const lit = e.passed ? 1 : 0;
-      this.worldAt(ctx, e.x + 1.5, 0.2);
+      this.worldAt(ctx, e.x + 10, 0.2);
       ctx.scale(0.82, 0.82);
       drawFacility(ctx, city.project.type, lit > 0, t);
       ctx.restore();
@@ -331,14 +331,14 @@ export class Renderer {
   }
 
   drawSpeedLines(ctx, sim, t) {
-    const k = clamp((sim.speed - 16) / 8, 0, 1) + (sim.flying ? 0.6 : 0);
+    const k = clamp((sim.speed - 19) / 6, 0, 0.7) + (sim.flying ? 0.6 : 0);
     if (k <= 0.02 || sim.dead) return;
     const { W, H } = this;
-    ctx.strokeStyle = `rgba(255,255,255,${0.25 * Math.min(1, k)})`;
+    ctx.strokeStyle = `rgba(255,255,255,${0.16 * Math.min(1, k)})`;
     ctx.lineWidth = Math.max(1, H / 500);
     ctx.beginPath();
     for (let i = 0; i < 14; i++) {
-      const y = ((i * 0.618 + 0.13) % 1) * H * 0.75;
+      const y = ((i * 0.618 + 0.13) % 1) * H * 0.5 + H * 0.05;
       const len = W * (0.08 + ((i * 0.37) % 0.12));
       const x = W - (((t * 2.6 + i * 0.29) % 1) * (W + len)) ;
       ctx.moveTo(x, y);

@@ -12,10 +12,11 @@ const DRONE_Y = 4.6;
 const MAGNET_R = 7.5;
 
 export class Sim {
-  constructor({ seed, upgrades = {}, startCity = 0 } = {}) {
+  constructor({ seed, upgrades = {}, startCity = 0, startAt = null } = {}) {
     this.seed = seed;
     this.upgrades = upgrades;
-    this.x = cityStart(startCity);
+    this.x = startAt ?? cityStart(startCity);
+    if (startAt !== null) startCity = cityAt(startAt).index;
     this.startX = this.x;
     this.y = 0;
     this.vy = 0;

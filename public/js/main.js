@@ -203,7 +203,13 @@ async function boot() {
     toast(t('offline'), 'MT GROUP', ICON.globe);
     return;
   }
-  if (!me) return onboardScreen();
+  if (!me) {
+    if (DEBUG) {
+      setProfile(guestProfile());
+      return homeScreen();
+    }
+    return onboardScreen();
+  }
   setProfile(me);
   afterLogin();
 }
@@ -752,7 +758,7 @@ async function startRun(mode) {
   }
   state.busy = true;
   clearPortraits();
-  let run = { mode, seed: `local-${Date.now()}`, upgrades: state.profile.upgrades || {}, runId: null };
+  let run = { mode, seed: params.get('seed') || `local-${Date.now()}`, upgrades: state.profile.upgrades || {}, runId: null };
   if (state.online && !state.profile.guest && !params.has('practice')) {
     try {
       const r = await api.startRun(mode);
@@ -765,12 +771,13 @@ async function startRun(mode) {
   state.run = run;
   show('', { shadeMode: 'none' });
   hud.mount(run.upgrades);
-  const tutorial = !prefs.get('tutDone') && !(state.profile.stats.runs > 0);
+  const tutorial = !prefs.get('tutDone') && !(state.profile.stats.runs > 0) && !params.has('autoplay');
   game.play({
     seed: run.seed,
     upgrades: run.upgrades,
     tutorial,
     startCity: DEBUG ? Number(params.get('city') || 0) : 0,
+    startAt: DEBUG && params.has('at') ? Number(params.get('at')) : null,
     autoplay: DEBUG && params.has('autoplay'),
   });
   if (tutorial) game.sim.helmet = true;

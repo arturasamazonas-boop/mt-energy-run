@@ -59,7 +59,7 @@ export class Game {
   play(opts) {
     this.opts = opts;
     this.mode = 'run';
-    this.sim = new Sim({ seed: opts.seed, upgrades: opts.upgrades || {}, startCity: opts.startCity || 0 });
+    this.sim = new Sim({ seed: opts.seed, upgrades: opts.upgrades || {}, startCity: opts.startCity || 0, startAt: opts.startAt ?? null });
     this.bot = opts.autoplay ? new Bot() : null;
     this.input.reset();
     this.input.enabled = true;
@@ -266,7 +266,7 @@ export class Game {
           break;
         case 'helmetSave':
           R.shake = 0.6;
-          R.flash = 0.35;
+          R.flash = 0.18;
           R.flashCol = '255,216,0';
           fx.sparks(sim.x + 0.4, hy, 24, '#FFD800', 8);
           fx.debris(sim.x + 0.6, 0.6, '#9AA3AD', 8);

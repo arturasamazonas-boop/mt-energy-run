@@ -79,9 +79,9 @@ function rowToRun(r) {
 }
 
 export function createPgStore(connectionString) {
-  const ssl = /sslmode=disable/.test(connectionString) || /@(localhost|127\.0\.0\.1)[:/]/.test(connectionString)
-    ? false
-    : { rejectUnauthorized: process.env.PGSSL_ALLOW_SELF_SIGNED === '1' ? false : true };
+  // TLS follows the connection string (e.g. ?sslmode=require). Render's internal
+  // URL needs none; DATABASE_SSL=1 forces verified TLS for external hosts.
+  const ssl = process.env.DATABASE_SSL === '1' ? { rejectUnauthorized: process.env.PGSSL_ALLOW_SELF_SIGNED !== '1' } : undefined;
   const pool = new pg.Pool({ connectionString, ssl, max: 8 });
   const err = (code) => Object.assign(new Error(code), { code });
 
