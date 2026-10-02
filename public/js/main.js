@@ -256,7 +256,7 @@ function onboardScreen(mode = 'name') {
     <div class="screen onboard">
       <div class="hero-wrap"><canvas class="portrait"></canvas></div>
       <form class="panel" autocomplete="off">
-        <img class="logo" src="/assets/mt-logo-light.png" alt="MT GROUP">
+        <div style="display:flex;justify-content:space-between;align-items:center"><img class="logo" src="/assets/mt-logo-light.png" alt="MT GROUP"><button type="button" class="chip" data-lang>${ICON.globe}${getLang() === 'lt' ? 'EN' : 'LT'}</button></div>
         ${mode === 'name'
           ? `<h1>${t('welcomeTitle')}</h1>
              <div class="muted">${t('welcomeText')}</div>
@@ -277,6 +277,13 @@ function onboardScreen(mode = 'name') {
   const err = $('.error', form);
   if (!isTouchDevice()) setTimeout(() => inputEl.focus(), 50);
   click($('[data-alt]', form), () => onboardScreen(mode === 'name' ? 'code' : 'name'));
+  click($('[data-lang]', form), () => {
+    setLang(getLang() === 'lt' ? 'en' : 'lt');
+    renderer.lang = getLang();
+    renderer.scenery.cache.clear();
+    applyStaticTexts();
+    onboardScreen(mode);
+  });
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     audio.unlock();
