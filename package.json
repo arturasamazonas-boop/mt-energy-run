@@ -1,0 +1,20 @@
+{
+  "name": "mt-energy-run",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "MT GROUP: Energy Run – browser runner game across Europe.",
+  "scripts": {
+    "start": "node server.mjs",
+    "dev": "node --watch server.mjs",
+    "check": "node scripts/check.mjs",
+    "test": "node test/run-all.mjs",
+    "test:feasibility": "node test/feasibility.mjs --deep"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "pg": "8.16.3"
+  }
+}

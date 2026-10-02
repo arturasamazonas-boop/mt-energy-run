@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="lt">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <meta name="theme-color" content="#1E1E1E">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Energy Run">
+  <meta name="description" content="MT GROUP: Energy Run – bėk per Europą ir statyk ateities energetiką.">
+  <title>MT GROUP · Energy Run</title>
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="icon" type="image/png" sizes="192x192" href="/assets/icon-192.png">
+  <link rel="apple-touch-icon" href="/assets/icon-180.png">
+  <link rel="preload" href="/fonts/barlow-condensed-latin-800-normal.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/fonts/barlow-latin-600-normal.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/css/fonts.css">
+  <link rel="stylesheet" href="/css/app.css">
+</head>
+<body>
+  <div id="app">
+    <canvas id="game" aria-label="Energy Run"></canvas>
+    <div id="shade"></div>
+    <div id="hud" hidden></div>
+    <div id="layer"></div>
+    <div id="toasts" aria-live="polite"></div>
+    <div id="rotate" hidden>
+      <div class="rotate-icon"></div>
+      <p data-t="rotate"></p>
+    </div>
+    <div id="boot">
+      <img src="/assets/mt-logo-light.png" alt="MT GROUP" class="boot-logo">
+      <div class="boot-bar"><i></i></div>
+    </div>
+  </div>
+  <noscript>Šiam žaidimui reikia JavaScript.</noscript>
+  <script type="module" src="/js/main.js"></script>
+</body>
+</html>
