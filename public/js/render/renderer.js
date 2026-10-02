@@ -51,7 +51,7 @@ export class Renderer {
 
   targetPpm(speed) {
     const viewM = clamp(speed * 1.15 + 6.5, 17.5, 34);
-    return Math.min(this.W / viewM, this.H / 10.5);
+    return Math.min(this.W / viewM, this.H / 9.4);
   }
 
   /** Convert world meters to screen pixels. */
@@ -100,19 +100,26 @@ export class Renderer {
     }
 
     // ---- background -----------------------------------------------------------
+    // each layer: daylight art → time-of-day tint → its own lights (so lights of a
+    // distant layer never shine through a nearer one)
+    const lights = sky.night > 0.05 ? Math.min(1, sky.night * 1.15) : 0;
+    const emit = (fn) => {
+      if (!lights) return;
+      ctx.globalAlpha = lights;
+      fn();
+      ctx.globalAlpha = 1;
+    };
     this.scenery.drawSky(ctx, sky, t, this.camX);
     this.scenery.drawFar(ctx, this.camX, sky);
+    this.scenery.tint(ctx, sky, this.groundY, 0.6);
+    emit(() => this.scenery.drawFar(ctx, this.camX, sky, true));
     this.scenery.drawMid(ctx, this.camX);
+    this.scenery.tint(ctx, sky, this.groundY, 0.6);
+    emit(() => this.scenery.drawMid(ctx, this.camX, true));
     this.scenery.drawNear(ctx, this.camX);
     this.drawWorldBackdrop(ctx, sim, t, view.lang || this.lang);
-    this.scenery.tint(ctx, sky, this.groundY);
-    if (sky.night > 0.05) {
-      ctx.globalAlpha = Math.min(1, sky.night * 1.15);
-      this.scenery.drawFar(ctx, this.camX, sky, true);
-      this.scenery.drawMid(ctx, this.camX, true);
-      this.scenery.drawNear(ctx, this.camX, true, sky.night);
-      ctx.globalAlpha = 1;
-    }
+    this.scenery.tint(ctx, sky, this.groundY, 0.6);
+    emit(() => this.scenery.drawNear(ctx, this.camX, true, sky.night));
 
     // ---- ground -------------------------------------------------------------
     const pits = [];

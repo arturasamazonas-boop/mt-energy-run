@@ -879,8 +879,12 @@ h3 {
 .hint {
   position: absolute;
   bottom: 22%;
-  left: 50%;
-  transform: translateX(-50%);
+  left: 0;
+  right: 0;
+  margin: 0 auto;
+  width: max-content;
+  max-width: 92vw;
+  text-align: center;
   padding: 12px 20px;
   border-radius: 16px;
   background: rgba(20, 22, 26, 0.85);
@@ -891,7 +895,7 @@ h3 {
   text-transform: uppercase;
   letter-spacing: 0.03em;
   animation: pop 0.35s ease both;
-  white-space: nowrap;
+  white-space: normal;
 }
 
 .zone {
@@ -1248,6 +1252,12 @@ h3 {
   display: block;
 }
 
+@media (min-height: 600px) {
+  .map-wrap svg {
+    max-height: 62vh;
+  }
+}
+
 .map-info {
   margin-top: 12px;
   padding: 12px 14px;
@@ -1435,7 +1445,7 @@ h3 {
 #toasts {
   position: absolute;
   right: calc(14px + var(--safe-r));
-  top: calc(70px + var(--safe-t));
+  bottom: calc(14px + var(--safe-b));
   display: grid;
   gap: 8px;
   pointer-events: none;
@@ -1563,6 +1573,24 @@ h3 {
 }
 
 /* ---------------------------------------------------------------- responsive */
+@media (max-height: 520px) and (min-width: 600px) {
+  .over {
+    grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
+    align-items: center;
+    column-gap: 18px;
+  }
+  .over > .over-head {
+    grid-row: 1 / span 5;
+  }
+  .over .stats-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .over .btn.big {
+    min-height: 50px;
+    font-size: 22px;
+  }
+}
+
 @media (max-height: 520px) {
   .btn {
     min-height: 42px;

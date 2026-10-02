@@ -108,8 +108,8 @@ export function cheerPose(t) {
     lean: -0.05,
     legF: [0.1, -0.05],
     legB: [-0.08, -0.04],
-    armF: [2.7 + 0.2 * Math.sin(t * 10), 0.3],
-    armB: [3.4 + 0.2 * Math.cos(t * 10), 0.2],
+    armF: [2.15 + 0.15 * Math.sin(t * 10), 0.55],
+    armB: [3.1 + 0.2 * Math.cos(t * 10), 0.2],
     head: -0.2,
     rot: 0,
   };

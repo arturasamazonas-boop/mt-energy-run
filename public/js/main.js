@@ -56,6 +56,14 @@ input.onPause = () => {
 renderer.lang = getLang();
 
 window.addEventListener('resize', onResize);
+$('#rotate-back').addEventListener('click', () => {
+  state.waitingRotate = null;
+  if (['run', 'paused', 'task', 'dying'].includes(game.mode)) {
+    abandonRun();
+    homeScreen();
+  }
+  $('#rotate').hidden = true;
+});
 window.addEventListener('orientationchange', () => setTimeout(onResize, 200));
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) {
@@ -149,7 +157,7 @@ function portrait(cv, outfit = 'suit', opts = {}) {
     ctx.translate(cv.width / 2 - 0.05 * s, cv.height * (opts.base || 0.97));
     ctx.scale(s, -s);
     const pose = opts.cheer ? cheerPose(tt) : idlePose(tt, opts.wave ? (Math.sin(tt * 0.9) > 0.55 ? 1 : 0) : 0);
-    const blink = tt % 3.4 < 0.12;
+    const blink = tt % 3.4 > 3.28;
     drawCharacter(ctx, pose, { outfit, t: tt, blink, expression: opts.cheer ? 'grin' : 'smile' });
     if (opts.animate !== false) raf = requestAnimationFrame(frame);
   };
@@ -562,13 +570,18 @@ async function boardScreen(kind = 'all') {
 function mapScreen() {
   state.screen = 'map';
   const p = state.profile;
-  const lat0 = 52;
-  const k = Math.cos((lat0 * Math.PI) / 180);
-  const pts = CITIES.map((c) => ({ x: (c.lon + 8) * k * 26, y: (63 - c.lat) * 26 }));
-  const minX = Math.min(...pts.map((q) => q.x)) - 70;
-  const maxX = Math.max(...pts.map((q) => q.x)) + 70;
-  const minY = Math.min(...pts.map((q) => q.y)) - 50;
-  const maxY = Math.max(...pts.map((q) => q.y)) + 60;
+  // schematic "metro map" positions (geography-inspired, readable on phones)
+  const POS = {
+    vilnius: [880, 520], klaipeda: [760, 430], riga: [860, 330], tallinn: [860, 190], helsinki: [900, 70],
+    stockholm: [650, 120], copenhagen: [560, 300], hamburg: [470, 410], amsterdam: [330, 420], brussels: [300, 530],
+    london: [150, 450], paris: [210, 640], madrid: [90, 790], rome: [470, 800], vienna: [600, 690],
+    prague: [540, 580], berlin: [660, 500], warsaw: [790, 610],
+  };
+  const pts = CITIES.map((c) => ({ x: POS[c.id][0], y: POS[c.id][1] }));
+  const minX = 20;
+  const maxX = 1000;
+  const minY = 20;
+  const maxY = 850;
   const best = p.stats.bestCity || 0;
   const reached = (i) => i <= best;
   let svg = `<svg viewBox="${minX} ${minY} ${maxX - minX} ${maxY - minY}" role="img" aria-label="${t('mapTitle')}">
@@ -589,8 +602,8 @@ function mapScreen() {
     svg += `<g data-city="${i}" style="cursor:pointer">
       ${c.mt ? `<circle cx="${q.x}" cy="${q.y}" r="17" fill="none" stroke="#FFD800" stroke-width="3" stroke-dasharray="4 3"/>` : ''}
       <circle cx="${q.x}" cy="${q.y}" r="11" fill="${on ? '#FFD800' : '#3A3E46'}" stroke="#15171b" stroke-width="3"/>
-      <text x="${q.x}" y="${q.y - 22}" text-anchor="middle" fill="${on ? '#fff' : '#9aa3ad'}" font-family="Barlow Condensed" font-weight="700" font-size="17">${esc(L(c.name))}</text>
-      <text x="${q.x}" y="${q.y + 30}" text-anchor="middle" fill="#FFD800" font-size="13">${'★'.repeat(stars)}<tspan fill="rgba(255,255,255,.2)">${'★'.repeat(3 - stars)}</tspan></text>
+      <text x="${q.x}" y="${q.y - 22}" text-anchor="middle" fill="${on ? '#fff' : '#9aa3ad'}" font-family="Barlow Condensed" font-weight="700" font-size="24">${esc(L(c.name))}</text>
+      <text x="${q.x}" y="${q.y + 34}" text-anchor="middle" fill="#FFD800" font-size="18">${'★'.repeat(stars)}<tspan fill="rgba(255,255,255,.2)">${'★'.repeat(3 - stars)}</tspan></text>
     </g>`;
   });
   svg += '</svg>';
