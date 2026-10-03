@@ -7,6 +7,7 @@ import { LANDMARKS, DEFAULT_LANDMARK, makeG, landmarkColors } from './landmarks.
 import {
   makeBuilding, buildingSize, drawBuilding, drawMtTower, MT_TOWER, drawCrane, CRANE,
   drawBillboard, BILLBOARD, drawTree, treeSize, drawLamp, LAMP, drawHoarding, FENCE,
+  drawStall, STALL, drawMarketSign, MARKET_SIGN,
 } from './buildings.js';
 import { SpriteCache, mix, shade, rgba, smooth, clamp } from './util.js';
 
@@ -67,88 +68,139 @@ export class Scenery {
   // -------------------------------------------------------------------------
   // Deterministic decoration per city & layer
   // -------------------------------------------------------------------------
+  /** World-space zones of a city: checkpoint towns first, then the city itself. */
+  zones(i) {
+    const { city } = cityMeta(i);
+    const s = cityStart(i);
+    const len = cityLength(i);
+    const out = [];
+    let cur = s;
+    for (const w of city.waypoints || []) {
+      out.push({ x0: cur, x1: s + w.to, wp: w });
+      cur = s + w.to;
+    }
+    out.push({ x0: cur, x1: s + len, wp: null });
+    return out;
+  }
+
   elements(i, layer) {
     const key = `${i}:${layer}`;
     let els = this.gen.get(key);
     if (els) return els;
-    const { city, theme } = cityMeta(i);
+    const { city, theme: cityTheme } = cityMeta(i);
     const L = LAYERS[layer];
-    const u0 = cityStart(i) * L.f;
-    const u1 = (cityStart(i) + cityLength(i)) * L.f;
-    const r = createRng(`decor|${city.id}|${layer}|${Math.floor(i / CITIES.length)}`);
+    const lap = Math.floor(i / CITIES.length);
+    const r = createRng(`decor|${city.id}|${layer}|${lap}`);
     els = [];
-    if (layer === 'far') {
-      // landmarks evenly spread + filler skyline
-      const lms = city.landmarks;
-      lms.forEach((id, j) => {
-        const lm = LANDMARKS[id] || DEFAULT_LANDMARK;
-        const u = u0 + ((j + 0.5) / lms.length) * (u1 - u0) - lm.w / 2;
-        els.push({ kind: 'landmark', id, u, w: lm.w, h: lm.h });
-      });
-      let u = u0;
-      while (u < u1) {
-        const w = r.range(1.6, 4.2);
-        els.push({ kind: 'filler', u, w, h: r.range(1.6, 4.8), tone: r.range(-0.08, 0.08), win: r.chance(0.6) });
-        u += w + r.range(-0.4, 0.3);
+    let n = 0;
+    for (const z of this.zones(i)) {
+      const u0 = z.x0 * L.f;
+      const u1 = z.x1 * L.f;
+      const wp = z.wp;
+      const theme = wp ? THEMES[wp.theme] || cityTheme : cityTheme;
+      const tag = wp ? wp.id : city.id;
+      if (layer === 'far') {
+        const lms = wp ? [] : city.landmarks; // town sights live in the mid layer
+        lms.forEach((id, j) => {
+          const lm = LANDMARKS[id] || DEFAULT_LANDMARK;
+          const u = u0 + ((j + 0.5) / lms.length) * (u1 - u0) - lm.w / 2;
+          els.push({ kind: 'landmark', id, u, w: lm.w, h: lm.h });
+        });
+        let u = u0;
+        while (u < u1) {
+          const w = r.range(1.6, 4.2);
+          const h = wp ? r.range(1.0, 2.6) : r.range(1.6, 4.8);
+          els.push({ kind: 'filler', u, w, h, tone: r.range(-0.08, 0.08), win: !wp && r.chance(0.6), tree: !!wp && r.chance(0.45) });
+          u += w + r.range(-0.4, 0.3);
+        }
+      } else if (layer === 'mid') {
+        let u = u0;
+        const mtAt = wp ? [] : [0.3, 0.78].map((f) => u0 + f * (u1 - u0));
+        const craneAt = wp ? Infinity : u0 + r.range(0.45, 0.65) * (u1 - u0);
+        const sights = (wp?.sights || []).map(([id, f, k]) => ({ id, at: u0 + f * (u1 - u0), k }));
+        const mk0 = wp?.market ? u0 + 0.25 * (u1 - u0) : Infinity;
+        const mk1 = wp?.market ? u0 + 0.8 * (u1 - u0) : -Infinity;
+        let craneDone = false;
+        while (u < u1) {
+          if (mtAt.length && u >= mtAt[0]) {
+            mtAt.shift();
+            els.push({ kind: 'mt', u, w: MT_TOWER.w, h: MT_TOWER.h });
+            u += MT_TOWER.w + 0.6;
+            continue;
+          }
+          if (sights.length && u >= sights[0].at) {
+            const { id, k } = sights.shift();
+            const lm = LANDMARKS[id];
+            els.push({ kind: 'monument', id, u: u + 0.8, w: lm.w * k, h: lm.h * k, k });
+            u += lm.w * k + 1.6;
+            continue;
+          }
+          if (!craneDone && u >= craneAt) {
+            craneDone = true;
+            els.push({ kind: 'crane', u: u - 2, w: CRANE.w, h: CRANE.h, behind: true });
+          }
+          if (u >= mk0 && u < mk1) {
+            els.push({ kind: 'stall', u, w: STALL.w, h: STALL.h, seed: `${tag}s${n++}` });
+            u += STALL.w + 0.25;
+            continue;
+          }
+          const b = makeBuilding(theme, `${tag}|b|${n++}|${lap}`);
+          const sz = buildingSize(b);
+          els.push({ kind: 'building', u, w: sz.w, h: sz.h, b });
+          u += sz.w + r.range(0.1, 0.9);
+        }
+      } else {
+        let u = u0 + 1;
+        const boardAt = wp ? Infinity : u0 + 0.5 * (u1 - u0);
+        const signAt = wp?.market ? u0 + 0.22 * (u1 - u0) : Infinity;
+        const mk0 = wp?.market ? u0 + 0.3 * (u1 - u0) : Infinity;
+        const mk1 = wp?.market ? u0 + 0.7 * (u1 - u0) : -Infinity;
+        let boardDone = false;
+        let signDone = false;
+        while (u < u1) {
+          if (!boardDone && u >= boardAt) {
+            boardDone = true;
+            els.push({ kind: 'billboard', u, w: BILLBOARD.w, h: BILLBOARD.h });
+            u += BILLBOARD.w + 1.5;
+            continue;
+          }
+          if (!signDone && u >= signAt) {
+            signDone = true;
+            els.push({ kind: 'marketsign', u, w: MARKET_SIGN.w, h: MARKET_SIGN.h });
+            u += MARKET_SIGN.w + 1;
+            continue;
+          }
+          if (u >= mk0 && u < mk1) {
+            els.push({ kind: 'stall', u, w: STALL.w, h: STALL.h, seed: `${tag}n${n++}` });
+            u += STALL.w + r.range(1.5, 4);
+            continue;
+          }
+          const roll = r.next();
+          if (!wp && roll < 0.07 && !(els.length && els[els.length - 1].kind === 'hoarding')) {
+            els.push({ kind: 'hoarding', u, w: FENCE.w, h: FENCE.h });
+            u += FENCE.w + 0.8;
+          } else if (roll < 0.55 && theme.tree !== 'none') {
+            const ts = treeSize(theme.tree);
+            els.push({ kind: 'tree', u, w: ts.w, h: ts.h, seed: `${tag}t${n++}`, tree: theme.tree });
+            u += ts.w + r.range(0.5, 2.5);
+          } else if (roll < 0.7) {
+            els.push({ kind: 'bench', u, w: 2.2, h: 1.0 });
+            u += 3.2;
+          } else if (theme === THEMES.port && roll < 0.85) {
+            els.push({ kind: 'bollard', u, w: 1.2, h: 0.9 });
+            u += 2.4;
+          } else {
+            u += r.range(1, 3);
+          }
+        }
       }
-    } else if (layer === 'mid') {
-      let u = u0;
-      let n = 0;
-      const mtAt = [0.3, 0.78].map((f) => u0 + f * (u1 - u0));
-      const craneAt = u0 + r.range(0.45, 0.65) * (u1 - u0);
-      let craneDone = false;
-      while (u < u1) {
-        if (mtAt.length && u >= mtAt[0]) {
-          mtAt.shift();
-          els.push({ kind: 'mt', u, w: MT_TOWER.w, h: MT_TOWER.h });
-          u += MT_TOWER.w + 0.6;
-          continue;
-        }
-        if (!craneDone && u >= craneAt) {
-          craneDone = true;
-          els.push({ kind: 'crane', u: u - 2, w: CRANE.w, h: CRANE.h, behind: true });
-        }
-        const b = makeBuilding(theme, `${city.id}|b|${n++}|${Math.floor(i / CITIES.length)}`);
-        const sz = buildingSize(b);
-        els.push({ kind: 'building', u, w: sz.w, h: sz.h, b });
-        u += sz.w + r.range(0.1, 0.9);
-      }
-    } else {
-      let u = u0 + 1;
-      let n = 0;
-      const boardAt = u0 + 0.5 * (u1 - u0);
-      let boardDone = false;
-      while (u < u1) {
-        if (!boardDone && u >= boardAt) {
-          boardDone = true;
-          els.push({ kind: 'billboard', u, w: BILLBOARD.w, h: BILLBOARD.h });
-          u += BILLBOARD.w + 1.5;
-          continue;
-        }
-        const roll = r.next();
-        if (roll < 0.07 && !(els.length && els[els.length - 1].kind === 'hoarding')) {
-          els.push({ kind: 'hoarding', u, w: FENCE.w, h: FENCE.h });
-          u += FENCE.w + 0.8;
-        } else if (roll < 0.55 && theme.tree !== 'none') {
-          const ts = treeSize(theme.tree);
-          els.push({ kind: 'tree', u, w: ts.w, h: ts.h, seed: `${city.id}t${n++}` });
-          u += ts.w + r.range(0.5, 2.5);
-        } else if (roll < 0.7) {
-          els.push({ kind: 'bench', u, w: 2.2, h: 1.0 });
-          u += 3.2;
-        } else if (city.theme === 'port' && roll < 0.85) {
-          els.push({ kind: 'bollard', u, w: 1.2, h: 0.9 });
-          u += 2.4;
-        } else {
-          u += r.range(1, 3);
-        }
-        // lamps on a regular rhythm
-        const lampU = Math.ceil(u / 9) * 9;
-        if (lampU < u + 1 && lampU < u1) els.push({ kind: 'lamp', u: lampU, w: LAMP.w, h: LAMP.h });
-      }
-      for (let lu = Math.ceil(u0 / 9) * 9; lu < u1; lu += 9) els.push({ kind: 'lamp', u: lu, w: LAMP.w, h: LAMP.h });
-      els.sort((a, b) => a.u - b.u);
     }
+    if (layer === 'near') {
+      const s0 = cityStart(i) * L.f;
+      const s1 = (cityStart(i) + cityLength(i)) * L.f;
+      for (let lu = Math.ceil(s0 / 9) * 9; lu < s1; lu += 9) els.push({ kind: 'lamp', u: lu, w: LAMP.w, h: LAMP.h });
+    }
+    els.sort((a, b) => a.u - b.u);
     if (this.gen.size > 40) this.gen.delete(this.gen.keys().next().value);
     this.gen.set(key, els);
     return els;
@@ -235,6 +287,17 @@ export class Scenery {
           const x = (e.u - camU) * unit;
           const h = e.h * unit;
           ctx.fillStyle = shade(col, e.tone - 0.04);
+          if (e.tree) {
+            // rural tree line instead of buildings
+            const n = Math.max(2, Math.round(e.w / 0.9));
+            for (let k = 0; k < n; k++) {
+              ctx.beginPath();
+              ctx.arc(x + ((k + 0.5) * e.w * unit) / n, base - h * (0.55 + 0.25 * ((k * 7) % 3) / 2), (e.w * unit) / n * 0.75, 0, Math.PI * 2);
+              ctx.fill();
+            }
+            ctx.fillRect(Math.round(x), Math.round(base - h * 0.5), Math.ceil(e.w * unit) + 1, Math.ceil(h * 0.5) + 1);
+            continue;
+          }
           ctx.fillRect(Math.round(x), Math.round(base - h), Math.ceil(e.w * unit) + 1, Math.ceil(h) + 1);
           if (e.win) {
             ctx.fillStyle = rgba(shade(col, -0.25), 0.5);
@@ -295,12 +358,22 @@ export class Scenery {
           if (!!e.behind !== pass) continue;
           if (e.u + e.w < uMin || e.u > uMax) continue;
           const x = Math.round((e.u - camU) * unit);
-          const key = e.kind === 'building' ? e.b.seed : e.kind;
+          if (em && (e.kind === 'stall' || e.kind === 'monument')) continue;
+          const key = e.kind === 'building' ? e.b.seed : e.kind === 'stall' ? e.seed : e.kind === 'monument' ? e.id : e.kind;
           const spr = this.cache.get(`mid:${key}:${em ? 1 : 0}:${Math.round(unit)}`, e.w * unit * sc, e.h * unit * sc, (c) => {
             const s = unit * sc;
             if (e.kind === 'building') drawBuilding(c, e.b, s, em);
             else if (e.kind === 'mt') drawMtTower(c, s, em);
             else if (e.kind === 'crane') drawCrane(c, s, em);
+            else if (e.kind === 'stall') drawStall(c, s, e.seed);
+            else if (e.kind === 'monument') {
+              const lm = LANDMARKS[e.id];
+              c.save();
+              c.translate(0, lm.h * e.k * s);
+              c.scale(s * e.k, -s * e.k);
+              lm.draw(makeG(c, landmarkColors('#B3A890')));
+              c.restore();
+            }
           });
           ctx.drawImage(spr.canvas, x - spr.pad / sc, Math.round(base - e.h * unit) - spr.pad / sc, spr.canvas.width / sc, spr.canvas.height / sc);
         }
@@ -338,14 +411,20 @@ export class Scenery {
         if (em && !['lamp', 'billboard'].includes(e.kind)) continue;
         const x = Math.round((e.u - camU) * unit);
         let key = e.kind;
-        if (e.kind === 'tree') key = `tree:${theme.tree}:${e.seed}`;
+        if (e.kind === 'tree') key = `tree:${e.tree || theme.tree}:${e.seed}`;
+        if (e.kind === 'stall') key = `stall:${e.seed}`;
+        if (e.kind === 'marketsign') key = `msign:${this.lang}`;
         if (e.kind === 'lamp') key = `lamp:${city.theme === 'nordic' || city.theme === 'port' ? 'modern' : 'classic'}`;
         if (e.kind === 'billboard') key = `bb:${this.lang}:${this.birthday ? 1 : 0}`;
         const spr = this.cache.get(`near:${key}:${em ? 1 : 0}:${Math.round(unit)}`, e.w * unit, e.h * unit, (c) => {
           const s = unit;
           switch (e.kind) {
             case 'tree':
-              return drawTree(c, theme.tree, s, e.seed);
+              return drawTree(c, e.tree || theme.tree, s, e.seed);
+            case 'stall':
+              return drawStall(c, s, e.seed);
+            case 'marketsign':
+              return drawMarketSign(c, s, this.lang);
             case 'lamp':
               return drawLamp(c, s, em, city.theme === 'nordic' || city.theme === 'port' ? 'modern' : 'classic');
             case 'hoarding':

@@ -135,7 +135,7 @@ export class Sim {
     const half = P.playerWidth / 2 - 0.1;
     for (const e of this.entities) {
       if (!e.alive || e.k === 'pit' || e.oneWay) continue;
-      if (e.k === 'bolt' || e.k === 'part' || e.k === 'token' || e.k === 'power' || e.k === 'task' || e.k === 'gate') continue;
+      if (e.k === 'bolt' || e.k === 'part' || e.k === 'token' || e.k === 'power' || e.k === 'task' || e.k === 'gate' || e.k === 'checkpoint') continue;
       if (this.x + half < e.x || this.x - half > e.x + e.w) continue;
       if (e.y0 > this.y + P.slideHeight - 0.05 && e.y0 < this.y + P.playerHeight) return true;
     }
@@ -298,6 +298,12 @@ export class Sim {
           if (Math.abs(dx) < r + 0.25 && Math.abs(dy) < r + this.height * 0.45) this.collect(e);
           break;
         }
+        case 'checkpoint':
+          if (this.x >= e.x && !e.passed) {
+            e.passed = true;
+            this.emit('checkpoint', { wp: e.wp, x: e.x });
+          }
+          break;
         case 'gate':
           if (this.x >= e.x && !e.passed) {
             e.passed = true;
@@ -477,7 +483,7 @@ export class Sim {
     this.dead = false;
     this.revived = true;
     for (const e of this.entities) {
-      if (e.k === 'bolt' || e.k === 'part' || e.k === 'token' || e.k === 'power' || e.k === 'task' || e.k === 'gate') continue;
+      if (e.k === 'bolt' || e.k === 'part' || e.k === 'token' || e.k === 'power' || e.k === 'task' || e.k === 'gate' || e.k === 'checkpoint') continue;
       if (e.x + (e.w || 0) > this.x - 3 && e.x < this.x + 28) e.alive = false;
     }
     this.y = 0;

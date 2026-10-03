@@ -62,10 +62,23 @@ export const CITIES = [
     landmarks: ['gediminas', 'cathedral', 'tvtower'], sky: 'morning',
   },
   {
-    id: 'klaipeda', flag: '🇱🇹', length: 720, lat: 55.71, lon: 21.13, mt: true, theme: 'port',
+    id: 'klaipeda', flag: '🇱🇹', length: 1500, lat: 55.71, lon: 21.13, mt: true, theme: 'port',
     name: { lt: 'Klaipėda', en: 'Klaipėda' }, country: { lt: 'Lietuva', en: 'Lithuania' },
     project: { type: 'lng', lt: 'SGD terminalas „Independence“', en: '“Independence” LNG terminal' },
     landmarks: ['fsru', 'portcranes', 'meridian'], sky: 'morning',
+    // checkpoints on the road from Vilnius (not separate route stops)
+    waypoints: [
+      {
+        id: 'raseiniai', from: 25, to: 390, theme: 'town', sights: [['raseiniaichurch', 0.12, 1.15], ['zemaitis', 0.45, 1.45]],
+        name: { lt: 'Raseiniai', en: 'Raseiniai' },
+        sub: { lt: 'Žemaičių krašto vartai · paminklas „Žemaitis“', en: 'Gateway to Samogitia · “Žemaitis” monument' },
+      },
+      {
+        id: 'rietavas', from: 410, to: 790, theme: 'town', sights: [['rietavaschurch', 0.1, 1.15], ['rietavasbess', 0.88, 0.9]], market: true,
+        name: { lt: 'Rietavas', en: 'Rietavas' },
+        sub: { lt: 'Rietavo turgus · MT GROUP baterijų parkas 140 MWh', en: 'Rietavas market · MT GROUP 140 MWh battery park' },
+      },
+    ],
   },
   {
     id: 'riga', flag: '🇱🇻', length: 760, lat: 56.95, lon: 24.11, mt: false, theme: 'baltic',
@@ -191,6 +204,16 @@ export function cityAt(distance) {
     start += len;
   }
   throw new Error('distance out of range');
+}
+
+/** Checkpoint (waypoint) at an absolute distance, or null. */
+export function waypointAt(distance) {
+  const ca = cityAt(distance);
+  const wps = ca.city.waypoints;
+  if (!wps) return null;
+  const rel = distance - ca.start;
+  for (const w of wps) if (rel >= w.from && rel < w.to) return { ...w, cityIndex: ca.index, start: ca.start + w.from, end: ca.start + w.to };
+  return null;
 }
 
 export function cityStart(index) {

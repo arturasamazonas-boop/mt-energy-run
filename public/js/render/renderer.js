@@ -219,13 +219,25 @@ export class Renderer {
     const ci = cityAt(Math.max(0, sim.x)).index;
     for (let i = Math.max(0, ci - 1); i <= ci + 1; i++) {
       const city = CITIES[i % CITIES.length];
-      const sx = cityStart(i) + 8;
+      const wps = city.waypoints;
+      const sx = cityStart(i) + (wps ? wps[wps.length - 1].to : 0) + 8;
       if (sx > this.camX - 4 && sx < this.camX + viewM + 4) {
         this.worldAt(ctx, sx, 0.15);
         ctx.scale(0.9, 0.9);
         drawCitySign(ctx, city, lang);
         ctx.restore();
       }
+    }
+    for (const e of sim.entities) {
+      if (e.k !== 'checkpoint') continue;
+      if (e.x < this.camX - 6 || e.x > this.camX + viewM + 6) continue;
+      const c = CITIES[cityAt(e.x).index % CITIES.length];
+      const wp = (c.waypoints || []).find((w) => w.id === e.wp);
+      if (!wp) continue;
+      this.worldAt(ctx, e.x, 0.15);
+      ctx.scale(0.9, 0.9);
+      drawCitySign(ctx, { name: wp.name, flag: '🇱🇹', country: { lt: 'Kontrolinis punktas', en: 'Checkpoint' } }, lang);
+      ctx.restore();
     }
     for (const e of sim.entities) {
       if (e.k !== 'gate') continue;
@@ -247,7 +259,7 @@ export class Renderer {
     const frames = 12;
     const ph = ((t * 3.2) / (Math.PI * 2) + e.x * 0.05) % 1;
     const f = Math.floor(ph * frames);
-    const size = Math.round(this.ppm * 1.1);
+    const size = Math.round(this.ppm * 1.3);
     const spr = this.sprites.get(`bolt:${f}:${size}`, size, size, (c) => {
       c.translate(size / 2, size / 2);
       c.scale(this.ppm, -this.ppm);

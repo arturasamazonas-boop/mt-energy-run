@@ -1,7 +1,7 @@
 // Game controller: fixed-step simulation, attract mode, events → effects/sound/HUD.
 import { Sim } from '/shared/sim.js';
 import { Bot } from '/shared/bot.js';
-import { CITIES, cityAt, SCORE } from '/shared/config.js';
+import { CITIES, cityAt, waypointAt, SCORE } from '/shared/config.js';
 import { audio } from '../audio.js';
 
 const DT = 1 / 120;
@@ -208,6 +208,7 @@ export class Game {
       energy: s.energyEarned(),
       distance: Math.floor(s.x - s.startX),
       cityIndex: ca.index,
+      wp: waypointAt(s.x)?.id || null,
       progress: ca.progress,
       parts: s.partsByCity[ca.index] || 0,
       power: s.power,
@@ -314,6 +315,12 @@ export class Game {
           }
           break;
         }
+        case 'checkpoint':
+          if (real) {
+            audio.sfx('city');
+            this.ui.event('checkpoint', ev);
+          }
+          break;
         case 'city':
           if (real) {
             audio.sfx('city');

@@ -28,7 +28,7 @@ assert.equal(cityAt(ROUTE_LENGTH + 1).index, CITIES.length, 'route loops into la
 assert.ok(speedAt(0) < speedAt(3000) && speedAt(3000) < speedAt(20000));
 assert.ok(minTimeFor(1000) > 60 && minTimeFor(1000) < 100);
 
-const avail = countAvailable('seed-1', 2000);
+const avail = countAvailable('seed-1', 2400);
 assert.ok(avail.bolts > 150 && avail.gates >= 2 && avail.parts >= 6, JSON.stringify(avail));
 assert.ok(PATTERN_IDS.length >= 25);
 

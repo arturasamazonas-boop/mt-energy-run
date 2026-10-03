@@ -589,3 +589,111 @@ export function drawHoarding(ctx, s, em) {
 }
 
 export { mix };
+
+// ---------------------------------------------------------------------------
+// Market stall (Rietavas market) and market sign
+// ---------------------------------------------------------------------------
+export const STALL = { w: 3.2, h: 2.9 };
+
+const AWNINGS = [
+  ['#C0392B', '#F4F1EA'],
+  ['#2F6E5A', '#F4F1EA'],
+  ['#2C4E86', '#F4F1EA'],
+  ['#E0A21B', '#F4F1EA'],
+  ['#7A3E8C', '#F4F1EA'],
+];
+
+export function drawStall(ctx, s, seed) {
+  const r = createRng(seed);
+  const [a1, a2] = r.pick(AWNINGS);
+  const W = STALL.w * s;
+  const H = STALL.h * s;
+  // posts
+  ctx.fillStyle = '#6B4A30';
+  ctx.fillRect(0.15 * s, 0.55 * s, 0.1 * s, H - 0.55 * s);
+  ctx.fillRect(W - 0.25 * s, 0.55 * s, 0.1 * s, H - 0.55 * s);
+  // awning
+  const stripes = 7;
+  for (let i = 0; i < stripes; i++) {
+    ctx.fillStyle = i % 2 ? a2 : a1;
+    ctx.beginPath();
+    ctx.moveTo((i * W) / stripes, 0.15 * s);
+    ctx.lineTo(((i + 1) * W) / stripes, 0.15 * s);
+    ctx.lineTo(((i + 1) * W) / stripes + 0.05 * s, 0.7 * s);
+    ctx.lineTo((i * W) / stripes + 0.05 * s, 0.7 * s);
+    ctx.fill();
+    // scalloped edge
+    ctx.beginPath();
+    ctx.arc((i + 0.5) * (W / stripes) + 0.05 * s, 0.7 * s, W / stripes / 2, 0, Math.PI);
+    ctx.fill();
+  }
+  ctx.fillStyle = 'rgba(0,0,0,0.25)';
+  ctx.fillRect(0, 0.1 * s, W, 0.08 * s);
+  // table
+  const ty = H - 1.0 * s;
+  ctx.fillStyle = '#9A6B3E';
+  ctx.fillRect(0.05 * s, ty, W - 0.1 * s, 0.14 * s);
+  ctx.fillStyle = '#7C5530';
+  ctx.fillRect(0.1 * s, ty + 0.14 * s, W - 0.2 * s, H - ty - 0.14 * s);
+  ctx.fillStyle = 'rgba(0,0,0,0.15)';
+  for (let x = 0.4; x < STALL.w - 0.2; x += 0.5) ctx.fillRect(x * s, ty + 0.2 * s, 0.03 * s, H - ty - 0.25 * s);
+  // produce crates
+  const goods = [
+    ['#C8352B', '#E85A4C'], // apples
+    ['#6FA24A', '#8DC264'], // cabbages
+    ['#E8862A', '#F5A54A'], // pumpkins
+    ['#E9C44A', '#F5DA74'], // potatoes / honey
+    ['#7A3E8C', '#9E5DB0'], // plums
+  ];
+  let x = 0.2 * s;
+  while (x < W - 0.7 * s) {
+    const [g1, g2] = r.pick(goods);
+    const cw = r.range(0.6, 0.85) * s;
+    ctx.fillStyle = '#B98A55';
+    ctx.fillRect(x, ty - 0.28 * s, cw, 0.28 * s);
+    for (let k = 0; k < 4; k++) {
+      ctx.fillStyle = k % 2 ? g1 : g2;
+      ctx.beginPath();
+      ctx.arc(x + ((k + 0.5) * cw) / 4, ty - 0.3 * s, cw / 7, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    x += cw + 0.08 * s;
+  }
+  // price tag
+  ctx.fillStyle = '#FFFFFF';
+  ctx.fillRect(W * 0.62, ty + 0.25 * s, 0.5 * s, 0.3 * s);
+  ctx.fillStyle = '#1E1E1E';
+  ctx.font = `700 ${0.2 * s}px "Barlow Condensed", sans-serif`;
+  ctx.fillText(`${r.int(1, 4)},${r.pick(['50', '90', '20'])} €`, W * 0.62 + 0.05 * s, ty + 0.48 * s);
+}
+
+export const MARKET_SIGN = { w: 5.4, h: 3.8 };
+
+export function drawMarketSign(ctx, s, lang) {
+  const W = MARKET_SIGN.w * s;
+  ctx.fillStyle = '#5A3E28';
+  ctx.fillRect(0.4 * s, 0.9 * s, 0.16 * s, MARKET_SIGN.h * s - 0.9 * s);
+  ctx.fillRect(W - 0.56 * s, 0.9 * s, 0.16 * s, MARKET_SIGN.h * s - 0.9 * s);
+  ctx.fillStyle = '#8A5A34';
+  roundRect(ctx, 0, 0, W, 1.2 * s, 0.15 * s);
+  ctx.fill();
+  ctx.fillStyle = '#F4E3C3';
+  roundRect(ctx, 0.12 * s, 0.12 * s, W - 0.24 * s, 0.96 * s, 0.1 * s);
+  ctx.fill();
+  ctx.fillStyle = '#5A3E28';
+  ctx.font = `800 ${0.58 * s}px "Barlow Condensed", sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.fillText(lang === 'lt' ? 'RIETAVO TURGUS' : 'RIETAVAS MARKET', W / 2, 0.82 * s);
+  ctx.textAlign = 'left';
+  // bunting
+  const cols = ['#C0392B', '#FFD800', '#2F6E5A', '#2C4E86'];
+  for (let i = 0; i < 9; i++) {
+    ctx.fillStyle = cols[i % 4];
+    const x = 0.3 * s + (i * (W - 0.6 * s)) / 8;
+    ctx.beginPath();
+    ctx.moveTo(x - 0.18 * s, 1.3 * s);
+    ctx.lineTo(x + 0.18 * s, 1.3 * s);
+    ctx.lineTo(x, 1.65 * s);
+    ctx.fill();
+  }
+}

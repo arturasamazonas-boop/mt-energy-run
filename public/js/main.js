@@ -602,6 +602,18 @@ function mapScreen() {
   if (best > 0) svg += `<path d="${dr}" fill="none" stroke="#FFD800" stroke-width="6" stroke-linejoin="round" stroke-linecap="round"/>`;
   const last = pts[pts.length - 1];
   svg += `<path d="M${last.x} ${last.y} Q ${(last.x + pts[0].x) / 2 + 30} ${(last.y + pts[0].y) / 2 - 40} ${pts[0].x} ${pts[0].y}" fill="none" stroke="rgba(255,255,255,.18)" stroke-width="3" stroke-dasharray="8 8"/>`;
+  // checkpoints on the Vilnius → Klaipėda leg
+  CITIES.forEach((c, i) => {
+    (c.waypoints || []).forEach((w, k, arr) => {
+      const a = pts[(i - 1 + CITIES.length) % CITIES.length];
+      const b = pts[i];
+      const f = (k + 1) / (arr.length + 1);
+      const x = a.x + (b.x - a.x) * f;
+      const y = a.y + (b.y - a.y) * f;
+      svg += `<circle cx="${x}" cy="${y}" r="6" fill="${reached(i) || best >= i - 1 ? '#FFD800' : '#3A3E46'}" stroke="#15171b" stroke-width="2"/>
+        <text x="${x + 9}" y="${y + 20}" fill="#c9ced6" font-family="Barlow Condensed" font-weight="700" font-size="15">${esc(L(w.name))}</text>`;
+    });
+  });
   CITIES.forEach((c, i) => {
     const q = pts[i];
     const on = reached(i);
@@ -812,10 +824,15 @@ function resumeGame() {
 function onGameEvent(type, ev) {
   switch (type) {
     case 'city':
-      if (!ev.first) hud.cityBanner(ev.index);
+      // cities with checkpoints announce themselves on arrival (see 'checkpoint')
+      if (!ev.first && !CITIES[ev.index % CITIES.length].waypoints) hud.cityBanner(ev.index);
       break;
     case 'gate':
       hud.gateBanner(ev);
+      break;
+    case 'checkpoint':
+      if (ev.wp === 'city') hud.cityBanner(game.sim.cityIndex);
+      else hud.checkpointBanner(game.sim.cityIndex, ev.wp);
       break;
     case 'paused':
       showPause();

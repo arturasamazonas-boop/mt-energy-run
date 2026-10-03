@@ -599,13 +599,15 @@ export function drawBolt(ctx, t, glow = true) {
   const spin = Math.cos(t * 3.2);
   ctx.save();
   if (glow) {
-    const g = ctx.createRadialGradient(0, 0, 0, 0, 0, 0.5);
-    g.addColorStop(0, 'rgba(255,230,80,0.55)');
-    g.addColorStop(1, 'rgba(255,230,80,0)');
+    // bright halo so bolts pop out of any background (day or night)
+    const g = ctx.createRadialGradient(0, 0, 0, 0, 0, 0.62);
+    g.addColorStop(0, 'rgba(255,250,200,0.95)');
+    g.addColorStop(0.35, 'rgba(255,224,40,0.6)');
+    g.addColorStop(1, 'rgba(255,200,0,0)');
     ctx.fillStyle = g;
-    ctx.fillRect(-0.5, -0.5, 1, 1);
+    ctx.fillRect(-0.62, -0.62, 1.24, 1.24);
   }
-  ctx.scale(0.55 + 0.45 * Math.abs(spin), 1);
+  ctx.scale((0.6 + 0.4 * Math.abs(spin)) * 1.22, 1.22);
   ctx.beginPath();
   ctx.moveTo(0.05, 0.32);
   ctx.lineTo(-0.17, -0.02);
@@ -615,16 +617,20 @@ export function drawBolt(ctx, t, glow = true) {
   ctx.lineTo(0.01, 0.05);
   ctx.lineTo(0.09, 0.32);
   ctx.closePath();
-  ctx.fillStyle = spin > 0 ? BRAND_Y : '#F0C400';
-  ctx.fill();
-  ctx.strokeStyle = '#8A6A00';
-  ctx.lineWidth = 0.03;
+  ctx.lineJoin = 'round';
+  ctx.strokeStyle = '#2A1F00';
+  ctx.lineWidth = 0.075;
   ctx.stroke();
-  ctx.fillStyle = 'rgba(255,255,255,0.55)';
+  ctx.fillStyle = spin > 0 ? '#FFE600' : '#FFD000';
+  ctx.fill();
+  ctx.strokeStyle = '#FFFBD6';
+  ctx.lineWidth = 0.022;
+  ctx.stroke();
+  ctx.fillStyle = 'rgba(255,255,255,0.85)';
   ctx.beginPath();
-  ctx.moveTo(0.04, 0.27);
+  ctx.moveTo(0.045, 0.26);
   ctx.lineTo(-0.1, 0.0);
-  ctx.lineTo(-0.05, 0.0);
+  ctx.lineTo(-0.045, 0.0);
   ctx.closePath();
   ctx.fill();
   ctx.restore();

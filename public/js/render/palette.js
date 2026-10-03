@@ -17,6 +17,16 @@ export const SKY = {
 
 // Facade colours, roof style and props for generic city buildings.
 export const THEMES = {
+  town: {
+    facades: ['#EADBB8', '#E8C89A', '#D9E2C8', '#EBCFC4', '#F2E6D2', '#CFDCE0'],
+    roofs: ['#B4553A', '#A24A33', '#8C3F2E'],
+    roof: ['gable', 'gable', 'hip'],
+    floors: [2, 3],
+    farTone: '#8FA9A0',
+    tree: 'linden',
+    road: '#5C6066',
+    pavement: '#B9B3A8',
+  },
   baltic: {
     facades: ['#EADBB8', '#E8C89A', '#D9E2C8', '#EBCFC4', '#F2E6D2', '#D8C3A5', '#C9D8DA'],
     roofs: ['#B4553A', '#A24A33', '#8C3F2E', '#5E6C74'],

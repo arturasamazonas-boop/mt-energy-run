@@ -80,11 +80,12 @@ export class Hud {
         e.mult.classList.add('bump');
       }
     }
-    if (l.cityIndex !== s.cityIndex) {
+    if (l.cityIndex !== s.cityIndex || l.wp !== s.wp) {
       const c = CITIES[s.cityIndex % CITIES.length];
       const n = CITIES[(s.cityIndex + 1) % CITIES.length];
-      e.cur.textContent = `${c.flag} ${L(c.name)}`;
-      e.next.textContent = `${L(n.name)} →`;
+      const wp = s.wp && (c.waypoints || []).find((w) => w.id === s.wp);
+      e.cur.textContent = wp ? `📍 ${L(wp.name)}` : `${c.flag} ${L(c.name)}`;
+      e.next.textContent = `${L((wp ? c : n).name)} →`;
     }
     const pct = `${(s.progress * 100).toFixed(1)}%`;
     if (l.pct !== pct) {
@@ -125,6 +126,12 @@ export class Hud {
     const lap = Math.floor(index / CITIES.length);
     const badge = c.mt ? `<div class="badge"><img src="/assets/mt-emblem.png" alt="">${t('mtSite')}</div>` : '';
     this.banner(`${t('welcomeTo')}${lap ? ` · ${lap + 1}×` : ''}`, `${L(c.name)}`, `${c.flag} ${L(c.country)} · ${L(c.project)}`, badge);
+  }
+
+  checkpointBanner(cityIndex, id) {
+    const c = CITIES[cityIndex % CITIES.length];
+    const wp = (c.waypoints || []).find((w) => w.id === id);
+    if (wp) this.banner(t('checkpoint'), L(wp.name), L(wp.sub));
   }
 
   gateBanner(ev) {

@@ -976,5 +976,100 @@ export const LANDMARKS = {
   },
 };
 
+// ---------------- Checkpoints: Raseiniai & Rietavas
+Object.assign(LANDMARKS, {
+  // "Žemaitis" by Vincas Grybas (1934): a strong man stepping forward after
+  // taming a bear, on a tall pedestal with bas-reliefs. Drawn for the mid layer.
+  zemaitis: {
+    w: 5.4, h: 10.4,
+    draw(g) {
+      const { c } = g;
+      const stone = mix(c.base, '#C9C3B6', 0.55);
+      const stoneD = shade(stone, -0.18);
+      const bronze = mix(c.base, '#3B4A3F', 0.78);
+      const bronzeL = shade(bronze, 0.22);
+      // steps + pedestal
+      g.rect(0, 0, 5.4, 0.35, stoneD).rect(0.35, 0.35, 4.7, 0.35, stone);
+      g.rect(0.95, 0.7, 3.5, 4.6, stone).rect(0.95, 0.7, 3.5, 0.25, stoneD);
+      g.rect(0.75, 5.3, 3.9, 0.35, stoneD);
+      // bas-relief panels
+      for (const y of [1.3, 2.75]) {
+        g.rect(1.25, y, 2.9, 1.15, stoneD);
+        g.rect(1.35, y + 0.1, 2.7, 0.95, shade(stone, -0.08));
+        for (let k = 0; k < 4; k++) g.rect(1.55 + k * 0.62, y + 0.18, 0.2, 0.65, stoneD);
+      }
+      g.rect(1.95, 4.15, 1.5, 0.55, stoneD);
+      // bear lying at his feet (tamed)
+      g.ellipse(1.75, 6.05, 0.95, 0.4, bronze);
+      g.circle(0.95, 6.2, 0.3, bronze).circle(0.82, 6.42, 0.1, bronze).circle(1.07, 6.45, 0.1, bronze);
+      g.rect(1.2, 5.65, 0.22, 0.4, bronze).rect(2.2, 5.65, 0.22, 0.4, bronze);
+      // man stepping forward (to the right)
+      g.poly([2.9, 5.65, 3.2, 5.65, 2.95, 7.3, 2.6, 7.2], bronze); // back leg
+      g.poly([3.55, 5.65, 3.9, 5.65, 3.35, 7.35, 3.0, 7.25], bronze); // front leg
+      g.poly([2.6, 7.2, 3.45, 7.25, 3.6, 8.75, 2.55, 8.75], bronze); // torso
+      g.poly([2.55, 8.75, 3.6, 8.75, 3.3, 9.05, 2.8, 9.05], bronze); // shoulders
+      g.circle(3.08, 9.4, 0.36, bronze); // head
+      g.poly([3.5, 8.65, 3.75, 8.55, 4.35, 9.7, 4.1, 9.8], bronze); // raised arm
+      g.circle(4.25, 9.85, 0.16, bronze); // fist
+      g.poly([2.65, 8.6, 2.85, 8.5, 2.25, 7.35, 2.05, 7.45], bronze); // lowered arm
+      g.rect(2.62, 7.95, 0.08, 0.7, bronzeL).rect(3.15, 6.3, 0.08, 0.9, bronzeL);
+    },
+  },
+  // Church of the Ascension, Raseiniai (white, two towers)
+  raseiniaichurch: {
+    w: 8, h: 9,
+    draw(g) {
+      const { c } = g;
+      g.rect(1.3, 0, 5.4, 4.6, c.white).poly([1.3, 4.6, 6.7, 4.6, 4, 5.8], c.white);
+      g.arches(2.4, 0, 3.2, 3.2, 3, c.dark);
+      for (const x of [1.0, 5.6]) {
+        g.rect(x, 0, 1.4, 6.6, c.white);
+        g.windows(x + 0.25, 3.6, 0.9, 2.6, 1, 2, c.dark, 0.5, 0.55);
+        g.rect(x + 0.15, 6.6, 1.1, 0.7, c.white).dome(x + 0.7, 7.3, 0.62, 0.75, c.copper);
+        g.rect(x + 0.66, 8.0, 0.08, 0.8, c.darker).rect(x + 0.5, 8.5, 0.4, 0.07, c.darker);
+      }
+    },
+  },
+  // St. Archangel Michael church, Rietavas (red brick, neo-Romanesque, two spires)
+  rietavaschurch: {
+    w: 8, h: 10.4,
+    draw(g) {
+      const { c } = g;
+      g.rect(1.4, 0, 5.2, 4.4, c.brick).poly([1.4, 4.4, 6.6, 4.4, 4, 5.6], c.brickD);
+      g.arches(2.3, 0.4, 3.4, 3.2, 3, c.win);
+      g.circle(4, 4.7, 0.42, c.white);
+      for (const x of [0.8, 5.6]) {
+        g.rect(x, 0, 1.6, 7.2, c.brick);
+        g.arches(x + 0.3, 4.6, 1.0, 1.8, 2, c.win);
+        g.spire(x + 0.8, 7.2, 1.8, 2.9, c.darker);
+        g.rect(x + 0.77, 10.1, 0.06, 0.3, c.gold);
+      }
+    },
+  },
+  // MT GROUP 35 MW / 140 MWh battery energy storage park near Rietavas
+  rietavasbess: {
+    w: 12, h: 4.6,
+    draw(g) {
+      const { c } = g;
+      g.rect(0, 0, 12, 0.25, c.dark);
+      for (let i = 0; i < 6; i++) {
+        g.rect(0.3 + i * 1.6, 0.25, 1.4, 1.4, c.white);
+        g.rect(0.35 + i * 1.6, 1.4, 1.3, 0.12, c.light);
+      }
+      for (let i = 0; i < 6; i++) g.rect(0.3 + i * 1.6, 1.85, 1.4, 1.2, c.white);
+      g.rect(9.9, 0.25, 1.8, 2.2, c.base).rect(10.1, 2.45, 0.2, 0.8, c.dark).rect(10.6, 2.45, 0.2, 0.8, c.dark).rect(11.1, 2.45, 0.2, 0.8, c.dark);
+      g.rect(0.3, 3.3, 3.4, 1.1, c.yellow).rect(0.42, 3.42, 3.16, 0.86, mix(c.base, '#1E1E1E', 0.6));
+      g.line([0, 0.9, 12, 0.9], c.light, 0.05);
+    },
+    lights(g) {
+      for (let i = 0; i < 6; i++) {
+        g.rect(0.5 + i * 1.6, 1.1, 0.25, 0.15, '#5CF29A');
+        g.rect(0.5 + i * 1.6, 2.65, 0.25, 0.15, '#5CF29A');
+      }
+      g.rect(0.42, 3.42, 3.16, 0.86, 'rgba(255,216,0,0.85)');
+    },
+  },
+});
+
 /** Fallback for any id that is missing. */
 export const DEFAULT_LANDMARK = LANDMARKS.tvtower;
