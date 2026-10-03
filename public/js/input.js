@@ -46,8 +46,9 @@ export class Input {
   }
 
   zoneFor(clientX) {
+    // jump is the more frequent action, so it gets the larger share of the screen
     const r = this.target.getBoundingClientRect();
-    return clientX - r.left < r.width * 0.4 ? 'slide' : 'jump';
+    return clientX - r.left < r.width * 0.35 ? 'slide' : 'jump';
   }
 
   press(kind) {

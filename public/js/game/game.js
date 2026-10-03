@@ -2,6 +2,7 @@
 import { Sim } from '/shared/sim.js';
 import { Bot } from '/shared/bot.js';
 import { CITIES, cityAt, waypointAt, legAt, SCORE } from '/shared/config.js';
+import { buzz } from '../haptics.js';
 import { audio } from '../audio.js';
 
 const DT = 1 / 120;
@@ -68,6 +69,8 @@ export class Game {
     this.renderer.ppm = 0;
     this.timeScale = 1;
     this.tutorial = opts.tutorial ? { shown: new Set(), active: null, t: 0 } : null;
+    // distance flags along the road (own best, the next colleague to beat)
+    this.markers = (opts.markers || []).map((m) => ({ ...m, x: this.sim.startX + m.distance, passed: false }));
     this.lastCity = this.sim.cityIndex;
     this.runStart = performance.now();
     this.ui.event('city', { index: this.sim.cityIndex, first: true });
@@ -148,6 +151,7 @@ export class Game {
         if (sim.dead || sim.pendingTask) break;
       }
       if (this.tutorial) this.updateTutorial();
+      if (this.mode === 'run') this.checkMarkers();
     }
 
     // hero animation state
@@ -182,6 +186,7 @@ export class Game {
       heroFrac: this.mode === 'attract' ? this.attractFrac ?? 0.62 : 0.24,
       birthday: this.birthday,
       lang: this.renderer.lang,
+      markers: this.mode === 'run' || this.mode === 'dying' || this.mode === 'paused' || this.mode === 'task' ? this.markers : null,
     });
 
     if (this.mode === 'run' || this.mode === 'dying') this.ui.hud(this.hudState());
@@ -261,6 +266,7 @@ export class Game {
           fx.text(ev.x, ev.y + 0.6, `${ev.count}/3`, '#9FE3FF', 44);
           if (real) {
             audio.sfx('part');
+            buzz(ev.count >= 3 ? [25, 50, 25] : 18);
             this.ui.event('part', ev);
           }
           break;
@@ -268,13 +274,17 @@ export class Game {
         case 'token':
           fx.sparks(ev.x, ev.y, 20, '#FFD800', 7);
           fx.text(ev.x, ev.y + 0.6, `+${ev.points}`, '#FFD800', 48);
-          if (real) audio.sfx('token');
+          if (real) {
+            audio.sfx('token');
+            buzz(30);
+          }
           break;
         case 'power':
           fx.ring(ev.x, ev.y, '#FFFFFF', 1.6);
           fx.sparks(ev.x, ev.y, 14, '#FFFFFF', 5);
           if (real) {
             audio.sfx('power');
+            buzz(20);
             this.ui.event('power', ev);
           }
           break;
@@ -289,6 +299,7 @@ export class Game {
           fx.debris(sim.x + 0.6, 0.6, '#9AA3AD', 8);
           if (real) {
             audio.sfx('helmet');
+            buzz([40, 40, 40]);
             this.ui.event('helmet');
           }
           break;
@@ -312,6 +323,7 @@ export class Game {
           this.hero.cheer = 0.0;
           if (real) {
             audio.sfx('gate');
+            buzz(ev.stars === 3 ? [20, 40, 20, 40, 70] : 25);
             this.ui.event('gate', ev);
           }
           break;
@@ -343,7 +355,10 @@ export class Game {
           break;
         case 'revive':
           R.flash = 0.6;
-          if (real) audio.sfx('revive');
+          if (real) {
+            audio.sfx('revive');
+            buzz(40);
+          }
           break;
         case 'death':
           this.onDeath(ev);
@@ -363,6 +378,7 @@ export class Game {
       if (this.mode !== 'task') return;
       this.sim.resolveTask(success);
       audio.sfx(success ? 'taskOk' : 'taskFail');
+      buzz(success ? [20, 40, 30] : 50);
       this.ui.event('taskDone', { success });
       this.handleEvents();
       this.mode = 'run';
@@ -384,13 +400,7 @@ export class Game {
       this.renderer.fx.debris(this.sim.x + 0.5, this.sim.y + 0.6, '#9AA3AD', 6);
     }
     audio.sfx(ev.cause === 'fall' ? 'fall' : 'crash');
-    if (navigator.vibrate) {
-      try {
-        navigator.vibrate(ev.cause === 'fall' ? 60 : 120);
-      } catch {
-        /* ignore */
-      }
-    }
+    buzz(ev.cause === 'fall' ? 60 : 120);
     this.mode = 'dying';
     this.input.enabled = false;
   }
@@ -419,14 +429,28 @@ export class Game {
     const sim = this.sim;
     const s = sim.summary();
     const ca = cityAt(sim.x);
+    const next = legAt(sim.x).next;
     this.ui.over({
       summary: s,
       energy: sim.energyEarned(),
       cause: sim.deathCause,
+      kind: sim.deathKind,
+      next: next.x > sim.x ? { name: next.name, flag: next.flag, meters: Math.ceil(next.x - sim.x) } : null,
       cityIndex: ca.index,
       city: CITIES[ca.index % CITIES.length],
       durationMs: performance.now() - this.runStart,
     });
+  }
+
+  checkMarkers() {
+    const sim = this.sim;
+    for (const m of this.markers || []) {
+      if (m.passed || sim.x < m.x) continue;
+      m.passed = true;
+      this.renderer.fx.text(sim.x + 1, sim.y + 3.2, m.passText, '#FFD800', 40);
+      audio.sfx('mult');
+      buzz([15, 30, 15]);
+    }
   }
 
   // ---------------------------------------------------------------------------

@@ -52,7 +52,10 @@ const game = new Game({
 });
 input.onPause = () => {
   if (game.mode === 'run') game.pause();
-  else if (game.mode === 'paused') resumeGame();
+  else if (game.mode === 'paused') {
+    if (cancelCountdown()) showPause();
+    else resumeGame();
+  }
 };
 renderer.lang = getLang();
 
@@ -69,6 +72,7 @@ window.addEventListener('orientationchange', () => setTimeout(onResize, 200));
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) {
     if (game.mode === 'run') game.pause();
+    else if (cancelCountdown()) showPause();
     audio.ctx?.suspend?.();
   } else audio.ctx?.resume?.();
 });
@@ -87,6 +91,7 @@ function checkOrientation() {
   const show = needLandscape && isPortraitTouch();
   $('#rotate').hidden = !show;
   if (show && game.mode === 'run') game.pause();
+  else if (show && cancelCountdown()) showPause();
   if (!show && state.waitingRotate) {
     const go = state.waitingRotate;
     state.waitingRotate = null;
@@ -332,6 +337,7 @@ function homeScreen() {
   audio.startMusic('menu');
   const p = state.profile;
   const touch = isTouchDevice();
+  const audioOn = audio.musicOn || audio.sfxOn;
   const el = show(`
     <div class="screen home">
       <div class="topbar">
@@ -339,8 +345,7 @@ function homeScreen() {
         <div class="right">
           <span class="chip" title="${t('energy')}"><span class="bolt">${ICON.bolt}</span>${fmtNum(p.energy)}</span>
           <button class="chip" data-go="profile">${ICON.user}${esc(p.name)}</button>
-          <button class="icon-btn ${audio.musicOn ? '' : 'off'}" data-music aria-label="${t('music')}">${ICON.music}</button>
-          <button class="icon-btn ${audio.sfxOn ? '' : 'off'}" data-sfx aria-label="${t('sound')}">${audio.sfxOn ? ICON.sound : ICON.mute}</button>
+          <button class="icon-btn ${audioOn ? '' : 'off'}" data-audio aria-label="${t('audioAll')}" title="${t('audioAll')}">${audioOn ? ICON.sound : ICON.mute}</button>
           <button class="chip" data-lang>${ICON.globe}${getLang().toUpperCase()}</button>
         </div>
       </div>
@@ -374,13 +379,12 @@ function homeScreen() {
       else if (go === 'profile') profileScreen();
     }),
   );
-  click($('[data-music]', el), () => {
-    audio.setMusic(!audio.musicOn);
-    if (audio.musicOn) audio.startMusic('menu');
-    homeScreen();
-  });
-  click($('[data-sfx]', el), () => {
-    audio.setSfx(!audio.sfxOn);
+  // one switch for music + effects; the pause menu still toggles them separately
+  click($('[data-audio]', el), () => {
+    const on = !audioOn;
+    audio.setMusic(on);
+    audio.setSfx(on);
+    if (on) audio.startMusic('menu');
     homeScreen();
   });
   click($('[data-lang]', el), () => {
@@ -780,6 +784,7 @@ async function startRun(mode) {
   state.busy = true;
   clearPortraits();
   let run = { mode, seed: params.get('seed') || `local-${Date.now()}`, upgrades: state.profile.upgrades || {}, runId: null };
+  const boardReq = state.online && !state.profile.guest ? fetchBoardQuick(mode === 'daily' ? 'daily' : 'all') : Promise.resolve(null);
   if (state.online && !state.profile.guest && !params.has('practice') && !(DEBUG && params.has('autoplay'))) {
     try {
       const r = await api.startRun(mode);
@@ -788,6 +793,7 @@ async function startRun(mode) {
       /* play offline */
     }
   }
+  const markers = runMarkers(await boardReq);
   state.busy = false;
   state.run = run;
   show('', { shadeMode: 'none' });
@@ -800,14 +806,63 @@ async function startRun(mode) {
     startCity: DEBUG ? Number(params.get('city') || 0) : 0,
     startAt: DEBUG && params.has('at') ? Number(params.get('at')) : null,
     autoplay: DEBUG && params.has('autoplay'),
+    markers,
   });
   if (tutorial) game.sim.helmet = true;
   hud.cityBanner(game.sim.cityIndex);
 }
 
+/** Leaderboard for the road flags; never holds up the start of a run for long. */
+function fetchBoardQuick(board) {
+  const timeout = new Promise((resolve) => setTimeout(() => resolve(null), 1200));
+  return Promise.race([api.leaderboard(board, 200).catch(() => null), timeout]);
+}
+
+/** Flags along the road: your best distance and the next colleague to pass. */
+function runMarkers(board) {
+  const out = [];
+  const best = state.profile.stats.bestDistance || 0;
+  if (best >= 60) out.push({ distance: best, label: t('markerBest'), passText: t('markerBeatBest'), color: '#FFD800' });
+  const rival = (board?.entries || [])
+    .filter((e) => !e.me && e.distance > best + 25)
+    .sort((a, b) => a.distance - b.distance)[0];
+  if (rival) out.push({ distance: rival.distance, label: rival.name, passText: t('markerBeat', { name: rival.name }), color: '#9FE3FF' });
+  return out;
+}
+
+// 3-2-1 before the run continues after a pause (also after switching apps)
+let countdownTimer = null;
 function resumeGame() {
-  show('', { shadeMode: 'none' });
-  game.resume();
+  if (game.mode !== 'paused') return;
+  clearInterval(countdownTimer);
+  let n = 3;
+  const el = show(`<div class="countdown"><b>${n}</b></div>`, { shadeMode: 'none' });
+  const num = $('b', el);
+  audio.sfx('tick');
+  countdownTimer = setInterval(() => {
+    n--;
+    if (n > 0) {
+      num.textContent = String(n);
+      num.style.animation = 'none';
+      void num.offsetWidth;
+      num.style.animation = '';
+      audio.sfx('tick');
+      return;
+    }
+    clearInterval(countdownTimer);
+    countdownTimer = null;
+    if (game.mode !== 'paused') return;
+    if (isPortraitTouch()) return showPause();
+    show('', { shadeMode: 'none' });
+    game.resume();
+  }, 700);
+}
+
+function cancelCountdown() {
+  if (!countdownTimer) return false;
+  clearInterval(countdownTimer);
+  countdownTimer = null;
+  return true;
 }
 
 function onGameEvent(type, ev) {
@@ -870,6 +925,7 @@ function showPause() {
 
 /** Leaving mid-run still records the result (it is a legitimate run so far). */
 function abandonRun() {
+  cancelCountdown();
   if (!game.sim || game.mode === 'over') return;
   const s = game.sim.summary();
   submitRun(s).catch(() => {});
@@ -920,7 +976,10 @@ async function onRunOver(info) {
   const p = state.profile;
   const prevBest = p.stats.bestScore || 0;
   const localBest = s.score > prevBest;
-  const causeText = info.cause === 'fall' ? t('fell') : t('crashed');
+  const causeText = deathText(info);
+  const tip = deathTip(info);
+  const goals = [];
+  if (info.next) goals.push(t('goalNext', { place: `${info.next.flag} ${esc(L(info.next.name))}`, dist: fmtDist(info.next.meters) }));
   setTimeout(() => hud.unmount(), 50);
   const el = show(`
     <div class="overlay">
@@ -930,6 +989,7 @@ async function onRunOver(info) {
           <div class="cause">${causeText} · ${cityLabel(info.cityIndex)}</div>
           <div class="score-big">${fmtNum(s.score)}</div>
           <div data-record>${localBest && s.score > 0 ? `<span class="record">${t('newRecord')}</span>` : ''}</div>
+          ${tip ? `<div class="tip">${tip}</div>` : ''}
         </div>
         <div class="stats-grid">
           <div class="stat"><small>${t('distance')}</small><b>${fmtDist(s.distance)}</b></div>
@@ -938,6 +998,7 @@ async function onRunOver(info) {
           <div class="stat"><small>${t('multiplier')}</small><b>x${s.maxMult}</b></div>
         </div>
         <div class="ranks" data-ranks></div>
+        <div class="goals" data-goals>${goalsHtml(goals)}</div>
         <div class="notice" data-notice></div>
         <div class="row">
           <button class="btn primary big" data-again>${ICON.refresh}${t('playAgain')}</button>
@@ -985,6 +1046,12 @@ async function onRunOver(info) {
     if (r.ranks?.week) pills.push(`<span class="rank-pill">${t('rankWeek')}<b>#${r.ranks.week.rank}</b></span>`);
     if (r.ranks?.daily) pills.push(`<span class="rank-pill">${t('rankDaily')}<b>#${r.ranks.daily.rank}</b></span>`);
     $('[data-ranks]', el).innerHTML = pills.join('');
+    const all = r.ranks?.all;
+    if (all?.above) goals.push(t('goalRank', { rank: all.rank - 1, name: esc(all.above.name), pts: fmtNum(Math.max(1, all.above.score - all.score + 1)) }));
+    else if (all?.rank === 1) goals.push(t('goalTop'));
+    const shop = shopGoal(r.profile);
+    if (shop) goals.push(shop);
+    $('[data-goals]', el).innerHTML = goalsHtml(goals);
     maybeSuggestProtect(el);
     r.unlocked?.forEach((id, i) =>
       setTimeout(() => {
@@ -996,6 +1063,46 @@ async function onRunOver(info) {
   } catch {
     $('[data-notice]', el).textContent = t('notSaved');
   }
+}
+
+const HIT_TIP = {
+  cone: 'jump', barrier: 'jump', drum: 'jump', rollDrum: 'jump', cable: 'jump', crate: 'jump',
+  stack: 'double', container: 'double',
+  beam: 'slide', rack: 'slide', birds: 'slide',
+};
+
+function deathText(info) {
+  if (info.cause === 'fall') return t('fell');
+  const key = `hit_${info.kind}`;
+  const txt = t(key);
+  return txt === key ? t('crashed') : txt;
+}
+
+function deathTip(info) {
+  const kind = info.cause === 'fall' ? 'fall' : HIT_TIP[info.kind];
+  if (!kind) return '';
+  if (kind === 'fall' || isTouchDevice()) return t(`tip_${kind}`);
+  return t(`tip_${kind}Keys`);
+}
+
+function goalsHtml(goals) {
+  if (!goals.length) return '';
+  return `<small>${t('goalsTitle')}</small><ul>${goals.map((g) => `<li>${g}</li>`).join('')}</ul>`;
+}
+
+/** Cheapest next upgrade: either buyable now or how much energy is still missing. */
+function shopGoal(p) {
+  if (!p || p.guest) return '';
+  let best = null;
+  for (const u of UPGRADES) {
+    const level = p.upgrades?.[u.id] || 0;
+    if (level >= u.costs.length) continue;
+    const cost = u.costs[level];
+    if (!best || cost < best.cost) best = { u, cost };
+  }
+  if (!best) return '';
+  if (p.energy >= best.cost) return t('goalBuy', { item: esc(L(best.u)) });
+  return t('goalSave', { item: esc(L(best.u)), n: fmtNum(best.cost - p.energy) });
 }
 
 /** After a few saved runs, gently suggest verifying an email (snoozable for 7 days). */

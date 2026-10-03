@@ -172,7 +172,9 @@ export function createApp({ store, adminToken = '', birthdayMode = 'auto', trust
 
   function rankIn(rows, playerId) {
     const i = rows.findIndex((r) => r.playerId === playerId);
-    return i < 0 ? null : { rank: i + 1, total: rows.length, score: rows[i].score };
+    if (i < 0) return null;
+    const above = i > 0 ? { name: rows[i - 1].name, score: rows[i - 1].score } : null;
+    return { rank: i + 1, total: rows.length, score: rows[i].score, above };
   }
 
   // ---------------------------------------------------------------------------
@@ -185,9 +187,9 @@ export function createApp({ store, adminToken = '', birthdayMode = 'auto', trust
     },
 
     'GET /api/me': async (req) => {
+      // no account yet is a normal first visit, not an error
       const p = await currentPlayer(req);
-      if (!p) return [401, { error: 'no_session' }];
-      return { profile: publicProfile(p) };
+      return { profile: p ? publicProfile(p) : null };
     },
 
     'POST /api/register': async (req, res, body) => {
