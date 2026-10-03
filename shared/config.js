@@ -56,7 +56,7 @@ export function minTimeFor(distance) {
 // ---------------------------------------------------------------------------
 export const CITIES = [
   {
-    id: 'vilnius', flag: '🇱🇹', length: 650, lat: 54.69, lon: 25.28, mt: true, theme: 'baltic',
+    id: 'vilnius', flag: '🇱🇹', length: 850, lat: 54.69, lon: 25.28, mt: true, theme: 'baltic',
     name: { lt: 'Vilnius', en: 'Vilnius' }, country: { lt: 'Lietuva', en: 'Lithuania' },
     project: { type: 'hydrogen', lt: 'Žaliojo vandenilio jėgainė', en: 'Green hydrogen plant' },
     landmarks: ['gediminas', 'cathedral', 'tvtower'], sky: 'morning',
@@ -214,6 +214,30 @@ export function waypointAt(distance) {
   const rel = distance - ca.start;
   for (const w of wps) if (rel >= w.from && rel < w.to) return { ...w, cityIndex: ca.index, start: ca.start + w.from, end: ca.start + w.to };
   return null;
+}
+
+/**
+ * Route legs for the HUD: every city and every checkpoint is a stop.
+ * Returns { cur, next, progress } where stops are { name, flag, x, checkpoint }.
+ */
+export function legAt(distance) {
+  const ca = cityAt(distance);
+  const stopsOf = (i) => {
+    const c = CITIES[i % CITIES.length];
+    const s = cityStart(i);
+    const out = [];
+    for (const w of c.waypoints || []) out.push({ name: w.name, flag: c.flag, x: s + w.from, checkpoint: true });
+    const arrive = c.waypoints ? s + c.waypoints[c.waypoints.length - 1].to : s;
+    out.push({ name: c.name, flag: c.flag, x: arrive, checkpoint: false, index: i });
+    return out;
+  };
+  const stops = [...(ca.index > 0 ? stopsOf(ca.index - 1) : []), ...stopsOf(ca.index), ...stopsOf(ca.index + 1)];
+  let k = 0;
+  for (let j = 0; j < stops.length; j++) if (stops[j].x <= distance) k = j;
+  const cur = stops[k];
+  const next = stops[k + 1] || stops[k];
+  const progress = next.x > cur.x ? Math.min(1, Math.max(0, (distance - cur.x) / (next.x - cur.x))) : 0;
+  return { cur, next, progress };
 }
 
 export function cityStart(index) {

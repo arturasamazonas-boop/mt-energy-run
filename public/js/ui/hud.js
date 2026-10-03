@@ -80,12 +80,11 @@ export class Hud {
         e.mult.classList.add('bump');
       }
     }
-    if (l.cityIndex !== s.cityIndex || l.wp !== s.wp) {
-      const c = CITIES[s.cityIndex % CITIES.length];
-      const n = CITIES[(s.cityIndex + 1) % CITIES.length];
-      const wp = s.wp && (c.waypoints || []).find((w) => w.id === s.wp);
-      e.cur.textContent = wp ? `📍 ${L(wp.name)}` : `${c.flag} ${L(c.name)}`;
-      e.next.textContent = `${L((wp ? c : n).name)} →`;
+    const legKey = `${s.leg.cur.x}|${s.leg.next.x}`;
+    if (l.legKey !== legKey) {
+      const { cur, next } = s.leg;
+      e.cur.textContent = `${cur.checkpoint ? '📍' : cur.flag} ${L(cur.name)}`;
+      e.next.textContent = `${next.checkpoint ? '📍 ' : ''}${L(next.name)} →`;
     }
     const pct = `${(s.progress * 100).toFixed(1)}%`;
     if (l.pct !== pct) {
@@ -109,7 +108,7 @@ export class Hud {
       if (p.el.hidden === on) p.el.hidden = !on;
       if (on) p.ring.setAttribute('stroke-dashoffset', String(125.7 * (1 - Math.min(1, frac))));
     }
-    Object.assign(l, s, { pct });
+    Object.assign(l, s, { pct, legKey });
   }
 
   banner(k, v, sub = '', badge = '') {
