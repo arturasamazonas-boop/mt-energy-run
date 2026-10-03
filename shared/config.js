@@ -56,29 +56,30 @@ export function minTimeFor(distance) {
 // ---------------------------------------------------------------------------
 export const CITIES = [
   {
-    id: 'vilnius', flag: '🇱🇹', length: 850, lat: 54.69, lon: 25.28, mt: true, theme: 'baltic',
+    id: 'vilnius', flag: '🇱🇹', length: 650, lat: 54.69, lon: 25.28, mt: true, theme: 'baltic',
     name: { lt: 'Vilnius', en: 'Vilnius' }, country: { lt: 'Lietuva', en: 'Lithuania' },
-    project: { type: 'hydrogen', lt: 'Žaliojo vandenilio jėgainė', en: 'Green hydrogen plant' },
+    // the Vilnius leg ends at Rietavas, where MT GROUP builds the battery park
+    project: { type: 'bess', lt: 'Rietavo baterijų parkas 140 MWh', en: 'Rietavas 140 MWh battery park' },
     landmarks: ['gediminas', 'cathedral', 'tvtower'], sky: 'morning',
-  },
-  {
-    id: 'klaipeda', flag: '🇱🇹', length: 1500, lat: 55.71, lon: 21.13, mt: true, theme: 'port',
-    name: { lt: 'Klaipėda', en: 'Klaipėda' }, country: { lt: 'Lietuva', en: 'Lithuania' },
-    project: { type: 'lng', lt: 'SGD terminalas „Independence“', en: '“Independence” LNG terminal' },
-    landmarks: ['fsru', 'portcranes', 'meridian'], sky: 'morning',
-    // checkpoints on the road from Vilnius (not separate route stops)
+    // checkpoints on the road to Klaipėda (not separate route stops)
     waypoints: [
       {
-        id: 'raseiniai', from: 25, to: 390, theme: 'town', sights: [['raseiniaichurch', 0.12, 1.15], ['zemaitis', 0.45, 1.45]],
+        id: 'raseiniai', from: 200, to: 400, theme: 'town', sights: [['raseiniaichurch', 0.12, 1.15], ['zemaitis', 0.45, 1.45]],
         name: { lt: 'Raseiniai', en: 'Raseiniai' },
         sub: { lt: 'Žemaičių krašto vartai · paminklas „Žemaitis“', en: 'Gateway to Samogitia · “Žemaitis” monument' },
       },
       {
-        id: 'rietavas', from: 410, to: 790, theme: 'town', sights: [['rietavaschurch', 0.1, 1.15], ['rietavasbess', 0.88, 0.9]], market: true,
+        id: 'rietavas', from: 400, to: 650, theme: 'town', sights: [['rietavaschurch', 0.1, 1.15]], market: true,
         name: { lt: 'Rietavas', en: 'Rietavas' },
         sub: { lt: 'Rietavo turgus · MT GROUP baterijų parkas 140 MWh', en: 'Rietavas market · MT GROUP 140 MWh battery park' },
       },
     ],
+  },
+  {
+    id: 'klaipeda', flag: '🇱🇹', length: 720, lat: 55.71, lon: 21.13, mt: true, theme: 'port',
+    name: { lt: 'Klaipėda', en: 'Klaipėda' }, country: { lt: 'Lietuva', en: 'Lithuania' },
+    project: { type: 'lng', lt: 'SGD terminalas „Independence“', en: '“Independence” LNG terminal' },
+    landmarks: ['fsru', 'portcranes', 'meridian'], sky: 'morning',
   },
   {
     id: 'riga', flag: '🇱🇻', length: 760, lat: 56.95, lon: 24.11, mt: false, theme: 'baltic',
@@ -227,9 +228,8 @@ export function legAt(distance) {
     const s = cityStart(i);
     const out = [];
     for (const w of c.waypoints || []) out.push({ name: w.name, flag: c.flag, x: s + w.from, checkpoint: true });
-    const arrive = c.waypoints ? s + c.waypoints[c.waypoints.length - 1].to : s;
-    out.push({ name: c.name, flag: c.flag, x: arrive, checkpoint: false, index: i });
-    return out;
+    out.push({ name: c.name, flag: c.flag, x: s, checkpoint: false, index: i });
+    return out.sort((p, q) => p.x - q.x);
   };
   const stops = [...(ca.index > 0 ? stopsOf(ca.index - 1) : []), ...stopsOf(ca.index), ...stopsOf(ca.index + 1)];
   let k = 0;

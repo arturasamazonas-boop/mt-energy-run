@@ -605,12 +605,12 @@ function mapScreen() {
   // checkpoints on the Vilnius → Klaipėda leg
   CITIES.forEach((c, i) => {
     (c.waypoints || []).forEach((w, k, arr) => {
-      const a = pts[(i - 1 + CITIES.length) % CITIES.length];
-      const b = pts[i];
+      const a = pts[i];
+      const b = pts[(i + 1) % CITIES.length];
       const f = (k + 1) / (arr.length + 1);
       const x = a.x + (b.x - a.x) * f;
       const y = a.y + (b.y - a.y) * f;
-      svg += `<circle cx="${x}" cy="${y}" r="6" fill="${reached(i) || best >= i - 1 ? '#FFD800' : '#3A3E46'}" stroke="#15171b" stroke-width="2"/>
+      svg += `<circle cx="${x}" cy="${y}" r="6" fill="${best > i || (best === i && p.stats.bestDistance >= w.from) ? '#FFD800' : '#3A3E46'}" stroke="#15171b" stroke-width="2"/>
         <text x="${x + 9}" y="${y + 20}" fill="#c9ced6" font-family="Barlow Condensed" font-weight="700" font-size="15">${esc(L(w.name))}</text>`;
     });
   });
@@ -825,7 +825,7 @@ function onGameEvent(type, ev) {
   switch (type) {
     case 'city':
       // cities with checkpoints announce themselves on arrival (see 'checkpoint')
-      if (!ev.first && !CITIES[ev.index % CITIES.length].waypoints) hud.cityBanner(ev.index);
+      if (!ev.first) hud.cityBanner(ev.index);
       break;
     case 'gate':
       hud.gateBanner(ev);

@@ -219,8 +219,7 @@ export class Renderer {
     const ci = cityAt(Math.max(0, sim.x)).index;
     for (let i = Math.max(0, ci - 1); i <= ci + 1; i++) {
       const city = CITIES[i % CITIES.length];
-      const wps = city.waypoints;
-      const sx = cityStart(i) + (wps ? wps[wps.length - 1].to : 0) + 8;
+      const sx = cityStart(i) + 8;
       if (sx > this.camX - 4 && sx < this.camX + viewM + 4) {
         this.worldAt(ctx, sx, 0.15);
         ctx.scale(0.9, 0.9);

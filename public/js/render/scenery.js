@@ -76,10 +76,11 @@ export class Scenery {
     const out = [];
     let cur = s;
     for (const w of city.waypoints || []) {
-      out.push({ x0: cur, x1: s + w.to, wp: w });
+      if (s + w.from > cur) out.push({ x0: cur, x1: s + w.from, wp: null });
+      out.push({ x0: s + w.from, x1: s + w.to, wp: w });
       cur = s + w.to;
     }
-    out.push({ x0: cur, x1: s + len, wp: null });
+    if (cur < s + len) out.push({ x0: cur, x1: s + len, wp: null });
     return out;
   }
 
@@ -101,10 +102,14 @@ export class Scenery {
       const tag = wp ? wp.id : city.id;
       if (layer === 'far') {
         const lms = wp ? [] : city.landmarks; // town sights live in the mid layer
+        const total = lms.reduce((a, id) => a + (LANDMARKS[id] || DEFAULT_LANDMARK).w + 2, 0);
+        let lu = u0;
         lms.forEach((id, j) => {
           const lm = LANDMARKS[id] || DEFAULT_LANDMARK;
-          const u = u0 + ((j + 0.5) / lms.length) * (u1 - u0) - lm.w / 2;
+          const spread = total < u1 - u0 ? u0 + ((j + 0.5) / lms.length) * (u1 - u0) - lm.w / 2 : lu;
+          const u = Math.max(spread, lu);
           els.push({ kind: 'landmark', id, u, w: lm.w, h: lm.h });
+          lu = u + lm.w + 2;
         });
         let u = u0;
         while (u < u1) {

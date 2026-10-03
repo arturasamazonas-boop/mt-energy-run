@@ -330,11 +330,9 @@ export function generateCity(seed, index) {
 
   let taskFractions = index < 3 && lap === 0 ? [0.42] : [0.38, 0.72];
   if (city.waypoints) {
-    // one site task in every checkpoint town, one more in the city itself
-    const lastTo = city.waypoints[city.waypoints.length - 1].to;
-    taskFractions = [...city.waypoints.map((w) => (w.from + w.to) / 2 / len), (lastTo + (len - lastTo) * 0.45) / len];
+    // one site task in every checkpoint town
+    taskFractions = city.waypoints.map((w) => (w.from + Math.min(w.to, len - GATE_ZONE)) / 2 / len);
     for (const w of city.waypoints) list.push({ k: 'checkpoint', x: start + w.from + 6, w: 1, wp: w.id });
-    list.push({ k: 'checkpoint', x: start + lastTo + 6, w: 1, wp: 'city' }); // arrival in the city itself
   }
   for (const f of taskFractions) {
     const b = takeNear(start + len * f);
