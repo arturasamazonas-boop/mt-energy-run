@@ -54,17 +54,22 @@ Kūrėjo įrankiai:
 
 Projektas visiškai atskirtas nuo *Penkto gurkšnio*: atskira repozitorija, atskiras Render servisas ir atskira duomenų bazė.
 
-1. Render → **New → Blueprint** → pasirink repozitoriją `mt-energy-run`. `render.yaml` sukurs web servisą ir PostgreSQL duomenų bazę.
-2. Palauk, kol baigsis „deploy“. Atidaryk servisą ir patikrink `https://<adresas>/healthz`. Turi būti `"storage":"postgres"`.
-3. Administratoriaus raktą rasi serviso **Environment → ADMIN_TOKEN**. Administravimas: `https://<adresas>/admin`.
+Duomenų bazė laikoma [Neon](https://neon.com) nemokamame plane (0,5 GB, neištrinama; kai niekas nežaidžia, išsijungia po 5 min.). Render'io nemokama PostgreSQL netinka, nes ištrinama po 30 dienų.
 
-> ⚠️ Render'io nemokama PostgreSQL duomenų bazė ištrinama po 30 dienų. Kad rekordai išliktų ilgiau, duomenų bazei pasirink mokamą planą (pvz. *Basic 256 MB*). Nemokamas web servisas po neveiklumo „užmiega“, todėl pirmas atidarymas gali užtrukti ~30 s. Gimtadienio dienai rekomenduojamas bent *Starter* planas.
+1. Neon → sukurk projektą (regionas Europoje, pvz. Frankfurtas) ir nusikopijuok *connection string* (baigiasi `?sslmode=require`).
+2. Render → **New → Blueprint** → pasirink repozitoriją `mt-energy-run`. `render.yaml` sukurs web servisą ir paklaus `DATABASE_URL` – įklijuok Neon adresą.
+3. Palauk, kol baigsis „deploy“. Atidaryk servisą ir patikrink `https://<adresas>/healthz`. Turi būti `"storage":"postgres"`.
+4. Administratoriaus raktą rasi serviso **Environment → ADMIN_TOKEN**. Administravimas: `https://<adresas>/admin`.
+
+Atsarginė kopija (kompiuteryje su PostgreSQL įrankiais): `pg_dump "<Neon adresas>" --no-owner --no-acl > backup.sql`.
+
+> Nemokamas web servisas po neveiklumo „užmiega“, todėl pirmas atidarymas gali užtrukti ~30 s.
 
 Aplinkos kintamieji:
 
 | Kintamasis | Paskirtis |
 |---|---|
-| `DATABASE_URL` | PostgreSQL. Lentelės sukuriamos automatiškai. |
+| `DATABASE_URL` | PostgreSQL (Neon *connection string*). Lentelės sukuriamos automatiškai. |
 | `ADMIN_TOKEN` | Raktas `/admin` puslapiui. Be jo administravimas išjungtas. |
 | `RESEND_API_KEY` | Resend API raktas el. pašto kodams siųsti. |
 | `ACCOUNT_EMAIL_FROM` | Siuntėjas, pvz. `MT Energy Run <zaidimas@jusu-domenas.lt>` (domenas turi būti patvirtintas Resend'e). |
