@@ -13,7 +13,7 @@ export function emptyPlayerData() {
     energy: 0,
     upgrades: {},
     cosmetics: { owned: ['suit', 'birthday'], equipped: 'suit' },
-    stats: { runs: 0, totalDistance: 0, totalBolts: 0, totalTasks: 0, bestScore: 0, bestDistance: 0, bestCity: 0, dailyRuns: 0 },
+    stats: { runs: 0, totalDistance: 0, totalBolts: 0, totalTasks: 0, totalTokens: 0, bestScore: 0, bestDistance: 0, bestCity: 0, dailyRuns: 0 },
     achievements: {},
     cityStars: {},
   };
@@ -96,6 +96,7 @@ export function applyRun(data, s, run, { birthday = false } = {}) {
   st.totalDistance += s.distance;
   st.totalBolts += s.bolts;
   st.totalTasks += s.tasks;
+  st.totalTokens = (st.totalTokens || 0) + s.tokens;
   if (run.mode === 'daily') st.dailyRuns++;
   const newBest = s.score > st.bestScore;
   if (newBest) st.bestScore = s.score;
@@ -136,10 +137,69 @@ export function applyRun(data, s, run, { birthday = false } = {}) {
   if (st.runs >= 25) give('runs25');
   if (run.mode === 'daily') give('daily');
   if (birthday) give('birthday');
+  if (birthday && s.score >= 2410) give('bdaygift');
+  // route (distances are from the start in Vilnius)
+  if (s.distance >= 200) give('raseiniai');
+  if (s.distance >= 400) give('rietavas');
+  if (s.cityIndex >= 1) give('klaipeda');
+  if (s.cityIndex >= 3) give('tallinn');
+  if (s.cityIndex >= 5) give('stockholm');
+  if (s.cityIndex >= 7) give('mtsites');
+  if (s.cityIndex >= 10) give('london');
+  if (s.cityIndex >= 13) give('rome');
+  if (s.cityIndex >= 16) give('berlin');
+  if (s.cityIndex >= 19) give('lap2');
+  // single run
+  if (s.distance >= 10000) give('km10');
+  if (s.bolts >= 300) give('bolts300');
+  if (s.tokens >= 3) give('tokens3');
+  if (s.perfectCities >= 3) give('perfect3');
+  if (s.tasks >= 4 && s.tasksFailed === 0) give('nofail');
+  if (s.maxMult >= 15) give('mult15');
+  if (s.smashed >= 10) give('smash10');
+  if (s.powerups >= 8) give('power8');
+  if (s.score >= 100000) give('score100k');
+  if (s.score >= 500000) give('score500k');
+  if (s.revived && s.distance >= 500) give('revive');
+  // career
+  if (st.totalDistance >= 42195) give('marathon');
+  if (st.totalDistance >= 600000) give('km200');
+  if (st.totalBolts >= 25000) give('bolts25000');
+  if (st.totalTokens >= 25) give('tokens25');
+  if (st.totalTasks >= 50) give('tasks50');
+  const perfect = Object.values(d.cityStars).filter((v) => v >= 3).length;
+  if (perfect >= 10) give('stars10');
+  if (perfect >= 18) give('starsall');
+  if (st.runs >= 100) give('runs100');
+  if (st.dailyRuns >= 7) give('daily7');
+  // workshop (also granted at purchase time, see buy())
+  for (const id of workshopAchievements(d)) give(id);
   if (has('grandtour') && !d.cosmetics.owned.includes('gold')) d.cosmetics.owned.push('gold');
 
   d.energy += energy;
   return { energy, unlocked, newBest };
+}
+
+/** Workshop achievements the player currently qualifies for. */
+function workshopAchievements(d) {
+  const out = [];
+  const lv = Object.entries(d.upgrades || {});
+  if (lv.some(([, n]) => n > 0)) out.push('shopper');
+  if (lv.some(([id, n]) => UPGRADE_BY_ID[id] && n >= UPGRADE_BY_ID[id].costs.length)) out.push('maxed');
+  if ((d.cosmetics?.owned || []).length >= 4) out.push('stylist');
+  return out;
+}
+
+/** Grant workshop achievements right after a purchase. Returns unlocked ids. */
+export function grantWorkshop(d) {
+  const unlocked = [];
+  for (const id of workshopAchievements(d)) {
+    if (d.achievements[id]) continue;
+    d.achievements[id] = new Date().toISOString();
+    d.energy += ACHIEVEMENT_BY_ID[id].reward;
+    unlocked.push(id);
+  }
+  return unlocked;
 }
 
 export function upgradeCost(id, level) {

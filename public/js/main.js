@@ -528,6 +528,13 @@ async function doBuy(kind, id, tab) {
     const r = await api.buy(kind, id);
     setProfile(r.profile);
     audio.sfx('power');
+    (r.unlocked || []).forEach((aid, i) =>
+      setTimeout(() => {
+        const a = ACHIEVEMENT_BY_ID[aid];
+        toast(`${L(a)} · ⚡${a.reward}`, t('achievement'));
+        audio.sfx('achievement');
+      }, 300 + i * 900),
+    );
   } catch {
     audio.sfx('bad');
   } finally {
@@ -650,7 +657,7 @@ function profileScreen() {
   state.screen = 'profile';
   const p = state.profile;
   const s = p.stats;
-  const ach = ACHIEVEMENTS.map(
+  const ach = [...ACHIEVEMENTS].sort((a, b) => (p.achievements[b.id] ? 1 : 0) - (p.achievements[a.id] ? 1 : 0)).map(
     (a) => `<div class="ach ${p.achievements[a.id] ? 'on' : ''}"><div class="medal">${ICON.medal}</div><div><b>${L(a)}</b><small>${L(a, 'desc')} · ⚡${a.reward}</small></div></div>`,
   ).join('');
   const body = `

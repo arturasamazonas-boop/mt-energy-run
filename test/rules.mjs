@@ -35,6 +35,13 @@ assert.ok(!r2.newBest && !r2.unlocked.includes('firstrun'));
 const shop = normalizeData({ energy: 1000 });
 buy(shop, 'upgrade', 'magnet');
 assert.equal(shop.upgrades.magnet, 1);
+import('../server/rules.mjs').then(({ grantWorkshop }) => {
+  const g = normalizeData({ energy: 0, upgrades: { magnet: 5 }, cosmetics: { owned: ['suit', 'birthday', 'vest', 'tux'] } });
+  const u = grantWorkshop(g);
+  assert.deepEqual(u.sort(), ['maxed', 'shopper', 'stylist']);
+  assert.equal(g.energy, 50 + 300 + 150);
+  assert.deepEqual(grantWorkshop(g), [], 'only once');
+});
 assert.equal(shop.energy, 880);
 assert.throws(() => buy(shop, 'upgrade', 'secondChance'), /not_enough/);
 assert.throws(() => buy(shop, 'cosmetic', 'gold'), /unknown_item/);

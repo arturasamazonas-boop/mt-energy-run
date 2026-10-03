@@ -5,7 +5,7 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { normalizeName, nameKey, GAME_VERSION } from '../shared/config.js';
-import { normalizeData, emptyPlayerData, validateRun, applyRun, buy, equip } from './rules.mjs';
+import { normalizeData, emptyPlayerData, validateRun, applyRun, buy, equip, grantWorkshop } from './rules.mjs';
 import { vilniusDay, isoWeekKey, isBirthday } from './time.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -340,12 +340,14 @@ export function createApp({ store, adminToken = '', birthdayMode = 'auto', trust
       const p = await currentPlayer(req);
       if (!p) return [401, { error: 'no_session' }];
       try {
-        const { player } = await store.mutatePlayer(p.id, (pl) => {
+        const { player, result } = await store.mutatePlayer(p.id, (pl) => {
           const data = normalizeData(pl.data);
           buy(data, body.kind, String(body.id || ''));
+          const unlocked = grantWorkshop(data);
           pl.data = data;
+          return unlocked;
         });
-        return { profile: publicProfile(player) };
+        return { profile: publicProfile(player), unlocked: result || [] };
       } catch (e) {
         if (['unknown_item', 'maxed', 'not_enough', 'owned'].includes(e.code)) return [400, { error: e.code }];
         throw e;

@@ -77,7 +77,8 @@ assert.equal(board.me, null);
 const before = (await A('GET', '/api/me')).data.profile.energy;
 const bought = await A('POST', '/api/shop/buy', { kind: 'upgrade', id: 'magnet' });
 assert.equal(bought.status, 200);
-assert.equal(bought.data.profile.energy, before - 120);
+assert.equal(bought.data.profile.energy, before - 120 + 50, 'first purchase unlocks "shopper" (+50)');
+assert.deepEqual(bought.data.unlocked, ['shopper']);
 assert.equal((await A('POST', '/api/shop/buy', { kind: 'upgrade', id: 'secondChance' })).data.error, 'not_enough');
 assert.equal((await A('POST', '/api/equip', { id: 'birthday' })).data.profile.cosmetics.equipped, 'birthday');
 
