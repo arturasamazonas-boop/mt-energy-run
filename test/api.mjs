@@ -40,7 +40,11 @@ function client() {
 const A = client();
 const B = client();
 
-assert.equal((await A('GET', '/api/me')).status, 401);
+{
+  const r = await A('GET', '/api/me');
+  assert.equal(r.status, 200, 'first visit is not an error');
+  assert.equal(r.data.profile, null);
+}
 const cfg = (await A('GET', '/api/config')).data;
 assert.equal(cfg.birthday, true, 'Oct 24 is the birthday');
 assert.equal(cfg.emailEnabled, true);
@@ -67,6 +71,7 @@ assert.equal(fin.data.accepted, true, JSON.stringify(fin.data.reasons));
 assert.ok(fin.data.energy > 0 && fin.data.newBest);
 assert.ok(fin.data.unlocked.includes('birthday') && fin.data.unlocked.includes('km1'));
 assert.equal(fin.data.ranks.all.rank, 1);
+assert.equal(fin.data.ranks.all.above, null, 'nobody above the leader');
 assert.equal((await A('POST', '/api/run/finish', { runId: start.runId, summary: sim.summary() })).status, 409, 'no double submit');
 assert.equal((await B('POST', '/api/run/finish', { runId: start.runId, summary: sim.summary() })).status, 404, 'not your run');
 
@@ -174,7 +179,7 @@ assert.equal(adm.data.flagged.length, 1);
 
 // logout
 await A('POST', '/api/logout', {});
-assert.equal((await A('GET', '/api/me')).status, 401);
+assert.equal((await A('GET', '/api/me')).data.profile, null, 'logged out');
 
 // static + SPA + traversal
 assert.equal((await fetch(base + '/')).status, 200);

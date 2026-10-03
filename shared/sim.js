@@ -34,6 +34,7 @@ export class Sim {
     this.time = 0;
     this.dead = false;
     this.deathCause = null;
+    this.deathKind = null;
     this.invuln = 0;
     this.revived = false;
 
@@ -474,6 +475,7 @@ export class Sim {
   die(cause, e) {
     this.dead = true;
     this.deathCause = cause;
+    this.deathKind = e?.k || null;
     this.emit('death', { cause, k: e?.k });
   }
 

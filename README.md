@@ -19,6 +19,9 @@ Naršyklėje veikiantis bėgimo žaidimas (runner) MT GROUP komandai. Pagrindini
 - **Galios priedai:** auksinis šalmas (apsaugo nuo vieno smūgio), transformatorius-magnetas, dronas (skrydis), ekskavatorius (griauna kliūtis), sutartis x2.
 - **Dienos iššūkis:** visi tą dieną gauna tą pačią trasą.
 - Rekordų lentelės: visų laikų, šios savaitės ir dienos iššūkio.
+- Trasoje stovi vėliavėlės: geltona – tavo atstumo rekordas, mėlyna – artimiausias kolega, kurį dar gali aplenkti.
+- Pabaigos ekrane rodoma, į ką atsitrenkei, patarimas ir kiti tikslai: kita stotelė, kiek taškų trūksta iki aukštesnės vietos ir iki kito pirkinio Dirbtuvėse.
+- Po pauzės (ar grįžus į naršyklę) bėgimas tęsiasi po atgalinio skaičiavimo 3-2-1. Telefonuose, kurie palaiko vibraciją, ji jaučiama surinkus detalę, žetoną, atlikus užduotį ir pan.
 
 Maršrutas: Vilnius → Klaipėda → Ryga → Talinas → Helsinkis → Stokholmas → Kopenhaga → Hamburgas → Amsterdamas → Briuselis → Londonas → Paryžius → Madridas → Roma → Viena → Praha → Berlynas → Varšuva → vėl Vilnius (2-as ratas sunkesnis). MT GROUP projektų vietos (Vilnius, Klaipėdos SGD terminalas, Paldiskis, Kalundborgas, Brunsbüttel) pažymėtos atskirai.
 

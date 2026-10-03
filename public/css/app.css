@@ -910,13 +910,13 @@ h3 {
 
 .zone.left {
   left: 0;
-  width: 40%;
+  width: 35%;
   background: linear-gradient(90deg, rgba(63, 169, 245, 0.28), rgba(63, 169, 245, 0));
 }
 
 .zone.right {
   right: 0;
-  width: 60%;
+  width: 65%;
   background: linear-gradient(270deg, rgba(255, 216, 0, 0.26), rgba(255, 216, 0, 0));
 }
 
@@ -946,7 +946,8 @@ h3 {
 
 .dialog {
   width: min(560px, 100%);
-  max-height: 100%;
+  max-height: calc(100vh - 24px - var(--safe-t) - var(--safe-b));
+  max-height: calc(100dvh - 24px - var(--safe-t) - var(--safe-b));
   overflow-y: auto;
   padding: 22px;
   display: grid;
@@ -1064,6 +1065,82 @@ h3 {
 .notice {
   font-size: 14px;
   color: #ffc2c9;
+}
+
+.over-head .tip {
+  max-width: 34ch;
+  color: #cfd5dc;
+  font-size: 14px;
+  line-height: 1.35;
+}
+
+.goals {
+  padding: 8px 14px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--line);
+  text-align: left;
+}
+
+.goals:empty {
+  display: none;
+}
+
+.goals small {
+  display: block;
+  font-size: 12px;
+  color: var(--mute);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.goals ul {
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 3px;
+  font-size: 15px;
+}
+
+.goals li::before {
+  content: '›';
+  margin-right: 8px;
+  color: var(--y);
+  font-weight: 800;
+}
+
+/* ---- 3-2-1 after a pause */
+.countdown {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}
+
+.countdown b {
+  font-family: var(--cond);
+  font-weight: 800;
+  font-size: clamp(90px, 22vh, 180px);
+  color: var(--y);
+  text-shadow: 0 6px 0 rgba(0, 0, 0, 0.35), 0 0 40px rgba(0, 0, 0, 0.4);
+  animation: countPop 0.7s ease both;
+}
+
+@keyframes countPop {
+  0% {
+    transform: scale(1.6);
+    opacity: 0;
+  }
+  25% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(0.85);
+    opacity: 0.2;
+  }
 }
 
 /* ---- leaderboard */
@@ -1573,21 +1650,113 @@ h3 {
 }
 
 /* ---------------------------------------------------------------- responsive */
-@media (max-height: 520px) and (min-width: 600px) {
+@media (max-height: 520px) and (min-width: 520px) {
   .over {
     grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
     align-items: center;
     column-gap: 18px;
   }
   .over > .over-head {
-    grid-row: 1 / span 5;
+    grid-row: 1 / span 6;
   }
   .over .stats-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 6px;
+  }
+  .over .stat {
+    padding: 6px 4px;
+  }
+  .over .stat small {
+    font-size: 10px;
+  }
+  .over .stat b {
+    font-size: 17px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .over .rank-pill {
+    padding: 4px 10px;
+    font-size: 13px;
+  }
+  .over .rank-pill b {
+    font-size: 18px;
+  }
+  .over .goals {
+    padding: 6px 12px;
+  }
+  .over .goals ul {
+    font-size: 13px;
+    gap: 1px;
   }
   .over .btn.big {
-    min-height: 50px;
+    min-height: 46px;
     font-size: 22px;
+  }
+  .over .btn.small {
+    min-height: 38px;
+    font-size: 16px;
+  }
+  .over-head {
+    gap: 6px;
+  }
+  .over-head h2 {
+    font-size: 28px;
+  }
+  .over .score-big {
+    font-size: 48px;
+  }
+  .over-head .record {
+    font-size: 15px;
+  }
+  .over-head .tip {
+    font-size: 13px;
+  }
+}
+
+/* small phones in landscape (e.g. iPhone SE): keep the whole game-over card on screen */
+@media (max-height: 380px) and (min-width: 520px) {
+  .dialog.over {
+    gap: 7px;
+    padding: 12px;
+  }
+  .over .stat small {
+    font-size: 9px;
+  }
+  .over .stat b {
+    font-size: 15px;
+  }
+  .over .ranks {
+    flex-wrap: nowrap;
+    gap: 6px;
+  }
+  .over .rank-pill {
+    padding: 3px 8px;
+    font-size: 11px;
+    white-space: nowrap;
+  }
+  .over .rank-pill b {
+    font-size: 15px;
+  }
+  .over .goals ul {
+    font-size: 12px;
+  }
+  .over .row {
+    gap: 6px;
+    flex-wrap: nowrap;
+  }
+  .over .btn.big {
+    min-height: 40px;
+    font-size: 19px;
+  }
+  .over .btn.small {
+    min-height: 34px;
+    font-size: 14px;
+    padding: 0 10px;
+    gap: 6px;
+  }
+  .over .score-big {
+    font-size: 40px;
   }
 }
 

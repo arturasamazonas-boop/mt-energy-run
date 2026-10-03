@@ -126,6 +126,8 @@ export class Renderer {
     for (const e of sim.entities) if (e.k === 'pit' && e.alive) pits.push(e);
     this.scenery.drawGround(ctx, this.camX, ppm, this.sy(0), theme, pits, t);
 
+    if (view.markers) this.drawMarkers(ctx, view.markers, viewM);
+
     // ---- gameplay entities -----------------------------------------------------
     const x0 = this.camX - 4;
     const x1 = this.camX + viewM + 4;
@@ -203,6 +205,48 @@ export class Renderer {
       ctx.fillStyle = `rgba(${this.flashCol},${this.flash})`;
       ctx.fillRect(0, 0, W, H);
       this.flash = Math.max(0, this.flash - dt * 2.5);
+    }
+  }
+
+  /** Distance flags (own record, next colleague). Drawn in screen pixels so the label stays crisp. */
+  drawMarkers(ctx, markers, viewM) {
+    const ppm = this.ppm;
+    for (const m of markers) {
+      if (m.x < this.camX - 2 || m.x > this.camX + viewM + 6) continue;
+      const x = Math.round(this.sx(m.x));
+      const base = this.sy(0);
+      const top = this.sy(3.4);
+      ctx.save();
+      ctx.globalAlpha = m.passed ? 0.45 : 1;
+      ctx.fillStyle = '#1E1E1E';
+      ctx.fillRect(x - Math.max(1, ppm * 0.04), top, Math.max(2, ppm * 0.08), base - top);
+      const fs = Math.max(11, Math.round(ppm * 0.36));
+      ctx.font = `800 ${fs}px "Barlow Condensed", sans-serif`;
+      const label = m.label;
+      const tw = ctx.measureText(label).width;
+      const pad = fs * 0.45;
+      const fh = fs * 1.5;
+      ctx.fillStyle = m.color || '#FFD800';
+      ctx.beginPath();
+      ctx.moveTo(x, top);
+      ctx.lineTo(x + tw + pad * 2 + fs * 0.5, top);
+      ctx.lineTo(x + tw + pad * 2, top + fh / 2);
+      ctx.lineTo(x + tw + pad * 2 + fs * 0.5, top + fh);
+      ctx.lineTo(x, top + fh);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(0,0,0,0.55)';
+      ctx.lineWidth = Math.max(1, ppm * 0.03);
+      ctx.stroke();
+      ctx.fillStyle = m.textColor || '#1E1E1E';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(label, x + pad, top + fh / 2 + 1);
+      // finish-line strip across the road
+      ctx.fillStyle = m.color || '#FFD800';
+      ctx.globalAlpha *= 0.55;
+      const sw = Math.max(3, ppm * 0.12);
+      for (let i = 0; i < 6; i++) if (i % 2 === 0) ctx.fillRect(x - sw / 2, base + i * sw * 0.5, sw, sw * 0.5);
+      ctx.restore();
     }
   }
 
