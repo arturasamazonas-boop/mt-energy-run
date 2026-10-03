@@ -15,12 +15,12 @@ export const OUTFITS = {
   gold: { jacket: '#D9AE3E', jacketD: '#B8902C', lapel: '#C59A30', shirt: '#1E1E1E', pants: '#C9A03A', shoes: '#1E1E1E', hat: 'goldhelmet', square: true, shine: true },
 };
 
-const SKIN = '#F1C6A8';
-const SKIN_D = '#DFA98A';
-const HAIR = '#BDB6AA';
-const HAIR_L = '#DAD4C8';
-const HAIR_D = '#9C958A';
-const EYE = '#4C86C8';
+const SKIN = '#EDBEA1';
+const SKIN_D = '#D59A7F';
+const HAIR = '#A5A8A3';
+const HAIR_L = '#C1C3BA';
+const HAIR_D = '#777970';
+const EYE = '#6B929F';
 
 // ---------------------------------------------------------------------------
 // Poses
@@ -391,220 +391,268 @@ export function drawCharacter(ctx, pose, opts = {}) {
   void t;
 }
 
+function facePath(ctx) {
+  // Broad temples, full cheeks and a squarer chin; slightly turned toward +x.
+  ctx.beginPath();
+  ctx.moveTo(-0.245, 0.12);
+  ctx.bezierCurveTo(-0.25, 0.255, -0.16, 0.315, -0.015, 0.315);
+  ctx.bezierCurveTo(0.15, 0.32, 0.235, 0.255, 0.254, 0.135);
+  ctx.bezierCurveTo(0.267, 0.05, 0.274, -0.08, 0.241, -0.165);
+  ctx.bezierCurveTo(0.221, -0.239, 0.166, -0.29, 0.094, -0.308);
+  ctx.quadraticCurveTo(0.035, -0.327, -0.034, -0.304);
+  ctx.bezierCurveTo(-0.132, -0.276, -0.213, -0.214, -0.233, -0.122);
+  ctx.quadraticCurveTo(-0.254, -0.015, -0.245, 0.12);
+  ctx.closePath();
+}
+
 function drawHead(ctx, c, tilt, o, opts) {
-  const blink = opts.blink;
   ctx.save();
   ctx.translate(c[0], c[1]);
   ctx.rotate(-tilt);
   const rx = 0.285;
   const ry = 0.305;
-  // neck
+  const grin = opts.expression === 'grin';
+  const ouch = opts.expression === 'ouch';
+
+  // A short, solid neck, with the shirt collar still visible below the jaw.
   ctx.beginPath();
-  ctx.moveTo(-0.07, -ry * 0.7);
-  ctx.lineTo(-0.06, -ry - 0.09);
-  ctx.lineTo(0.09, -ry - 0.09);
-  ctx.lineTo(0.1, -ry * 0.7);
+  ctx.moveTo(-0.092, -0.235);
+  ctx.lineTo(-0.075, -0.377);
+  ctx.quadraticCurveTo(0.028, -0.418, 0.113, -0.367);
+  ctx.lineTo(0.125, -0.242);
   ctx.closePath();
   shapeFill(ctx, SKIN_D);
 
-  const hat = o.hat;
-  // hair at the back of the head (cropped short)
-  ctx.beginPath();
-  ctx.ellipse(-0.03, 0.02, rx * 1.03, ry * 1.01, 0, Math.PI * 0.28, Math.PI * 1.3);
-  ctx.closePath();
-  shapeFill(ctx, HAIR_D);
-  // face
-  ctx.beginPath();
-  ctx.ellipse(0.0, 0.0, rx, ry, 0, 0, Math.PI * 2);
+  // Ears sit at the outside of the head, leaving room for a three-quarter face.
+  for (const [x, y, k] of [[0.254, -0.005, 0.7], [-0.248, -0.008, 1]]) {
+    ctx.beginPath();
+    ctx.ellipse(x, y, 0.041 * k, 0.072 * k, -0.08, 0, Math.PI * 2);
+    ctx.fillStyle = SKIN;
+    ctx.fill();
+    ctx.strokeStyle = OUT;
+    ctx.lineWidth = 0.013;
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(x - 0.009 * k, y + 0.03 * k);
+    ctx.quadraticCurveTo(x + 0.023 * k, y + 0.039 * k, x + 0.012 * k, y - 0.025 * k);
+    ctx.strokeStyle = SKIN_D;
+    ctx.lineWidth = 0.013;
+    ctx.stroke();
+  }
+
+  facePath(ctx);
   ctx.fillStyle = SKIN;
   ctx.fill();
-  // jaw shading on the far side (clipped to the face)
   ctx.save();
-  ctx.beginPath();
-  ctx.ellipse(0.0, 0.0, rx, ry, 0, 0, Math.PI * 2);
   ctx.clip();
-  ctx.fillStyle = 'rgba(190,120,95,0.2)';
+  // Quiet blocks of colour keep the face readable at runner scale.
+  ctx.fillStyle = '#DCA488';
   ctx.beginPath();
-  ctx.ellipse(-0.16, -0.06, rx * 0.62, ry * 0.9, 0.2, 0, Math.PI * 2);
+  ctx.moveTo(-0.246, 0.195);
+  ctx.quadraticCurveTo(-0.218, -0.065, -0.158, -0.165);
+  ctx.quadraticCurveTo(-0.079, -0.286, 0.12, -0.309);
+  ctx.lineTo(-0.3, -0.35);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = 'rgba(191,112,94,0.15)';
+  ctx.beginPath();
+  ctx.ellipse(-0.06, -0.094, 0.086, 0.049, 0.12, 0, Math.PI * 2);
+  ctx.ellipse(0.218, -0.1, 0.046, 0.042, -0.1, 0, Math.PI * 2);
   ctx.fill();
   ctx.restore();
-  ctx.beginPath();
-  ctx.ellipse(0.0, 0.0, rx, ry, 0, 0, Math.PI * 2);
+  facePath(ctx);
   ctx.strokeStyle = OUT;
-  ctx.lineWidth = LW;
+  ctx.lineWidth = 0.019;
   ctx.stroke();
 
-  // hair: short grey-blond, tidy, slightly lifted at the front, receding temples
+  // Close-cropped salt-and-pepper hair: darker top, silver temples, high hairline.
   ctx.beginPath();
-  ctx.moveTo(-rx * 1.0, 0.0);
-  ctx.quadraticCurveTo(-rx * 1.08, ry * 0.95, -0.04, ry * 1.1);
-  ctx.quadraticCurveTo(0.12, ry * 1.18, 0.2, ry * 0.98);
-  ctx.quadraticCurveTo(0.235, ry * 0.86, 0.2, ry * 0.74);
-  ctx.quadraticCurveTo(0.15, ry * 0.8, 0.11, ry * 0.66);
-  ctx.quadraticCurveTo(0.05, ry * 0.72, 0.0, ry * 0.6);
-  ctx.quadraticCurveTo(-0.07, ry * 0.5, -0.12, ry * 0.36);
-  ctx.quadraticCurveTo(-0.15, 0.06, -0.165, -0.04);
-  ctx.quadraticCurveTo(-rx * 0.88, -0.06, -rx * 1.0, 0.0);
+  ctx.moveTo(-0.245, 0.035);
+  ctx.lineTo(-0.252, 0.166);
+  ctx.bezierCurveTo(-0.246, 0.289, -0.146, 0.35, -0.044, 0.345);
+  ctx.quadraticCurveTo(0.013, 0.372, 0.063, 0.34);
+  ctx.quadraticCurveTo(0.167, 0.347, 0.232, 0.25);
+  ctx.quadraticCurveTo(0.255, 0.202, 0.255, 0.107);
+  ctx.lineTo(0.234, 0.132);
+  ctx.quadraticCurveTo(0.229, 0.213, 0.186, 0.238);
+  ctx.lineTo(0.136, 0.214);
+  ctx.quadraticCurveTo(0.074, 0.255, 0.009, 0.248);
+  ctx.quadraticCurveTo(-0.069, 0.268, -0.118, 0.214);
+  ctx.lineTo(-0.174, 0.166);
+  ctx.lineTo(-0.199, 0.049);
+  ctx.lineTo(-0.215, 0.012);
   ctx.closePath();
-  shapeFill(ctx, HAIR);
-  ctx.strokeStyle = HAIR_L;
+  ctx.fillStyle = HAIR_D;
+  ctx.fill();
+  ctx.strokeStyle = OUT;
   ctx.lineWidth = 0.016;
-  ctx.lineCap = 'round';
-  ctx.beginPath();
-  for (let i = 0; i < 6; i++) {
-    const x = -0.2 + i * 0.065;
-    ctx.moveTo(x, ry * (0.62 + (i % 2) * 0.1));
-    ctx.quadraticCurveTo(x + 0.03, ry * 0.95, x + 0.07, ry * (1.02 - (i % 3) * 0.04));
-  }
   ctx.stroke();
-  // sideburn
+  // Grey side panels, rather than the previous long swept fringe.
   ctx.fillStyle = HAIR;
   ctx.beginPath();
-  ctx.moveTo(-0.06, 0.12);
-  ctx.quadraticCurveTo(-0.03, 0.02, -0.045, -0.06);
-  ctx.lineTo(-0.075, -0.05);
-  ctx.quadraticCurveTo(-0.08, 0.05, -0.1, 0.1);
+  ctx.moveTo(-0.242, 0.152);
+  ctx.quadraticCurveTo(-0.23, 0.239, -0.186, 0.259);
+  ctx.lineTo(-0.174, 0.177);
+  ctx.lineTo(-0.207, 0.032);
+  ctx.lineTo(-0.235, 0.044);
   ctx.closePath();
   ctx.fill();
-
-  // ear
   ctx.beginPath();
-  ctx.ellipse(-0.1, -0.005, 0.05, 0.07, 0.1, 0, Math.PI * 2);
-  ctx.fillStyle = SKIN;
+  ctx.moveTo(0.215, 0.237);
+  ctx.quadraticCurveTo(0.249, 0.197, 0.247, 0.135);
+  ctx.lineTo(0.235, 0.149);
+  ctx.lineTo(0.222, 0.205);
+  ctx.closePath();
   ctx.fill();
-  ctx.strokeStyle = OUT;
-  ctx.lineWidth = 0.015;
-  ctx.stroke();
-  ctx.fillStyle = SKIN_D;
-  ctx.beginPath();
-  ctx.ellipse(-0.098, -0.005, 0.022, 0.036, 0.1, 0, Math.PI * 2);
-  ctx.fill();
-
-  // cheeks
-  ctx.fillStyle = 'rgba(232,120,110,0.28)';
-  ctx.beginPath();
-  ctx.ellipse(0.08, -0.07, 0.06, 0.04, 0, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.beginPath();
-  ctx.ellipse(0.245, -0.07, 0.03, 0.035, 0, 0, Math.PI * 2);
-  ctx.fill();
-
-  // eyes (near / far)
-  const eyes = [
-    [0.105, 0.035, 1],
-    [0.225, 0.035, 0.72],
-  ];
-  for (const [ex, ey, k] of eyes) {
-    if (blink) {
-      ctx.strokeStyle = OUT;
-      ctx.lineWidth = 0.014;
-      ctx.beginPath();
-      ctx.moveTo(ex - 0.03 * k, ey);
-      ctx.quadraticCurveTo(ex, ey - 0.015, ex + 0.03 * k, ey);
-      ctx.stroke();
-      continue;
-    }
-    ctx.fillStyle = '#FFFFFF';
-    ctx.beginPath();
-    ctx.ellipse(ex, ey, 0.036 * k, 0.03, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = EYE;
-    ctx.beginPath();
-    ctx.arc(ex + 0.008 * k, ey - 0.002, 0.021 * k, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = '#1C2333';
-    ctx.beginPath();
-    ctx.arc(ex + 0.01 * k, ey - 0.002, 0.01 * k, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = '#FFFFFF';
-    ctx.beginPath();
-    ctx.arc(ex + 0.016 * k, ey + 0.008, 0.006, 0, Math.PI * 2);
-    ctx.fill();
-    // upper lid line (friendly, slightly squinting smile-eyes)
-    ctx.strokeStyle = OUT;
-    ctx.lineWidth = 0.012;
-    ctx.beginPath();
-    ctx.moveTo(ex - 0.038 * k, ey + 0.008);
-    ctx.quadraticCurveTo(ex, ey + 0.036, ex + 0.038 * k, ey + 0.01);
-    ctx.stroke();
-  }
-  // brows: light, soft
-  ctx.strokeStyle = '#9A8F80';
-  ctx.lineWidth = 0.02;
+  ctx.strokeStyle = HAIR_L;
+  ctx.lineWidth = 0.006;
   ctx.lineCap = 'round';
   ctx.beginPath();
-  ctx.moveTo(0.07, 0.1);
-  ctx.quadraticCurveTo(0.105, 0.118, 0.145, 0.105);
-  ctx.moveTo(0.2, 0.105);
-  ctx.quadraticCurveTo(0.23, 0.115, 0.255, 0.1);
+  for (let i = 0; i < 10; i++) {
+    const x = -0.177 + i * 0.037;
+    const crown = 0.322 - Math.pow((x + 0.015) / 0.24, 2) * 0.075;
+    ctx.moveTo(x, crown - 0.04);
+    ctx.quadraticCurveTo(x + 0.004, crown - 0.026, x + 0.011, crown - 0.013);
+  }
+  for (let i = 0; i < 4; i++) {
+    const y = 0.077 + i * 0.034;
+    ctx.moveTo(-0.235, y);
+    ctx.lineTo(-0.222, y + 0.017);
+  }
   ctx.stroke();
 
-  // nose: soft bump on the profile line
-  ctx.beginPath();
-  ctx.moveTo(0.262, 0.035);
-  ctx.quadraticCurveTo(0.272, -0.005, 0.305, -0.035);
-  ctx.quadraticCurveTo(0.315, -0.062, 0.272, -0.066);
-  ctx.quadraticCurveTo(0.25, -0.07, 0.24, -0.055);
-  ctx.closePath();
-  ctx.fillStyle = SKIN;
-  ctx.fill();
-  ctx.strokeStyle = OUT;
-  ctx.lineWidth = 0.014;
-  ctx.beginPath();
-  ctx.moveTo(0.27, 0.0);
-  ctx.quadraticCurveTo(0.29, -0.015, 0.305, -0.035);
-  ctx.quadraticCurveTo(0.315, -0.062, 0.272, -0.066);
-  ctx.stroke();
-  ctx.fillStyle = 'rgba(170,95,75,0.45)';
-  ctx.beginPath();
-  ctx.ellipse(0.262, -0.055, 0.016, 0.009, 0.3, 0, Math.PI * 2);
-  ctx.fill();
-
-  // mouth: wide, warm smile
-  const expr = opts.expression || 'smile';
-  if (expr === 'ouch') {
-    ctx.fillStyle = '#7A2E2E';
-    ctx.beginPath();
-    ctx.ellipse(0.17, -0.15, 0.035, 0.03, 0, 0, Math.PI * 2);
-    ctx.fill();
-  } else {
-    ctx.beginPath();
-    ctx.moveTo(0.075, -0.115);
-    ctx.quadraticCurveTo(0.16, -0.205, 0.255, -0.12);
-    ctx.quadraticCurveTo(0.17, -0.15, 0.075, -0.115);
-    ctx.fillStyle = expr === 'grin' ? '#7A2E2E' : '#FFFFFF';
-    ctx.fill();
-    if (expr === 'grin') {
+  // Small, hooded blue-grey eyes below straighter, stronger brows.
+  for (const [ex, ey, k] of [[-0.028, 0.027, 1], [0.173, 0.031, 0.8]]) {
+    ctx.strokeStyle = '#6C5146';
+    ctx.lineWidth = 0.009;
+    if (opts.blink) {
+      ctx.beginPath();
+      ctx.moveTo(ex - 0.041 * k, ey);
+      ctx.quadraticCurveTo(ex, ey - 0.014, ex + 0.04 * k, ey);
+      ctx.stroke();
+    } else {
+      // Almond-shaped eye whites and clipped irises prevent a wide-eyed look.
+      ctx.beginPath();
+      ctx.moveTo(ex - 0.043 * k, ey);
+      ctx.quadraticCurveTo(ex - 0.005, ey + 0.036, ex + 0.043 * k, ey + 0.002);
+      ctx.quadraticCurveTo(ex, ey - (grin ? 0.015 : 0.025), ex - 0.043 * k, ey);
+      ctx.closePath();
+      ctx.fillStyle = '#F8F6F0';
+      ctx.fill();
+      ctx.save();
+      ctx.clip();
+      ctx.fillStyle = EYE;
+      ctx.beginPath();
+      ctx.ellipse(ex + 0.006, ey + 0.001, 0.017 * k, 0.019, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#25353F';
+      ctx.beginPath();
+      ctx.arc(ex + 0.007, ey, 0.008 * k, 0, Math.PI * 2);
+      ctx.fill();
       ctx.fillStyle = '#FFFFFF';
       ctx.beginPath();
-      ctx.moveTo(0.085, -0.118);
-      ctx.quadraticCurveTo(0.17, -0.155, 0.245, -0.123);
-      ctx.lineTo(0.235, -0.14);
-      ctx.quadraticCurveTo(0.17, -0.16, 0.095, -0.13);
+      ctx.arc(ex + 0.012, ey + 0.008, 0.004, 0, Math.PI * 2);
       ctx.fill();
+      ctx.restore();
+      ctx.beginPath();
+      ctx.moveTo(ex - 0.043 * k, ey);
+      ctx.quadraticCurveTo(ex - 0.005, ey + 0.036, ex + 0.043 * k, ey + 0.002);
+      ctx.strokeStyle = '#5B4D46';
+      ctx.lineWidth = 0.01;
+      ctx.stroke();
     }
-    ctx.strokeStyle = OUT;
-    ctx.lineWidth = 0.015;
+    ctx.strokeStyle = '#736E63';
+    ctx.lineWidth = 0.018;
     ctx.beginPath();
-    ctx.moveTo(0.075, -0.115);
-    ctx.quadraticCurveTo(0.16, -0.205, 0.255, -0.12);
+    ctx.moveTo(ex - 0.047 * k, ey + 0.057);
+    ctx.quadraticCurveTo(ex - 0.013, ey + 0.07, ex + 0.038 * k, ey + 0.052);
     ctx.stroke();
+    // A single soft crease supplies age without photographic detail.
+    ctx.strokeStyle = 'rgba(157,103,84,0.36)';
+    ctx.lineWidth = 0.006;
     ctx.beginPath();
-    ctx.moveTo(0.065, -0.105);
-    ctx.quadraticCurveTo(0.07, -0.12, 0.08, -0.125);
+    ctx.moveTo(ex - 0.036 * k, ey - 0.027);
+    ctx.quadraticCurveTo(ex, ey - 0.039, ex + 0.034 * k, ey - 0.024);
     ctx.stroke();
   }
-  // subtle chin line
-  ctx.strokeStyle = 'rgba(190,120,95,0.45)';
-  ctx.lineWidth = 0.01;
+
+  // Broad, straight nose, inside the face rather than a cartoon profile bump.
   ctx.beginPath();
-  ctx.moveTo(0.1, -0.245);
-  ctx.quadraticCurveTo(0.17, -0.27, 0.22, -0.235);
+  ctx.moveTo(0.099, 0.052);
+  ctx.quadraticCurveTo(0.099, 0.001, 0.13, -0.043);
+  ctx.quadraticCurveTo(0.178, -0.052, 0.156, -0.078);
+  ctx.quadraticCurveTo(0.108, -0.097, 0.07, -0.074);
+  ctx.fillStyle = '#E1A88E';
+  ctx.fill();
+  ctx.strokeStyle = '#AE7765';
+  ctx.lineWidth = 0.008;
+  ctx.beginPath();
+  ctx.moveTo(0.121, 0.016);
+  ctx.quadraticCurveTo(0.128, -0.02, 0.149, -0.041);
+  ctx.quadraticCurveTo(0.177, -0.063, 0.15, -0.079);
+  ctx.moveTo(0.069, -0.065);
+  ctx.quadraticCurveTo(0.071, -0.087, 0.096, -0.085);
+  ctx.stroke();
+  ctx.fillStyle = '#9A6A5B';
+  ctx.beginPath();
+  ctx.ellipse(0.092, -0.082, 0.012, 0.005, -0.15, 0, Math.PI * 2);
+  ctx.ellipse(0.151, -0.079, 0.01, 0.005, 0.1, 0, Math.PI * 2);
+  ctx.fill();
+
+  // A restrained closed smile by default; celebration and collision stay distinct.
+  if (ouch) {
+    ctx.beginPath();
+    ctx.ellipse(0.087, -0.177, 0.037, 0.031, 0, 0, Math.PI * 2);
+    ctx.fillStyle = '#713E3B';
+    ctx.fill();
+  } else if (grin) {
+    ctx.beginPath();
+    ctx.moveTo(-0.019, -0.139);
+    ctx.quadraticCurveTo(0.087, -0.167, 0.186, -0.131);
+    ctx.quadraticCurveTo(0.146, -0.224, 0.07, -0.213);
+    ctx.quadraticCurveTo(0.008, -0.202, -0.019, -0.139);
+    ctx.closePath();
+    ctx.fillStyle = '#713E3B';
+    ctx.fill();
+    ctx.save();
+    ctx.clip();
+    ctx.beginPath();
+    ctx.moveTo(-0.016, -0.136);
+    ctx.quadraticCurveTo(0.087, -0.164, 0.185, -0.131);
+    ctx.lineTo(0.166, -0.165);
+    ctx.quadraticCurveTo(0.085, -0.191, 0.002, -0.165);
+    ctx.fillStyle = '#FAF7EE';
+    ctx.fill();
+    ctx.restore();
+  } else {
+    ctx.fillStyle = '#C58A7D';
+    ctx.beginPath();
+    ctx.moveTo(-0.007, -0.158);
+    ctx.quadraticCurveTo(0.039, -0.146, 0.082, -0.156);
+    ctx.quadraticCurveTo(0.126, -0.15, 0.171, -0.151);
+    ctx.quadraticCurveTo(0.087, -0.202, -0.007, -0.158);
+    ctx.fill();
+    ctx.strokeStyle = '#77534B';
+    ctx.lineWidth = 0.009;
+    ctx.beginPath();
+    ctx.moveTo(-0.014, -0.151);
+    ctx.quadraticCurveTo(0.078, -0.178, 0.179, -0.146);
+    ctx.stroke();
+  }
+  // Soft smile folds and a broad chin; no beard or moustache.
+  ctx.strokeStyle = 'rgba(166,105,87,0.4)';
+  ctx.lineWidth = 0.007;
+  ctx.beginPath();
+  ctx.moveTo(0.028, -0.087);
+  ctx.quadraticCurveTo(-0.005, -0.109, -0.023, -0.149);
+  ctx.moveTo(0.194, -0.089);
+  ctx.quadraticCurveTo(0.215, -0.116, 0.207, -0.148);
+  ctx.moveTo(0.035, -0.25);
+  ctx.quadraticCurveTo(0.093, -0.271, 0.147, -0.245);
   ctx.stroke();
 
-  // headwear
-  if (hat === 'helmet' || hat === 'goldhelmet') drawHelmet(ctx, rx, ry, hat === 'goldhelmet', opts);
-  else if (hat === 'party') drawPartyHat(ctx, rx, ry, opts.t || 0);
+  if (o.hat === 'helmet' || o.hat === 'goldhelmet') drawHelmet(ctx, rx, ry, o.hat === 'goldhelmet', opts);
+  else if (o.hat === 'party') drawPartyHat(ctx, rx, ry, opts.t || 0);
   ctx.restore();
 }
 
