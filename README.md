@@ -40,7 +40,7 @@ npm test             # visi testai
 PostgreSQL testams nustatyk `TEST_DATABASE_URL=postgres://...`.
 
 Kūrėjo įrankiai:
-- `/dev/preview.html?view=character|outfits|face|landmarks` – piešinių peržiūra.
+- `/dev/preview.html?view=character|outfits|face|expressions|landmarks` – piešinių peržiūra. `face` rodo veidą be šalmo ir su pasirinkta apranga; `expressions` – šypseną, džiaugsmą, susidūrimą ir mirksėjimą. Galima pridėti `&outfit=tux`, `&expression=grin` arba `&blink`.
 - `/?debug&practice&city=11` – pradėti nuo 12-o miesto (Paryžius), rezultatas nesaugomas.
 - `/?debug&practice&autoplay` – žaidžia autopilotas. `&at=580` – pradėti nuo 580 m. `&birthday` – gimtadienio režimas.
 
