@@ -68,7 +68,13 @@ export function runTask(root, done, forced) {
     e.preventDefault();
     if (finished) return;
     cv.setPointerCapture?.(e.pointerId);
-    const res = game.down?.(pos(e));
+    let res;
+    try {
+      res = game.down?.(pos(e));
+    } catch (err) {
+      console.error('[task]', err);
+      res = false;
+    }
     if (res !== undefined) finish(res);
   });
   cv.addEventListener('pointermove', (e) => {
@@ -93,7 +99,13 @@ export function runTask(root, done, forced) {
     const el2 = (now - startT) / 1000;
     const left = Math.min(1, Math.max(0, 1 - (el2 - (game.grace?.() || 0)) / limit));
     bar.style.transform = `scaleX(${left})`;
-    const res = game.frame(el2);
+    let res;
+    try {
+      res = game.frame(el2);
+    } catch (err) {
+      console.error('[task]', err);
+      return finish(false);
+    }
     if (res !== undefined) return finish(res);
     if (left <= 0) return finish(false);
     raf = requestAnimationFrame(loop);
@@ -299,6 +311,7 @@ const GAMES = {
     let watchStart = 0.35;
     const R = Math.min(W * 0.09, H * 0.28);
     let watchEnd = 0;
+    let now = 0;
     sub.textContent = t('watch');
     const press = (i, time) => {
       if (phase !== 'input') return undefined;
@@ -319,13 +332,14 @@ const GAMES = {
       grace: () => (phase === 'watch' ? 99 : watchEnd),
       down(p) {
         const v = pos.find((o) => Math.hypot(o.x - p.x, o.y - p.y) < R * 1.25);
-        return v ? press(v.i, performance.now() / 1000) : undefined;
+        return v ? press(v.i, now) : undefined;
       },
       key(code) {
         const m = /^Digit([1-4])$/.exec(code);
-        return m ? press(Number(m[1]) - 1, performance.now() / 1000) : undefined;
+        return m ? press(Number(m[1]) - 1, now) : undefined;
       },
       frame(time) {
+        now = time;
         if (phase === 'watch') {
           const k = Math.floor((time - watchStart) / 0.55);
           const within = (time - watchStart) % 0.55 < 0.38;
@@ -397,6 +411,7 @@ const GAMES = {
     const spin = [];
     let lastSpawn = -1;
     const R = Math.min(30, H * 0.15);
+    let now = 0;
     sub.textContent = `0/${need}`;
     const spawn = (time) => {
       const free = spots.map((_, i) => i).filter((i) => !active.some((a) => a.i === i));
@@ -407,7 +422,7 @@ const GAMES = {
     return {
       limit: 6,
       down(p) {
-        const time = performance.now() / 1000;
+        const time = now;
         const a = active.find((o) => Math.hypot(spots[o.i].x - p.x, spots[o.i].y - p.y) < R * 1.4);
         if (!a) return undefined;
         active = active.filter((o) => o !== a);
@@ -419,6 +434,7 @@ const GAMES = {
         return undefined;
       },
       frame(time) {
+        now = time;
         if (active.length < 2 && time - lastSpawn > 0.25 && got + active.length < need) spawn(time);
         ctx.clearRect(0, 0, W, H);
         // steel plate
@@ -465,7 +481,7 @@ const GAMES = {
           }
         };
         for (const sp of spin) {
-          const k = Math.min(1, (time - sp.t) / 0.35);
+          const k = Math.max(0, Math.min(1, (time - sp.t) / 0.35));
           boltAt(spots[sp.i], sp.rot + k * 4, false, k);
         }
         for (const a of active) boltAt(spots[a.i], a.rot, true);
