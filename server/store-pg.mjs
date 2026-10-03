@@ -35,6 +35,20 @@ CREATE TABLE IF NOT EXISTS runs (
   summary jsonb,
   flags text
 );
+ALTER TABLE players ADD COLUMN IF NOT EXISTS email text;
+CREATE UNIQUE INDEX IF NOT EXISTS players_email ON players (email) WHERE email IS NOT NULL;
+CREATE TABLE IF NOT EXISTS email_codes (
+  id uuid PRIMARY KEY,
+  player_id uuid REFERENCES players(id) ON DELETE CASCADE,
+  session_hash text,
+  email text NOT NULL,
+  code_hash text NOT NULL,
+  lang text,
+  expires_at bigint NOT NULL,
+  attempts integer NOT NULL DEFAULT 0,
+  used boolean NOT NULL DEFAULT false,
+  verified boolean NOT NULL DEFAULT false
+);
 CREATE INDEX IF NOT EXISTS runs_player ON runs (player_id, finished_at DESC);
 CREATE INDEX IF NOT EXISTS runs_board ON runs (score DESC) WHERE finished_at IS NOT NULL AND valid;
 CREATE INDEX IF NOT EXISTS runs_week ON runs (week) WHERE finished_at IS NOT NULL AND valid;
@@ -50,6 +64,7 @@ function rowToPlayer(r) {
     name: r.name,
     nameKey: r.name_key,
     recoveryHash: r.recovery_hash,
+    email: r.email || null,
     createdAt: iso(r.created_at),
     lastSeen: iso(r.last_seen),
     banned: r.banned,
@@ -103,11 +118,11 @@ export function createPgStore(connectionString) {
   async function writePlayer(c, p) {
     try {
       await c.query(
-        'UPDATE players SET name=$2, name_key=$3, recovery_hash=$4, banned=$5, data=$6, last_seen=now() WHERE id=$1',
-        [p.id, p.name, p.nameKey, p.recoveryHash, p.banned, p.data],
+        'UPDATE players SET name=$2, name_key=$3, recovery_hash=$4, banned=$5, data=$6, email=$7, last_seen=now() WHERE id=$1',
+        [p.id, p.name, p.nameKey, p.recoveryHash || null, p.banned, p.data, p.email || null],
       );
     } catch (e) {
-      if (e.code === '23505') throw err('name_taken');
+      if (e.code === '23505') throw err(String(e.constraint || '').includes('email') ? 'email_taken' : 'name_taken');
       throw e;
     }
   }
@@ -126,7 +141,7 @@ export function createPgStore(connectionString) {
       try {
         const { rows } = await pool.query(
           'INSERT INTO players (id, name, name_key, recovery_hash, data) VALUES ($1,$2,$3,$4,$5) RETURNING *',
-          [p.id, p.name, p.nameKey, p.recoveryHash, p.data || {}],
+          [p.id, p.name, p.nameKey, p.recoveryHash || null, p.data || {}],
         );
         return rowToPlayer(rows[0]);
       } catch (e) {
@@ -143,6 +158,49 @@ export function createPgStore(connectionString) {
     async playerByRecovery(hash) {
       const { rows } = await pool.query('SELECT * FROM players WHERE recovery_hash=$1', [hash]);
       return rowToPlayer(rows[0]);
+    },
+
+    async playerByEmail(email) {
+      const { rows } = await pool.query('SELECT * FROM players WHERE email=$1', [email]);
+      return rowToPlayer(rows[0]);
+    },
+
+    async createCode(c) {
+      await pool.query(
+        'INSERT INTO email_codes (id, player_id, session_hash, email, code_hash, lang, expires_at) VALUES ($1,$2,$3,$4,$5,$6,$7)',
+        [c.id, c.playerId || null, c.sessionHash || null, c.email, c.codeHash, c.lang || null, c.expiresAt],
+      );
+      await pool.query('DELETE FROM email_codes WHERE expires_at < $1', [Date.now() - 86400000]);
+    },
+
+    async getCode(id) {
+      const { rows } = await pool.query('SELECT * FROM email_codes WHERE id=$1', [id]);
+      const r = rows[0];
+      if (!r) return null;
+      return {
+        id: r.id, playerId: r.player_id, sessionHash: r.session_hash, email: r.email, codeHash: r.code_hash, lang: r.lang,
+        expiresAt: Number(r.expires_at), attempts: r.attempts, used: r.used, verified: r.verified,
+      };
+    },
+
+    async saveCode(c) {
+      await pool.query('UPDATE email_codes SET attempts=$2, used=$3, verified=$4 WHERE id=$1', [c.id, c.attempts, c.used, c.verified]);
+    },
+
+    async invalidateCodes(sessionHash) {
+      if (sessionHash) await pool.query('UPDATE email_codes SET used=true WHERE session_hash=$1', [sessionHash]);
+    },
+
+    async mergeInto(sourceId, targetId, data) {
+      return tx(async (c) => {
+        const t = rowToPlayer((await c.query('SELECT * FROM players WHERE id=$1 FOR UPDATE', [targetId])).rows[0]);
+        if (!t) throw err('not_found');
+        await c.query('UPDATE runs SET player_id=$2 WHERE player_id=$1', [sourceId, targetId]);
+        await c.query('DELETE FROM players WHERE id=$1', [sourceId]);
+        t.data = data;
+        await writePlayer(c, t);
+        return t;
+      });
     },
 
     async createSession(tokenHash, playerId) {

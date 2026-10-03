@@ -19,6 +19,13 @@ services:
         generateValue: true
       - key: BIRTHDAY_MODE
         value: auto
+      - key: ACCOUNT_SECRET
+        generateValue: true
+      # Email protection (same Resend setup as Penktas Gurkšnis). Fill in the dashboard.
+      - key: RESEND_API_KEY
+        sync: false
+      - key: ACCOUNT_EMAIL_FROM
+        sync: false
 
 databases:
   - name: mt-energy-run-db

@@ -5,8 +5,9 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { normalizeName, nameKey, GAME_VERSION } from '../shared/config.js';
-import { normalizeData, emptyPlayerData, validateRun, applyRun, buy, equip, grantWorkshop } from './rules.mjs';
+import { normalizeData, emptyPlayerData, validateRun, applyRun, buy, equip, grantWorkshop, mergeData } from './rules.mjs';
 import { vilniusDay, isoWeekKey, isBirthday } from './time.mjs';
+import { normalizeEmail, maskEmail, newCode, makeHasher, sameHash, CODE_TTL_MS, MAX_ATTEMPTS, RESEND_AFTER_S } from './email.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const STATIC_DIRS = [
@@ -28,21 +29,7 @@ const MIME = {
   '.txt': 'text/plain; charset=utf-8',
 };
 const COOKIE = 'mter';
-const RECOVERY_WORDS = ['VEJAS', 'SAULE', 'SROVE', 'LAIDAS', 'BANGA', 'ZAIBAS', 'GALIA', 'VOLTAS', 'KABELIS', 'TINKLAS', 'STOTIS', 'TURBINA', 'DUJOS', 'IMPULSAS', 'FAZE', 'RELE'];
-const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-
 const sha = (s) => crypto.createHash('sha256').update(s).digest('hex');
-
-export function normalizeRecovery(code) {
-  return String(code || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
-}
-
-function newRecoveryCode() {
-  const word = RECOVERY_WORDS[crypto.randomInt(RECOVERY_WORDS.length)];
-  let tail = '';
-  for (let i = 0; i < 6; i++) tail += CODE_ALPHABET[crypto.randomInt(CODE_ALPHABET.length)];
-  return `${word}-${tail}`;
-}
 
 function publicProfile(p) {
   const d = normalizeData(p.data);
@@ -56,14 +43,16 @@ function publicProfile(p) {
     stats: d.stats,
     achievements: d.achievements,
     cityStars: d.cityStars,
+    secured: !!p.email,
+    email: maskEmail(p.email),
   };
 }
 
 /** Tiny fixed-window rate limiter. */
-function limiter(max, windowMs) {
+function limiter(max, windowMs, nowMs = Date.now) {
   const hits = new Map();
   return (key) => {
-    const now = Date.now();
+    const now = nowMs();
     let h = hits.get(key);
     if (!h || now - h.t > windowMs) {
       h = { t: now, n: 0 };
@@ -75,12 +64,17 @@ function limiter(max, windowMs) {
   };
 }
 
-export function createApp({ store, adminToken = '', birthdayMode = 'auto', trustProxy = true, log = console, clock = () => new Date() } = {}) {
+export function createApp({ store, adminToken = '', birthdayMode = 'auto', trustProxy = true, log = console, clock = () => new Date(), sendCode = null, secret = '' } = {}) {
+  const codeHash = makeHasher(secret);
+  const ms = () => clock().getTime();
   const limits = {
-    register: limiter(12, 60 * 60 * 1000),
-    recover: limiter(20, 10 * 60 * 1000),
-    runStart: limiter(240, 60 * 60 * 1000),
-    api: limiter(600, 60 * 1000),
+    register: limiter(12, 60 * 60 * 1000, ms),
+    runStart: limiter(240, 60 * 60 * 1000, ms),
+    mailIp: limiter(30, 60 * 60 * 1000, ms),
+    mailHour: limiter(6, 60 * 60 * 1000, ms),
+    mailMinute: limiter(1, 60 * 1000, ms),
+    verify: limiter(60, 10 * 60 * 1000, ms),
+    api: limiter(600, 60 * 1000, ms),
   };
   const boardCache = new Map();
   const BOARD_TTL = 4000;
@@ -187,7 +181,7 @@ export function createApp({ store, adminToken = '', birthdayMode = 'auto', trust
   const routes = {
     'GET /api/config': async (req) => {
       const now = clock();
-      return { version: GAME_VERSION, birthday: birthdayActive(now), today: vilniusDay(now), week: isoWeekKey(now), serverTime: now.toISOString(), storage: store.kind };
+      return { version: GAME_VERSION, birthday: birthdayActive(now), today: vilniusDay(now), week: isoWeekKey(now), serverTime: now.toISOString(), storage: store.kind, emailEnabled: !!sendCode };
     },
 
     'GET /api/me': async (req) => {
@@ -202,42 +196,99 @@ export function createApp({ store, adminToken = '', birthdayMode = 'auto', trust
       if (!name) return [400, { error: 'bad_name' }];
       const key = nameKey(name);
       if (key.length < 2) return [400, { error: 'bad_name' }];
-      const code = newRecoveryCode();
       let p;
       try {
-        p = await store.createPlayer({
-          id: crypto.randomUUID(),
-          name,
-          nameKey: key,
-          recoveryHash: sha(normalizeRecovery(code)),
-          data: emptyPlayerData(),
-        });
+        p = await store.createPlayer({ id: crypto.randomUUID(), name, nameKey: key, data: emptyPlayerData() });
       } catch (e) {
         if (e.code === 'name_taken') return [409, { error: 'name_taken' }];
         throw e;
       }
       await startSession(req, res, p.id);
-      return { profile: publicProfile(p), recoveryCode: code };
-    },
-
-    'POST /api/recover': async (req, res, body) => {
-      if (!limits.recover(clientIp(req))) return [429, { error: 'rate_limited' }];
-      const norm = normalizeRecovery(body.code);
-      if (norm.length < 8 || norm.length > 20) return [400, { error: 'bad_code' }];
-      const p = await store.playerByRecovery(sha(norm));
-      if (!p || p.banned) return [404, { error: 'bad_code' }];
-      await startSession(req, res, p.id);
       return { profile: publicProfile(p) };
     },
 
-    'POST /api/recovery/new': async (req) => {
+    // --- email protection (optional, like Penktas Gurkšnis) --------------------
+    'POST /api/email/code': async (req, res, body) => {
+      if (!sendCode) return [503, { error: 'email_disabled' }];
+      const email = normalizeEmail(body.email);
+      if (!email) return [400, { error: 'bad_email' }];
       const p = await currentPlayer(req);
-      if (!p) return [401, { error: 'no_session' }];
-      const code = newRecoveryCode();
-      await store.mutatePlayer(p.id, (pl) => {
-        pl.recoveryHash = sha(normalizeRecovery(code));
-      });
-      return { recoveryCode: code };
+      if (p?.email && p.email !== email) return [409, { error: 'already_secured' }];
+      const ip = clientIp(req);
+      if (!limits.mailIp(ip) || !limits.mailHour(email) || !limits.mailMinute(email)) return [429, { error: 'rate_limited', retryAfter: RESEND_AFTER_S }];
+      const token = cookies(req)[COOKIE];
+      const sessionHash = token ? sha(token) : null;
+      if (sessionHash) await store.invalidateCodes(sessionHash);
+      const id = crypto.randomUUID();
+      const code = newCode();
+      await store.createCode({ id, playerId: p?.id || null, sessionHash, email, codeHash: codeHash(`${id}:${code}`), lang: body.lang === 'en' ? 'en' : 'lt', expiresAt: Date.now() + CODE_TTL_MS });
+      try {
+        await sendCode({ email, code, id, lang: body.lang === 'en' ? 'en' : 'lt' });
+      } catch (e) {
+        log.warn?.('[email] send failed', e.message);
+        const c = await store.getCode(id);
+        if (c) await store.saveCode({ ...c, used: true });
+        return [503, { error: 'send_failed' }];
+      }
+      return { challengeId: id, retryAfter: RESEND_AFTER_S, expiresIn: CODE_TTL_MS / 1000 };
+    },
+
+    'POST /api/email/verify': async (req, res, body) => {
+      if (!limits.verify(clientIp(req))) return [429, { error: 'rate_limited' }];
+      const id = String(body.challengeId || '');
+      if (!/^[0-9a-f-]{36}$/.test(id)) return [400, { error: 'bad_code' }];
+      const c = await store.getCode(id);
+      const token = cookies(req)[COOKIE];
+      const sessionHash = token ? sha(token) : null;
+      if (!c || c.used || c.expiresAt <= Date.now() || (c.sessionHash && c.sessionHash !== sessionHash)) return [400, { error: 'code_expired' }];
+      const merge = body.merge === true;
+      if (!merge) {
+        if (c.attempts >= MAX_ATTEMPTS) return [400, { error: 'code_expired' }];
+        c.attempts++;
+        const input = String(body.code || '').replace(/\s/g, '');
+        if (!/^\d{6}$/.test(input) || !sameHash(codeHash(`${id}:${input}`), c.codeHash)) {
+          await store.saveCode(c);
+          return [400, { error: 'bad_code', attemptsLeft: Math.max(0, MAX_ATTEMPTS - c.attempts) }];
+        }
+        c.verified = true;
+        await store.saveCode(c);
+      } else if (!c.verified) return [400, { error: 'bad_code' }];
+
+      const current = await currentPlayer(req);
+      const target = await store.playerByEmail(c.email);
+      const finish = async (playerId) => {
+        await store.saveCode({ ...c, used: true });
+        if (token) await store.deleteSession(sha(token));
+        await startSession(req, res, playerId); // rotate the session
+        boardCache.clear();
+        return { profile: publicProfile(await store.getPlayer(playerId)) };
+      };
+
+      if (!target) {
+        // first verification: protect the current browser account
+        if (!current) return [404, { error: 'no_account' }];
+        if (current.email && current.email !== c.email) return [409, { error: 'already_secured' }];
+        try {
+          await store.mutatePlayer(current.id, (pl) => {
+            pl.email = c.email;
+          });
+        } catch (e) {
+          if (e.code === 'email_taken') return [409, { error: 'email_taken' }];
+          throw e;
+        }
+        return finish(current.id);
+      }
+      if (!current || current.id === target.id) return finish(target.id);
+      // signing in to an existing protected account from a guest browser account
+      if (current.email) return [409, { error: 'already_secured' }];
+      const guestRuns = normalizeData(current.data).stats.runs || 0;
+      if (guestRuns > 0 && !merge) return { needsMerge: true, targetName: target.name, guestName: current.name };
+      if (guestRuns > 0) {
+        await store.mergeInto(current.id, target.id, mergeData(current.data, target.data));
+      } else {
+        await store.deletePlayer(current.id); // empty guest, nothing to keep
+      }
+      return finish(target.id);
     },
 
     'POST /api/logout': async (req, res) => {

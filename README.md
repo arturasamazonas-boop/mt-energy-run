@@ -25,8 +25,11 @@ Maršrutas: Vilnius → Klaipėda → Ryga → Talinas → Helsinkis → Stokhol
 ## Paskyros
 
 - Pirmą kartą žaidėjas įveda tik **vardą**. Paskyra išsaugoma naršyklės slapuke (HttpOnly, 2 metams).
-- Žaidėjas gauna **atkūrimo kodą** (pvz. `VEJAS-7K4P2Q`). Su juo prisijungiama kitame įrenginyje. Profilyje galima sukurti naują kodą (senasis tada nustoja veikti).
-- Jokių el. paštų ar slaptažodžių. Įmonės kodo nėra, todėl prisijungti gali bet kas, turintis nuorodą.
+- Ta pati naršyklė visada prisimena tą pačią paskyrą – nieko daryti nereikia.
+- Jei žaidėjas nori neprarasti progreso (išvalius naršyklę ar žaidžiant kitame įrenginyje), profilyje gali **patvirtinti el. paštą** vienkartiniu 6 skaitmenų kodu (galioja 10 min., 5 bandymai). Po 3 bėgimų žaidimo pabaigoje tai pasiūloma (galima atidėti 7 dienoms).
+- Kitame įrenginyje: pradžios ekrane „Jau žaidžiau – prisijungti el. paštu“. Jei toje naršyklėje jau buvo žaista kitu vardu, prieš sujungimą paklausiama sutikimo: energija, patobulinimai ir bėgimai perkeliami į el. paštu apsaugotą paskyrą.
+- Laiškai siunčiami per [Resend](https://resend.com). Be `RESEND_API_KEY` ir `ACCOUNT_EMAIL_FROM` el. pašto patvirtinimas tiesiog išjungtas, žaisti galima toliau.
+- Slaptažodžių nėra. Įmonės kodo nėra, todėl prisijungti gali bet kas, turintis nuorodą.
 
 ## Paleidimas lokaliai
 
@@ -60,6 +63,9 @@ Aplinkos kintamieji:
 |---|---|
 | `DATABASE_URL` | PostgreSQL. Lentelės sukuriamos automatiškai. |
 | `ADMIN_TOKEN` | Raktas `/admin` puslapiui. Be jo administravimas išjungtas. |
+| `RESEND_API_KEY` | Resend API raktas el. pašto kodams siųsti. |
+| `ACCOUNT_EMAIL_FROM` | Siuntėjas, pvz. `MT Energy Run <zaidimas@jusu-domenas.lt>` (domenas turi būti patvirtintas Resend'e). |
+| `ACCOUNT_SECRET` | Atsitiktinė eilutė kodų maišai (Render sugeneruoja automatiškai). |
 | `BIRTHDAY_MODE` | `auto` (spalio 24 d. pagal Vilniaus laiką), `on` arba `off`. |
 | `BIRTHDAY` | Gimtadienio data `MM-DD` (numatyta `10-24`). |
 | `DATABASE_SSL=1` | Priverstinis TLS, kai naudojamas išorinis DB adresas. |

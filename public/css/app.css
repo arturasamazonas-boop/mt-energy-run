@@ -1701,3 +1701,32 @@ h3 {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* ---- email protection */
+.email-dialog {
+  z-index: 30;
+  background: rgba(4, 10, 24, 0.72);
+}
+.email-dialog .dialog {
+  max-width: 420px;
+}
+.code-input {
+  font-size: 30px;
+  letter-spacing: 0.4em;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.protect-tip {
+  color: #e8eefc;
+  background: rgba(255, 210, 0, 0.1);
+  border: 1px solid rgba(255, 210, 0, 0.35);
+  border-radius: 12px;
+  padding: 10px 12px;
+  text-align: left;
+}
+.protect-tip b {
+  color: var(--y);
+}
+.protect-tip .inline {
+  margin-top: 8px;
+}

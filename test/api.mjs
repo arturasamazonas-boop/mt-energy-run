@@ -6,7 +6,13 @@ import { botRun } from '../shared/bot.js';
 
 let now = new Date('2026-10-24T09:00:00Z');
 const store = createMemoryStore();
-const server = createApp({ store, adminToken: 'admin-secret-token', clock: () => now, log: { warn() {}, error: console.error } });
+const mailbox = [];
+const sendCode = async (m) => {
+  if (m.email.startsWith('fail@')) throw new Error('smtp down');
+  mailbox.push(m);
+};
+const lastCode = (email) => [...mailbox].reverse().find((m) => m.email === email)?.code;
+const server = createApp({ store, adminToken: 'admin-secret-token', clock: () => now, log: { warn() {}, error: console.error }, sendCode, secret: 'test-secret' });
 server.keepAliveTimeout = 120000;
 await new Promise((r) => server.listen(0, r));
 const base = `http://127.0.0.1:${server.address().port}`;
@@ -37,10 +43,12 @@ const B = client();
 assert.equal((await A('GET', '/api/me')).status, 401);
 const cfg = (await A('GET', '/api/config')).data;
 assert.equal(cfg.birthday, true, 'Oct 24 is the birthday');
+assert.equal(cfg.emailEnabled, true);
 assert.equal((await A('POST', '/api/register', { name: 'x' })).status, 400);
 const reg = await A('POST', '/api/register', { name: 'Mindaugas Z' });
 assert.equal(reg.status, 200);
-assert.match(reg.data.recoveryCode, /^[A-Z]+-[A-Z0-9]{6}$/);
+assert.equal(reg.data.recoveryCode, undefined, 'no recovery codes any more');
+assert.equal(reg.data.profile.secured, false);
 assert.equal((await A('GET', '/api/me')).data.profile.name, 'Mindaugas Z');
 assert.equal((await B('POST', '/api/register', { name: 'mindaugas  z' })).status, 409, 'case/space-insensitive duplicate');
 assert.equal((await B('POST', '/api/register', { name: 'Žydrūnė' })).status, 200);
@@ -82,15 +90,76 @@ assert.deepEqual(bought.data.unlocked, ['shopper']);
 assert.equal((await A('POST', '/api/shop/buy', { kind: 'upgrade', id: 'secondChance' })).data.error, 'not_enough');
 assert.equal((await A('POST', '/api/equip', { id: 'birthday' })).data.profile.cosmetics.equipped, 'birthday');
 
-// recovery code on a new device
+// email protection (optional) ------------------------------------------------
+assert.equal((await A('POST', '/api/email/code', { email: 'nope' })).status, 400);
+assert.equal((await A('POST', '/api/email/code', { email: 'fail@mt.lt' })).data.error, 'send_failed');
+const ch = (await A('POST', '/api/email/code', { email: ' Mindaugas@MT.lt ', lang: 'en' })).data;
+assert.ok(ch.challengeId && ch.retryAfter === 60);
+assert.equal(mailbox.at(-1).email, 'mindaugas@mt.lt');
+assert.equal(mailbox.at(-1).lang, 'en');
+assert.equal((await A('POST', '/api/email/code', { email: 'mindaugas@mt.lt' })).status, 429, 'one code per minute per email');
+const wrong = String((Number(lastCode('mindaugas@mt.lt')) + 1) % 1000000).padStart(6, '0');
+const bad = await A('POST', '/api/email/verify', { challengeId: ch.challengeId, code: wrong });
+assert.equal(bad.data.error, 'bad_code');
+assert.equal(bad.data.attemptsLeft, 4);
+assert.equal((await B('POST', '/api/email/verify', { challengeId: ch.challengeId, code: lastCode('mindaugas@mt.lt') })).data.error, 'code_expired', 'bound to the requesting browser');
+const ok = await A('POST', '/api/email/verify', { challengeId: ch.challengeId, code: lastCode('mindaugas@mt.lt') });
+assert.equal(ok.status, 200, JSON.stringify(ok.data));
+assert.equal(ok.data.profile.secured, true);
+assert.match(ok.data.profile.email, /@mt\.lt$/);
+assert.ok(!ok.data.profile.email.startsWith('mindaugas'), 'email is masked');
+assert.equal((await A('POST', '/api/email/verify', { challengeId: ch.challengeId, code: lastCode('mindaugas@mt.lt') })).data.error, 'code_expired', 'single use');
+assert.equal((await A('GET', '/api/me')).data.profile.name, 'Mindaugas Z', 'session rotated and still valid');
+assert.equal((await A('POST', '/api/email/code', { email: 'other@mt.lt' })).data.error, 'already_secured');
+
+// too many wrong attempts burn the code
+const brute = client();
+await brute('POST', '/api/register', { name: 'Brute' });
+const bch = (await brute('POST', '/api/email/code', { email: 'brute@mt.lt' })).data;
+for (let i = 0; i < 5; i++) await brute('POST', '/api/email/verify', { challengeId: bch.challengeId, code: '000000' === lastCode('brute@mt.lt') ? '111111' : '000000' });
+assert.equal((await brute('POST', '/api/email/verify', { challengeId: bch.challengeId, code: lastCode('brute@mt.lt') })).data.error, 'code_expired');
+assert.equal((await brute('GET', '/api/me')).data.profile.secured, false);
+
+// unknown email on a fresh device
+const D = client();
+now = new Date(now.getTime() + 61000);
+const dch = (await D('POST', '/api/email/code', { email: 'nobody@mt.lt' })).data;
+assert.equal((await D('POST', '/api/email/verify', { challengeId: dch.challengeId, code: lastCode('nobody@mt.lt') })).data.error, 'no_account');
+
+// sign in on a new device with no account in that browser
 const C = client();
-assert.equal((await C('POST', '/api/recover', { code: 'VEJAS-AAAAAA' })).status, 404);
-const rec = await C('POST', '/api/recover', { code: reg.data.recoveryCode.toLowerCase().replace('-', ' ') });
-assert.equal(rec.status, 200);
-assert.equal(rec.data.profile.name, 'Mindaugas Z');
-const newCode = (await C('POST', '/api/recovery/new', {})).data.recoveryCode;
-assert.notEqual(newCode, reg.data.recoveryCode);
-assert.equal((await client()('POST', '/api/recover', { code: reg.data.recoveryCode })).status, 404, 'old code invalid');
+now = new Date(now.getTime() + 61000);
+const cch = (await C('POST', '/api/email/code', { email: 'mindaugas@mt.lt' })).data;
+const login = await C('POST', '/api/email/verify', { challengeId: cch.challengeId, code: lastCode('mindaugas@mt.lt') });
+assert.equal(login.data.profile.name, 'Mindaugas Z');
+assert.equal(login.data.profile.upgrades.magnet, 1, 'progress kept');
+
+// a browser that already played as a guest account: merge needs consent
+const G = client();
+await G('POST', '/api/register', { name: 'Telefonas' });
+const gs = (await G('POST', '/api/run/start', { mode: 'normal' })).data;
+now = new Date(now.getTime() + 140000);
+const gfin = await G('POST', '/api/run/finish', { runId: gs.runId, summary: botRun(gs.seed, { maxDistance: 600 }).summary() });
+assert.equal(gfin.data.accepted, true, JSON.stringify(gfin.data.reasons));
+const guestEnergy = gfin.data.profile.energy;
+const targetBefore = (await C('GET', '/api/me')).data.profile;
+const gch = (await G('POST', '/api/email/code', { email: 'mindaugas@mt.lt' })).data;
+const ask = await G('POST', '/api/email/verify', { challengeId: gch.challengeId, code: lastCode('mindaugas@mt.lt') });
+assert.deepEqual(ask.data, { needsMerge: true, targetName: 'Mindaugas Z', guestName: 'Telefonas' });
+assert.equal((await G('GET', '/api/me')).data.profile.name, 'Telefonas', 'nothing changed before consent');
+const merged = await G('POST', '/api/email/verify', { challengeId: gch.challengeId, merge: true });
+assert.equal(merged.data.profile.name, 'Mindaugas Z');
+assert.equal(merged.data.profile.energy, targetBefore.energy + guestEnergy, 'energy summed');
+assert.equal(merged.data.profile.stats.runs, targetBefore.stats.runs + 1, 'runs summed');
+assert.equal((await A('GET', '/api/leaderboard?board=all')).data.entries.some((e) => e.name === 'Telefonas'), false, 'guest account removed');
+
+// empty guest account is simply replaced
+const E = client();
+await E('POST', '/api/register', { name: 'Tuscias' });
+now = new Date(now.getTime() + 61000);
+const ech = (await E('POST', '/api/email/code', { email: 'mindaugas@mt.lt' })).data;
+assert.equal((await E('POST', '/api/email/verify', { challengeId: ech.challengeId, code: lastCode('mindaugas@mt.lt') })).data.profile.name, 'Mindaugas Z');
+assert.equal((await B('POST', '/api/register', { name: 'Tuscias' })).status, 200, 'empty guest name freed');
 
 // rename
 assert.equal((await A('POST', '/api/name', { name: 'Žydrūnė' })).status, 409);
@@ -100,7 +169,7 @@ assert.equal((await A('POST', '/api/name', { name: 'MZ' })).data.profile.name, '
 assert.equal((await A('GET', '/api/admin/overview')).status, 403);
 const adm = await A('GET', '/api/admin/overview', null, { 'x-admin-token': 'admin-secret-token' });
 assert.equal(adm.status, 200);
-assert.equal(adm.data.players.length, 2);
+assert.equal(adm.data.players.length, 4, 'Mindaugas Z, Žydrūnė, Brute, Tuscias (guests merged or removed)');
 assert.equal(adm.data.flagged.length, 1);
 
 // logout

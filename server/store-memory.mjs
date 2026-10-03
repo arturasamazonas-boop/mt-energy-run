@@ -9,6 +9,8 @@ export function createMemoryStore() {
   const byRecovery = new Map();
   const sessions = new Map();
   const runs = new Map();
+  const byEmail = new Map();
+  const codes = new Map();
 
   const err = (code) => Object.assign(new Error(code), { code });
 
@@ -20,6 +22,7 @@ export function createMemoryStore() {
     async createPlayer(p) {
       if (byNameKey.has(p.nameKey)) throw err('name_taken');
       const rec = { createdAt: new Date().toISOString(), lastSeen: new Date().toISOString(), banned: false, ...clone(p) };
+      rec.email = rec.email || null;
       players.set(rec.id, rec);
       byNameKey.set(rec.nameKey, rec.id);
       if (rec.recoveryHash) byRecovery.set(rec.recoveryHash, rec.id);
@@ -33,6 +36,38 @@ export function createMemoryStore() {
     async playerByRecovery(hash) {
       const id = byRecovery.get(hash);
       return id ? clone(players.get(id)) : null;
+    },
+
+    async playerByEmail(email) {
+      const id = byEmail.get(email);
+      return id ? clone(players.get(id)) : null;
+    },
+
+    async createCode(c) {
+      codes.set(c.id, { attempts: 0, used: false, verified: false, ...clone(c) });
+      for (const [k, v] of codes) if (v.expiresAt < Date.now() - 86400000) codes.delete(k);
+    },
+
+    async getCode(id) {
+      return clone(codes.get(id) || null);
+    },
+
+    async saveCode(c) {
+      if (codes.has(c.id)) codes.set(c.id, clone(c));
+    },
+
+    async invalidateCodes(sessionHash) {
+      for (const v of codes.values()) if (v.sessionHash === sessionHash) v.used = true;
+    },
+
+    /** Move a guest's runs into the target account, store merged data, delete the guest. */
+    async mergeInto(sourceId, targetId, data) {
+      const t = players.get(targetId);
+      if (!t || !players.has(sourceId)) throw err('not_found');
+      for (const r of runs.values()) if (r.playerId === sourceId) r.playerId = targetId;
+      t.data = clone(data);
+      await this.deletePlayer(sourceId);
+      return clone(t);
     },
 
     async createSession(tokenHash, playerId) {
@@ -62,6 +97,12 @@ export function createMemoryStore() {
         if (other && other !== id) throw err('name_taken');
         byNameKey.delete(cur.nameKey);
         byNameKey.set(next.nameKey, id);
+      }
+      if (next.email !== cur.email) {
+        const other = next.email && byEmail.get(next.email);
+        if (other && other !== id) throw err('email_taken');
+        if (cur.email) byEmail.delete(cur.email);
+        if (next.email) byEmail.set(next.email, id);
       }
       if (next.recoveryHash !== cur.recoveryHash) {
         byRecovery.delete(cur.recoveryHash);
@@ -145,6 +186,7 @@ export function createMemoryStore() {
       players.delete(playerId);
       byNameKey.delete(p.nameKey);
       byRecovery.delete(p.recoveryHash);
+      if (p.email) byEmail.delete(p.email);
       for (const [k, s] of sessions) if (s.playerId === playerId) sessions.delete(k);
       for (const [k, r] of runs) if (r.playerId === playerId) runs.delete(k);
     },

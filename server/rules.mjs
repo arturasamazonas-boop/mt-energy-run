@@ -202,6 +202,21 @@ export function grantWorkshop(d) {
   return unlocked;
 }
 
+/** Combine a guest's progress into an email-protected account (merge consent). */
+export function mergeData(src, dst) {
+  const a = normalizeData(src);
+  const b = normalizeData(dst);
+  const out = normalizeData(dst);
+  out.energy = a.energy + b.energy;
+  for (const [k, v] of Object.entries(a.upgrades)) out.upgrades[k] = Math.max(v, b.upgrades[k] || 0);
+  out.cosmetics.owned = [...new Set([...b.cosmetics.owned, ...a.cosmetics.owned])];
+  for (const k of ['runs', 'totalDistance', 'totalBolts', 'totalTasks', 'totalTokens', 'dailyRuns']) out.stats[k] = (a.stats[k] || 0) + (b.stats[k] || 0);
+  for (const k of ['bestScore', 'bestDistance', 'bestCity']) out.stats[k] = Math.max(a.stats[k] || 0, b.stats[k] || 0);
+  for (const [k, v] of Object.entries(a.achievements)) if (!out.achievements[k] || v < out.achievements[k]) out.achievements[k] = v;
+  for (const [k, v] of Object.entries(a.cityStars)) out.cityStars[k] = Math.max(v, b.cityStars[k] || 0);
+  return out;
+}
+
 export function upgradeCost(id, level) {
   const u = UPGRADE_BY_ID[id];
   if (!u || level >= u.costs.length) return null;

@@ -16,6 +16,7 @@ async function call(method, path, body) {
     const e = new Error(data?.error || `http_${res.status}`);
     e.status = res.status;
     e.code = data?.error;
+    e.data = data;
     throw e;
   }
   return data;
@@ -25,8 +26,8 @@ export const api = {
   config: () => call('GET', '/api/config'),
   me: () => call('GET', '/api/me'),
   register: (name) => call('POST', '/api/register', { name }),
-  recover: (code) => call('POST', '/api/recover', { code }),
-  newCode: () => call('POST', '/api/recovery/new', {}),
+  emailCode: (email, lang) => call('POST', '/api/email/code', { email, lang }),
+  emailVerify: (challengeId, code, merge) => call('POST', '/api/email/verify', { challengeId, code, merge }),
   logout: () => call('POST', '/api/logout', {}),
   rename: (name) => call('POST', '/api/name', { name }),
   startRun: (mode) => call('POST', '/api/run/start', { mode }),

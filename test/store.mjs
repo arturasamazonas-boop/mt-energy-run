@@ -33,6 +33,30 @@ async function contract(store) {
   assert.equal((await store.boardRows({ day: '2026-10-24', mode: 'daily' })).some((r) => r.playerId === id), false);
   await store.setBanned(id, true);
   assert.equal((await store.boardRows({ week: '2026-W43' })).some((r) => r.playerId === id), false);
+  // email + one-time codes + merge
+  const em = `${key}@mt.lt`;
+  await store.mutatePlayer(id, (pl) => {
+    pl.email = em;
+  });
+  assert.equal((await store.playerByEmail(em)).id, id);
+  const gid = crypto.randomUUID();
+  await store.createPlayer({ id: gid, name: 'Svečias', nameKey: `g${key}`, data: { energy: 3 } });
+  await assert.rejects(store.mutatePlayer(gid, (pl) => { pl.email = em; }), /email_taken/);
+  const codeId = crypto.randomUUID();
+  await store.createCode({ id: codeId, playerId: gid, sessionHash: `s-${key}`, email: em, codeHash: 'abc', lang: 'lt', expiresAt: Date.now() + 600000 });
+  const c = await store.getCode(codeId);
+  assert.equal(c.attempts, 0);
+  assert.equal(c.used, false);
+  await store.saveCode({ ...c, attempts: 2, verified: true });
+  assert.equal((await store.getCode(codeId)).attempts, 2);
+  await store.invalidateCodes(`s-${key}`);
+  assert.equal((await store.getCode(codeId)).used, true);
+  const grun = crypto.randomUUID();
+  await store.createRun({ id: grun, playerId: gid, seed: 's', mode: 'normal', upgrades: {}, startedAt: new Date().toISOString() });
+  const merged = await store.mergeInto(gid, id, { energy: 99 });
+  assert.equal(merged.data.energy, 99);
+  assert.equal(await store.getPlayer(gid), null);
+  assert.equal((await store.getRun(grun)).playerId, id);
   await store.deletePlayer(id);
   assert.equal(await store.getPlayer(id), null);
   await store.close();

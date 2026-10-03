@@ -13,6 +13,7 @@ import { Game } from './game/game.js';
 import { Hud } from './ui/hud.js';
 import { runTask } from './ui/tasks.js';
 import { ICON } from './ui/icons.js';
+import { emailDialog } from './ui/email.js';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const layer = $('#layer');
@@ -248,27 +249,22 @@ function afterLogin() {
 // ---------------------------------------------------------------------------
 // Onboarding
 // ---------------------------------------------------------------------------
-function onboardScreen(mode = 'name') {
+function onboardScreen() {
   state.screen = 'onboard';
   clearPortraits();
   game.attract();
+  const emailOn = !!state.config?.emailEnabled;
   const el = show(`
     <div class="screen onboard">
       <div class="hero-wrap"><canvas class="portrait"></canvas></div>
       <form class="panel" autocomplete="off">
         <div style="display:flex;justify-content:space-between;align-items:center"><img class="logo" src="/assets/mt-logo-light.png" alt="MT GROUP"><button type="button" class="chip" data-lang>${ICON.globe}${getLang() === 'lt' ? 'EN' : 'LT'}</button></div>
-        ${mode === 'name'
-          ? `<h1>${t('welcomeTitle')}</h1>
-             <div class="muted">${t('welcomeText')}</div>
-             <input class="field" name="v" maxlength="20" placeholder="${t('namePh')}" autocomplete="nickname" enterkeyhint="go" required>
-             <div class="error"></div>
-             <button class="btn primary" type="submit">${ICON.play}${t('start')}</button>
-             <button class="link" type="button" data-alt>${t('haveCode')}</button>`
-          : `<h1>${t('recovery')}</h1>
-             <input class="field" name="v" maxlength="24" placeholder="${t('codePh')}" autocapitalize="characters" enterkeyhint="go" required>
-             <div class="error"></div>
-             <button class="btn primary" type="submit">${t('restore')}</button>
-             <button class="link" type="button" data-alt>${t('back')}</button>`}
+        <h1>${t('welcomeTitle')}</h1>
+        <div class="muted">${t('welcomeText')}</div>
+        <input class="field" name="v" maxlength="20" placeholder="${t('namePh')}" autocomplete="nickname" enterkeyhint="go" required>
+        <div class="error"></div>
+        <button class="btn primary" type="submit">${ICON.play}${t('start')}</button>
+        ${emailOn ? `<button class="link" type="button" data-alt>${t('haveEmail')}</button>` : ''}
       </form>
     </div>`, { shadeMode: 'full' });
   stopPortraits.push(portrait($('canvas.portrait', el), 'suit', { wave: true }));
@@ -276,13 +272,22 @@ function onboardScreen(mode = 'name') {
   const inputEl = $('input', form);
   const err = $('.error', form);
   if (!isTouchDevice()) setTimeout(() => inputEl.focus(), 50);
-  click($('[data-alt]', form), () => onboardScreen(mode === 'name' ? 'code' : 'name'));
+  click($('[data-alt]', form), () =>
+    emailDialog(layer, {
+      mode: 'login',
+      onDone: (profile) => {
+        setProfile(profile);
+        toast(t('emailWelcomeBack'), 'MT GROUP', ICON.user);
+        afterLogin();
+      },
+    }),
+  );
   click($('[data-lang]', form), () => {
     setLang(getLang() === 'lt' ? 'en' : 'lt');
     renderer.lang = getLang();
     renderer.scenery.cache.clear();
     applyStaticTexts();
-    onboardScreen(mode);
+    onboardScreen();
   });
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -293,47 +298,27 @@ function onboardScreen(mode = 'name') {
     state.busy = true;
     err.textContent = '';
     try {
-      if (mode === 'name') {
-        const r = await api.register(v);
-        setProfile(r.profile);
-        codeScreen(r.recoveryCode, true);
-      } else {
-        const r = await api.recover(v);
-        setProfile(r.profile);
-        afterLogin();
-      }
+      const r = await api.register(v);
+      setProfile(r.profile);
+      afterLogin();
     } catch (ex) {
-      err.textContent =
-        ex.code === 'name_taken' ? t('nameTaken') : ex.code === 'bad_name' ? t('badName') : ex.code === 'rate_limited' ? t('rateLimited') : mode === 'code' ? t('badCode') : t('offline');
+      err.textContent = ex.code === 'name_taken' ? t('nameTaken') : ex.code === 'bad_name' ? t('badName') : ex.code === 'rate_limited' ? t('rateLimited') : t('offline');
     } finally {
       state.busy = false;
     }
   });
 }
 
-function codeScreen(code, first) {
-  clearPortraits();
-  const el = show(`
-    <div class="overlay">
-      <div class="panel dialog">
-        <h2>${t('codeTitle')}</h2>
-        <p class="muted">${t('codeText')}</p>
-        <div class="code-box">${esc(code)}</div>
-        <div class="row">
-          <button class="btn" data-copy>${ICON.copy}${t('copy')}</button>
-          <button class="btn primary" data-ok>${t('gotIt')}</button>
-        </div>
-      </div>
-    </div>`, { shadeMode: 'full' });
-  click($('[data-copy]', el), async () => {
-    try {
-      await navigator.clipboard.writeText(code);
-      $('[data-copy]', el).innerHTML = `${ICON.copy}${t('copied')}`;
-    } catch {
-      /* ignore */
-    }
+/** Open the email protection dialog for the current account. */
+function protectAccount(after) {
+  emailDialog(layer, {
+    mode: 'protect',
+    onDone: (profile) => {
+      setProfile(profile);
+      toast(t('emailProtected'), 'MT GROUP', ICON.user);
+      after?.();
+    },
   });
-  click($('[data-ok]', el), () => (first ? afterLogin() : profileScreen()));
 }
 
 // ---------------------------------------------------------------------------
@@ -689,9 +674,13 @@ function profileScreen() {
         </div>
       </div>
       ${p.guest ? '' : `<div class="prof-sec">
-        <h3>${t('recovery')}</h3>
-        <p class="muted" style="margin:0">${t('recoveryText')}</p>
-        <div class="inline"><button class="btn small" data-code>${ICON.refresh}${t('newCode')}</button><button class="btn small ghost" data-logout>${ICON.logout}${t('logout')}</button></div>
+        <h3>${t('emailSection')}</h3>
+        ${p.secured
+          ? `<p style="margin:0"><span class="yellow">✓</span> ${t('emailIsProtected')} <b>${esc(p.email || '')}</b></p>`
+          : state.config?.emailEnabled
+            ? `<p class="muted" style="margin:0">${t('emailWhy')}</p><div class="inline"><button class="btn small primary" data-protect>${t('emailProtectBtn')}</button></div>`
+            : `<p class="muted" style="margin:0">${t('emailDisabled')}</p>`}
+        <div class="inline"><button class="btn small ghost" data-logout>${ICON.logout}${t('logout')}</button></div>
       </div>`}
     </div>`;
   const el = sheet(t('profile'), ICON.user, body);
@@ -723,16 +712,9 @@ function profileScreen() {
     audio.setSfx(!audio.sfxOn);
     profileScreen();
   });
-  click($('[data-code]', el), async () => {
-    try {
-      const r = await api.newCode();
-      codeScreen(r.recoveryCode, false);
-    } catch {
-      toast(t('offline'), '', ICON.globe);
-    }
-  });
+  click($('[data-protect]', el), () => protectAccount(profileScreen));
   click($('[data-logout]', el), async () => {
-    if (!confirm(t('logoutConfirm'))) return;
+    if (!confirm(p.secured ? t('logoutConfirmSecured') : t('logoutConfirm'))) return;
     try {
       await api.logout();
     } catch {
@@ -1003,6 +985,7 @@ async function onRunOver(info) {
     if (r.ranks?.week) pills.push(`<span class="rank-pill">${t('rankWeek')}<b>#${r.ranks.week.rank}</b></span>`);
     if (r.ranks?.daily) pills.push(`<span class="rank-pill">${t('rankDaily')}<b>#${r.ranks.daily.rank}</b></span>`);
     $('[data-ranks]', el).innerHTML = pills.join('');
+    maybeSuggestProtect(el);
     r.unlocked?.forEach((id, i) =>
       setTimeout(() => {
         const a = ACHIEVEMENT_BY_ID[id];
@@ -1013,6 +996,22 @@ async function onRunOver(info) {
   } catch {
     $('[data-notice]', el).textContent = t('notSaved');
   }
+}
+
+/** After a few saved runs, gently suggest verifying an email (snoozable for 7 days). */
+function maybeSuggestProtect(el) {
+  const p = state.profile;
+  if (!p || p.guest || p.secured || !state.config?.emailEnabled) return;
+  if ((p.stats.runs || 0) < 3) return;
+  if (Date.now() < prefs.get('protectSnooze', 0)) return;
+  const box = $('[data-notice]', el);
+  box.innerHTML = `<div class="protect-tip"><b>${t('protectTitle')}</b> ${t('protectText')}
+    <div class="inline"><button class="btn small primary" data-protect>${t('emailProtectBtn')}</button><button class="btn small ghost" data-later>${t('later')}</button></div></div>`;
+  click($('[data-protect]', box), () => protectAccount(() => (box.innerHTML = '')));
+  click($('[data-later]', box), () => {
+    prefs.set('protectSnooze', Date.now() + 7 * 86400000);
+    box.innerHTML = '';
+  });
 }
 
 // ---------------------------------------------------------------------------
