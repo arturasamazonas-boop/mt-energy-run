@@ -779,7 +779,7 @@ async function startRun(mode) {
   state.busy = true;
   clearPortraits();
   let run = { mode, seed: params.get('seed') || `local-${Date.now()}`, upgrades: state.profile.upgrades || {}, runId: null };
-  if (state.online && !state.profile.guest && !params.has('practice')) {
+  if (state.online && !state.profile.guest && !params.has('practice') && !(DEBUG && params.has('autoplay'))) {
     try {
       const r = await api.startRun(mode);
       run = { mode, seed: r.seed, upgrades: r.upgrades, runId: r.runId };
