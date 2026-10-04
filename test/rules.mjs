@@ -32,7 +32,7 @@ const r2 = applyRun(d, { ...ok.summary, score: 1 }, run);
 assert.ok(!r2.newBest && !r2.unlocked.includes('firstrun'));
 
 // shop
-const shop = normalizeData({ energy: 1000 });
+const shop = normalizeData({ energy: 10000 });
 buy(shop, 'upgrade', 'magnet');
 assert.equal(shop.upgrades.magnet, 1);
 import('../server/rules.mjs').then(({ grantWorkshop }) => {
@@ -42,7 +42,7 @@ import('../server/rules.mjs').then(({ grantWorkshop }) => {
   assert.equal(g.energy, 50 + 300 + 150);
   assert.deepEqual(grantWorkshop(g), [], 'only once');
 });
-assert.equal(shop.energy, 880);
+assert.equal(shop.energy, 8800);
 assert.throws(() => buy(shop, 'upgrade', 'secondChance'), /not_enough/);
 assert.throws(() => buy(shop, 'cosmetic', 'gold'), /unknown_item/);
 assert.throws(() => buy(shop, 'upgrade', 'nope'), /unknown_item/);

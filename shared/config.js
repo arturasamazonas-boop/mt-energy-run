@@ -268,14 +268,14 @@ export const POWERUPS = {
 // roughly 20–25 % stronger, so skill still decides the leaderboard.
 // ---------------------------------------------------------------------------
 export const UPGRADES = [
-  { id: 'magnet', icon: 'magnet', costs: [120, 260, 480, 800, 1300], lt: 'Transformatorius-magnetas', en: 'Transformer magnet', descLt: 'Ilgiau traukia energiją', descEn: 'Pulls energy for longer' },
-  { id: 'drone', icon: 'drone', costs: [150, 320, 560, 900, 1400], lt: 'Inspekcinis dronas', en: 'Inspection drone', descLt: 'Ilgesnis skrydis virš kliūčių', descEn: 'Longer flight over obstacles' },
-  { id: 'excavator', icon: 'excavator', costs: [150, 320, 560, 900, 1400], lt: 'Ekskavatorius', en: 'Excavator', descLt: 'Ilgiau griauna kliūtis', descEn: 'Smashes obstacles for longer' },
-  { id: 'double', icon: 'double', costs: [200, 420, 750, 1150, 1700], lt: 'Sutartis x2', en: 'Contract x2', descLt: 'Ilgiau galioja dvigubi taškai', descEn: 'Double points last longer' },
-  { id: 'energyValue', icon: 'bolt', costs: [180, 400, 700, 1100, 1600], lt: 'Efektyvumas', en: 'Efficiency', descLt: '+10 % ⚡ už kiekvieną žaibą', descEn: '+10 % ⚡ per bolt' },
-  { id: 'startMult', icon: 'mult', costs: [900, 2200], lt: 'Patirtis', en: 'Experience', descLt: 'Bėgimą pradedi su didesniu daugikliu', descEn: 'Start each run with a higher multiplier' },
-  { id: 'startHelmet', icon: 'helmet', costs: [1500], lt: 'Auksinis šalmas', en: 'Golden helmet', descLt: 'Kiekvieną bėgimą pradedi su apsauga', descEn: 'Start every run protected' },
-  { id: 'secondChance', icon: 'heart', costs: [2500], lt: 'Antras šansas', en: 'Second chance', descLt: 'Kartą per bėgimą tęsi po smūgio', descEn: 'Continue once per run after a crash' },
+  { id: 'magnet', icon: 'magnet', costs: [1200, 2600, 4800, 8000, 13000], lt: 'Transformatorius-magnetas', en: 'Transformer magnet', descLt: 'Ilgiau traukia energiją', descEn: 'Pulls energy for longer' },
+  { id: 'drone', icon: 'drone', costs: [1500, 3200, 5600, 9000, 14000], lt: 'Inspekcinis dronas', en: 'Inspection drone', descLt: 'Ilgesnis skrydis virš kliūčių', descEn: 'Longer flight over obstacles' },
+  { id: 'excavator', icon: 'excavator', costs: [1500, 3200, 5600, 9000, 14000], lt: 'Ekskavatorius', en: 'Excavator', descLt: 'Ilgiau griauna kliūtis', descEn: 'Smashes obstacles for longer' },
+  { id: 'double', icon: 'double', costs: [2000, 4200, 7500, 11500, 17000], lt: 'Sutartis x2', en: 'Contract x2', descLt: 'Ilgiau galioja dvigubi taškai', descEn: 'Double points last longer' },
+  { id: 'energyValue', icon: 'bolt', costs: [1800, 4000, 7000, 11000, 16000], lt: 'Efektyvumas', en: 'Efficiency', descLt: '+10 % ⚡ už kiekvieną žaibą', descEn: '+10 % ⚡ per bolt' },
+  { id: 'startMult', icon: 'mult', costs: [9000, 22000], lt: 'Patirtis', en: 'Experience', descLt: 'Bėgimą pradedi su didesniu daugikliu', descEn: 'Start each run with a higher multiplier' },
+  { id: 'startHelmet', icon: 'helmet', costs: [15000], lt: 'Auksinis šalmas', en: 'Golden helmet', descLt: 'Kiekvieną bėgimą pradedi su apsauga', descEn: 'Start every run protected' },
+  { id: 'secondChance', icon: 'heart', costs: [25000], lt: 'Antras šansas', en: 'Second chance', descLt: 'Kartą per bėgimą tęsi po smūgio', descEn: 'Continue once per run after a crash' },
 ];
 
 export const UPGRADE_BY_ID = Object.fromEntries(UPGRADES.map((u) => [u.id, u]));
@@ -294,9 +294,9 @@ export function boltValue(upgrades = {}) {
 // ---------------------------------------------------------------------------
 export const COSMETICS = [
   { id: 'suit', cost: 0, lt: 'Firminis kostiumas', en: 'Signature suit' },
-  { id: 'vest', cost: 400, lt: 'Statybų aikštelė', en: 'Site visit' },
-  { id: 'overalls', cost: 900, lt: 'MT kombinezonas', en: 'MT overalls' },
-  { id: 'tux', cost: 1600, lt: 'Gala vakaras', en: 'Gala night' },
+  { id: 'vest', cost: 4000, lt: 'Statybų aikštelė', en: 'Site visit' },
+  { id: 'overalls', cost: 9000, lt: 'MT kombinezonas', en: 'MT overalls' },
+  { id: 'tux', cost: 16000, lt: 'Gala vakaras', en: 'Gala night' },
   { id: 'birthday', cost: 0, gift: true, lt: 'Gimtadienio kostiumas', en: 'Birthday suit' },
   { id: 'gold', cost: 0, achievement: 'grandtour', lt: 'Auksinis kostiumas', en: 'Golden suit' },
 ];
