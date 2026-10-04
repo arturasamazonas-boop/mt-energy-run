@@ -230,6 +230,8 @@ export class Game {
       leg: legAt(s.x),
       parts: s.partsByCity[ca.index] || 0,
       power: s.power,
+      charge: s.charge,
+      shieldT: s.shieldT,
       helmet: s.helmet,
       double: s.power.double > 0,
     };
@@ -363,6 +365,31 @@ export class Game {
           if (ev.success) {
             fx.confetti(sim.x + 2, 3, 30, 5);
             fx.text(sim.x + 1, hy + 1.5, `+${ev.points}`, '#7CF0B0', 48);
+          }
+          break;
+        case 'abilityReady':
+          if (real) {
+            audio.sfx('power');
+            buzz(25);
+            this.ui.event('abilityReady', ev);
+          }
+          break;
+        case 'shield':
+          fx.ring(sim.x, hy, '#9FE3FF', 2.2);
+          fx.sparks(sim.x, hy, 18, '#9FE3FF', 6);
+          if (real) {
+            audio.sfx('helmet');
+            buzz([30, 30, 30]);
+          }
+          break;
+        case 'wave':
+          fx.ring(sim.x, hy, '#FFE14A', 4);
+          fx.ring(sim.x, hy, '#FFFFFF', 2.6);
+          R.flash = 0.15;
+          R.flashCol = '255,225,74';
+          if (real) {
+            audio.sfx('token');
+            buzz(40);
           }
           break;
         case 'revive':

@@ -8,14 +8,17 @@ Naršyklėje veikiantis bėgimo žaidimas (runner) MT GROUP komandai. Pagrindini
 
 | Veiksmas | Telefone | Kompiuteryje |
 |---|---|---|
-| Šuolis (laikyk – aukščiau) | bakstelėk **dešinę** ekrano pusę | Tarpas / ↑ / W |
+| Šuolis | bakstelėk **dešinę** ekrano pusę | Tarpas / ↑ / W |
 | Dvigubas šuolis | bakstelėk dar kartą ore | dar kartą Tarpas |
 | Nusileisti / čiuožti (ore – greitas kritimas) | laikyk **kairę** ekrano pusę | ↓ / S |
+| 🛡️ Skydas (3 s kliūtys nekenkia) | mygtukas virš „Čiuožti“ | Q |
+| 🧲 Energijos banga (pritraukia visus žaibus priekyje) | mygtukas virš „Šuolis“ | E |
 | Pauzė | ⏸ mygtukas | P / Esc |
 
 - **Žaibai ⚡** suteikia taškų ir energijos. Už energiją Dirbtuvėse perkama įranga ir apranga.
 - **3 projekto detalės** kiekviename mieste. Surinkęs visas, miesto gale paleidi projektą ★★★ ir gauni daugiklį +1.
 - **Darbų užduotis** (oranžinis rombas) paleidžia 5 sekundžių mini žaidimą: laidai, įtampos matuoklis, vožtuvai arba varžtai. Sėkmė duoda daugiklį +1.
+- **Gebėjimai:** skydą ir energijos bangą įkrauna bėgimo metu surinkti žaibai (skydui reikia 160, bangai 120; panaudojus krūvis prasideda iš naujo). Bangos pritraukti žaibai ir žaibai, surinkti veikiant skydui, gebėjimų neįkrauna.
 - **Galios priedai:** auksinis šalmas (apsaugo nuo vieno smūgio), transformatorius-magnetas, dronas (skrydis), ekskavatorius (griauna kliūtis), sutartis x2.
 - **Dienos iššūkis:** visi tą dieną gauna tą pačią trasą.
 - Rekordų lentelės: visų laikų, šios savaitės ir dienos iššūkio.

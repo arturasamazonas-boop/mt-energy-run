@@ -2,12 +2,10 @@
 // Used by the browser game, by the test bot and (for counting) by the server.
 // Units: meters and seconds. `x` is the distance run (player feet centre).
 
-import { PHYSICS, SCORE, speedAt, cityAt, cityStart, powerupDuration, boltValue, CITIES } from './config.js';
+import { PHYSICS, SCORE, ABILITIES, speedAt, cityAt, cityStart, powerupDuration, boltValue, CITIES } from './config.js';
 import { generateCity } from './worldgen.js';
 
 const P = PHYSICS;
-const MIN_HOLD = 0.1; // a jump tap always lasts at least this long before it can be cut
-const CUT = 0.6;
 const DRONE_Y = 4.6;
 const MAGNET_R = 7.5;
 
@@ -47,11 +45,14 @@ export class Sim {
 
     this.helmet = !!upgrades.startHelmet;
     this.power = { magnet: 0, drone: 0, excavator: 0, double: 0 };
+    this.charge = { shield: 0, wave: 0 }; // bolts towards each ability
+    this.shieldT = 0;
     this.droneY = 0;
 
     this.stats = {
       bolts: 0, parts: 0, tokens: 0, tasks: 0, tasksFailed: 0, powerups: 0,
       smashed: 0, helmetsUsed: 0, gates: 0, stars: 0, perfectCities: 0, jumps: 0, slides: 0,
+      shields: 0, waves: 0,
     };
     this.partsByCity = {};
     this.gateStars = {};
@@ -171,6 +172,12 @@ export class Sim {
       }
     }
     if (this.invuln > 0) this.invuln = Math.max(0, this.invuln - dt);
+    if (this.shieldT > 0) {
+      this.shieldT = Math.max(0, this.shieldT - dt);
+      if (this.shieldT === 0) this.emit('shieldEnd');
+    }
+    if (input.shield) this.useAbility('shield');
+    if (input.wave) this.useAbility('wave');
 
     // ---- input -------------------------------------------------------------
     if (input.jump) this.buffer = P.jumpBuffer;
@@ -194,13 +201,7 @@ export class Sim {
         this.doJump(P.doubleJumpVelocity, 2);
       }
 
-      if (this.jumps >= 1 && !this.cut && this.vy > 0) {
-        this.jumpT += dt;
-        if (!this.jumpHeld && this.jumpT >= MIN_HOLD) {
-          this.vy *= CUT;
-          this.cut = true;
-        }
-      }
+      // every jump is a full jump: letting go early no longer cuts it short
 
       // slide / fast fall
       if (this.slideHeld) {
@@ -286,7 +287,8 @@ export class Sim {
           let dx = e.x - cx;
           let dy = e.y - cy;
           const magnet = this.power.magnet > 0 || this.flying;
-          if (e.k === 'bolt' && magnet && (e.pulled || (dx > -3 && dx < MAGNET_R && Math.abs(dy) < MAGNET_R))) {
+          // pulled bolts (magnet, drone or energy wave) keep flying to the hero
+          if (e.k === 'bolt' && (e.pulled || (magnet && dx > -3 && dx < MAGNET_R && Math.abs(dy) < MAGNET_R))) {
             e.pulled = true;
             const d = Math.hypot(dx, dy) || 1;
             const pull = Math.min(d, (v + 18) * dt);
@@ -382,6 +384,8 @@ export class Sim {
         this.stats.bolts++;
         const p = this.addScore(SCORE.bolt);
         this.emit('bolt', { x: e.x, y: e.y, points: p });
+        // bolts brought in by the wave itself, or while the shield is up, charge nothing
+        if (!e.waved && this.shieldT === 0) this.addCharge();
         break;
       }
       case 'part': {
@@ -450,8 +454,45 @@ export class Sim {
     this.emit('gate', { city: ci, stars, points: p });
   }
 
+  addCharge() {
+    for (const k of ['shield', 'wave']) {
+      const cost = ABILITIES[k].cost;
+      if (this.charge[k] >= cost) continue;
+      this.charge[k]++;
+      if (this.charge[k] === cost) this.emit('abilityReady', { kind: k });
+    }
+  }
+
+  /** Trigger an ability if it is fully charged. */
+  useAbility(kind) {
+    const a = ABILITIES[kind];
+    if (!a || this.charge[kind] < a.cost || this.dead) return false;
+    if (kind === 'shield' && this.shieldT > 0) return false;
+    this.charge[kind] = 0;
+    if (kind === 'shield') {
+      this.shieldT = a.duration;
+      this.stats.shields++;
+    } else {
+      let n = 0;
+      for (const e of this.entities) {
+        if (e.k !== 'bolt' || !e.alive || e.pulled) continue;
+        if (e.x < this.x - 2) continue;
+        if (e.x > this.x + a.range) continue;
+        e.pulled = true;
+        e.waved = true;
+        n++;
+      }
+      this.stats.waves++;
+      this.emit('wave', { count: n });
+      return true;
+    }
+    this.emit(kind);
+    return true;
+  }
+
   hit(e) {
     if (this.flying) return;
+    if (this.shieldT > 0) return; // obstacles pass through the energy shield
     if (this.power.excavator > 0) {
       e.alive = false;
       this.stats.smashed++;
@@ -506,6 +547,7 @@ export class Sim {
     }
     c.upgrades = this.upgrades;
     c.power = { ...this.power };
+    c.charge = { ...this.charge };
     c.stats = { ...this.stats };
     c.partsByCity = { ...this.partsByCity };
     c.gateStars = { ...this.gateStars };
