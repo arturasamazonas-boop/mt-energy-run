@@ -16,7 +16,7 @@ export class Hud {
     this.upgrades = {};
   }
 
-  mount(upgrades = {}) {
+  mount(upgrades = {}, { faint = false } = {}) {
     this.upgrades = upgrades;
     this.root.hidden = false;
     this.root.innerHTML = `
@@ -58,7 +58,29 @@ export class Hud {
       this.powerEls[k] = { el: d, ring: d.querySelector('circle.p') };
       this.el.powers.appendChild(d);
     }
+    this.controls = null;
+    if (isTouchDevice()) this.mountControls(faint);
     this.last = {};
+  }
+
+  /** Translucent touch-zone icons: left = slide, right = jump (they never take taps themselves). */
+  mountControls(faint) {
+    const c = document.createElement('div');
+    c.className = `touch-ctl${faint ? ' faint' : ''}`;
+    c.innerHTML = `<div class="split"></div>
+      <div class="ctl left" data-k="slide">${ICON.slideMan}<small>${t('ctlSlide')}</small></div>
+      <div class="ctl right" data-k="jump">${ICON.jumpMan}<small>${t('ctlJump')}</small></div>`;
+    this.root.appendChild(c);
+    this.controls = { slide: c.querySelector('[data-k="slide"]'), jump: c.querySelector('[data-k="jump"]') };
+  }
+
+  /** Brief highlight on the icon of the zone that was pressed. */
+  pulse(kind) {
+    const el = this.controls?.[kind];
+    if (!el) return;
+    el.classList.remove('on');
+    void el.offsetWidth;
+    el.classList.add('on');
   }
 
   unmount() {
