@@ -33,6 +33,7 @@ export class Renderer {
     this.flashCol = '255,255,255';
     this.lang = 'lt';
     this.quality = 1;
+    this.calm = true; // muted scenery during a run (calmBackdrop)
     this.camX = 0;
     this.camY = 0;
     this.resize();

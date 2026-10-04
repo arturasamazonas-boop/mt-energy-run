@@ -58,8 +58,6 @@ input.onPause = () => {
   }
 };
 renderer.lang = getLang();
-// calmer scenery during a run; on trial behind ?fonas until it is approved
-renderer.calm = params.has('fonas');
 
 window.addEventListener('resize', onResize);
 $('#rotate-back').addEventListener('click', () => {
