@@ -90,6 +90,8 @@ const STR = {
     multiplier: 'Daugiklis',
     // tutorial
     tutJumpTouch: 'Bakstelk DEŠINĘ ekrano pusę – šuolis',
+    ctlSlide: 'Čiuožti',
+    ctlJump: 'Šuolis',
     tutJumpKey: 'TARPAS arba ↑ – šuolis',
     tutSlideTouch: 'Laikyk KAIRĘ ekrano pusę – nusileisk',
     tutSlideKey: 'Laikyk ↓ – nusileisk',
@@ -271,6 +273,8 @@ const STR = {
     achievement: 'Achievement',
     multiplier: 'Multiplier',
     tutJumpTouch: 'Tap the RIGHT side to jump',
+    ctlSlide: 'Slide',
+    ctlJump: 'Jump',
     tutJumpKey: 'SPACE or ↑ to jump',
     tutSlideTouch: 'Hold the LEFT side to slide',
     tutSlideKey: 'Hold ↓ to slide',

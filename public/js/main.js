@@ -50,6 +50,7 @@ const game = new Game({
     over: onRunOver,
   },
 });
+input.onAnyAction = (kind) => hud.pulse(kind);
 input.onPause = () => {
   if (game.mode === 'run') game.pause();
   else if (game.mode === 'paused') {
@@ -797,7 +798,8 @@ async function startRun(mode) {
   state.busy = false;
   state.run = run;
   show('', { shadeMode: 'none' });
-  hud.mount(run.upgrades);
+  // the touch icons step back once a player knows the controls
+  hud.mount(run.upgrades, { faint: (state.profile.stats.runs || 0) >= 10 });
   const tutorial = !prefs.get('tutDone') && !(state.profile.stats.runs > 0) && !params.has('autoplay');
   game.play({
     seed: run.seed,
