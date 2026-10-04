@@ -128,12 +128,12 @@ export class Renderer {
     this.scenery.tint(ctx, sky, this.groundY, 0.6);
     emit(() => this.scenery.drawNear(ctx, this.camX, true, sky.night));
     // during a run the scenery steps back so obstacles and pickups read at a glance
-    if (!view.attract) this.calmBackdrop(ctx, sky);
+    if (!view.attract && this.calm) this.calmBackdrop(ctx, sky);
 
     // ---- ground -------------------------------------------------------------
     const pits = [];
     for (const e of sim.entities) if (e.k === 'pit' && e.alive) pits.push(e);
-    this.scenery.drawGround(ctx, this.camX, ppm, this.sy(0), theme, pits, t, !view.attract);
+    this.scenery.drawGround(ctx, this.camX, ppm, this.sy(0), theme, pits, t, !view.attract && this.calm);
 
     if (view.markers) this.drawMarkers(ctx, view.markers, viewM);
 
