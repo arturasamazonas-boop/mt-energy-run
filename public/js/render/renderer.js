@@ -17,6 +17,8 @@ const CALM = {
   nightHaze: [70, 80, 104, 38],
 };
 
+const MAX_CANVAS_PIXELS = 3.0e6;
+
 export class Renderer {
   constructor(canvas) {
     this.canvas = canvas;
@@ -43,7 +45,9 @@ export class Renderer {
     const cssW = this.canvas.clientWidth || window.innerWidth;
     const cssH = this.canvas.clientHeight || window.innerHeight;
     const maxDpr = this.quality >= 1 ? 2 : this.quality > 0.5 ? 1.25 : 1;
-    this.dpr = Math.min(window.devicePixelRatio || 1, maxDpr);
+    // big desktop windows: keep the canvas around 3 megapixels so drawing stays fast
+    const fit = Math.sqrt(MAX_CANVAS_PIXELS / Math.max(1, cssW * cssH));
+    this.dpr = Math.max(0.8, Math.min(window.devicePixelRatio || 1, maxDpr, fit));
     const W = Math.round(cssW * this.dpr);
     const H = Math.round(cssH * this.dpr);
     if (W === this.W && H === this.H) return;
@@ -337,7 +341,7 @@ export class Renderer {
     const h = view.hero || {};
     const outfit = view.outfit || 'suit';
     const x = view.heroX ?? sim.x;
-    let y = sim.y;
+    let y = view.heroY ?? sim.y;
     let pose;
     let rot = 0;
     let expression = h.expression || 'smile';
