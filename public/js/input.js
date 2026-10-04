@@ -1,6 +1,9 @@
 // Keyboard, touch and mouse input for the runner.
 // Touch: right side = jump (hold for higher), left side = slide (hold).
 
+const MIN_JUMP_GAP_MS = 150;
+const TOUCH_MOUSE_GUARD_MS = 1000;
+
 export class Input {
   constructor(target) {
     this.target = target;
@@ -13,6 +16,8 @@ export class Input {
     this.onPause = null;
     this.onAnyAction = null;
     this.lastKind = 'keys';
+    this.lastTouch = -Infinity;
+    this.lastJump = -Infinity;
     this.bind();
   }
 
@@ -53,7 +58,14 @@ export class Input {
 
   press(kind) {
     if (!this.enabled) return;
-    if (kind === 'jump') this.jumpQueued = true;
+    if (kind === 'jump') {
+      // two jump presses this close together are one tap reported twice, not a
+      // double jump (a deliberate second tap comes much later in the air)
+      const now = performance.now();
+      if (now - this.lastJump < MIN_JUMP_GAP_MS) return;
+      this.lastJump = now;
+      this.jumpQueued = true;
+    }
     this.onAnyAction?.(kind);
   }
 
@@ -96,6 +108,7 @@ export class Input {
         if (!this.enabled) return;
         e.preventDefault();
         this.lastKind = 'touch';
+        this.lastTouch = performance.now();
         for (const touch of e.changedTouches) {
           const z = this.zoneFor(touch.clientX);
           this.touches.set(touch.identifier, z);
@@ -112,6 +125,8 @@ export class Input {
 
     t.addEventListener('mousedown', (e) => {
       if (!this.enabled || e.button !== 0) return;
+      // some phones still send a "mouse" click after a tap: it is the same tap
+      if (performance.now() - this.lastTouch < TOUCH_MOUSE_GUARD_MS) return;
       this.lastKind = 'mouse';
       this.mouse = this.zoneFor(e.clientX);
       this.press(this.mouse);
