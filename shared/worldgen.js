@@ -19,6 +19,10 @@ export const DIM = {
   beam: { w: 1.7, y0: 1.08 },
   rack: { y0: 1.08 },
   birds: { w: 1.7, y0: 1.22, y1: 2.05 },
+  // surprises: a load hanging from a crane that drops when you come close, and a
+  // drone that cruises high (looks slidable) and dives low just before you reach it
+  dropLoad: { w: 1.5, h: 1.25 },
+  quad: { w: 1.1, h: 0.55 },
 };
 
 const LANDABLE = new Set(['crate', 'container', 'stack', 'barrier', 'drum']);
@@ -143,6 +147,22 @@ const PATTERNS = [
   { id: 'drum2', tier: 1, w: 2, f: (c) => { c.ob('drum', 0.45); c.jumpArc(0.45 - LEAD, 4); c.ob('drum', 1.32); c.jumpArc(1.32 - LEAD, 4); return 1.8; } },
   // tier 2
   { id: 'stack', tier: 2, w: 2.4, f: (c) => { c.ob('stack', 0.7); c.jumpArc(0.7 - 0.42, 7, 0, true); return 1.35; } },
+  {
+    id: 'dropLoad', tier: 1, w: 2.8, f: (c) => {
+      // hangs 5.5 m up; falls when the hero is 1.15 s away, lands well before he arrives
+      c.ob('dropLoad', 0.9, { y0: 5.5, top0: 5.5, h: DIM.dropLoad.h, drop: 1.15 * c.v, landable: true });
+      c.jumpArc(0.9 - LEAD, 4);
+      return 1.45;
+    },
+  },
+  {
+    id: 'quad', tier: 2, w: 2.8, f: (c) => {
+      // cruises at head height, dives to knee height 0.75 s before the hero: jump it
+      c.ob('quad', 1.1, { y0: 1.35, h: DIM.quad.h, move: -2.4, dive: 0.75 * c.v, diveY0: 0.25 });
+      c.line(0.35, 0.75, 0.55, 3);
+      return 1.6;
+    },
+  },
   { id: 'birds', tier: 2, w: 2, f: (c) => { c.ob('birds', 1.0, { move: -2.6 }); c.line(0.55, 1.05, 0.45, 3); return 1.45; } },
   {
     id: 'scaffold', tier: 2, w: 2, f: (c) => {
@@ -265,11 +285,6 @@ const POWER_WEIGHTS = [
 ];
 
 const ENTRY_CLEAR = 30; // meters of calm road after the city sign
-// A site task stands on flat, empty road (no obstacles, no bolts) so it is never
-// collected mid-jump: seconds of clear road before and after it at the nominal speed.
-const TASK_CLEAR_BEFORE = 1.0;
-const TASK_CLEAR_AFTER = 0.8;
-const TASK_Y = 0.85;
 const GATE_ZONE = 75; // meters reserved for the project gate
 
 /** Generate all entities for one city. Pure function of (seed, index). */
@@ -281,29 +296,10 @@ export function generateCity(seed, index) {
   const end = start + len;
   const list = [];
 
-  const lap = Math.floor(index / CITIES.length);
-  let taskFractions = index < 3 && lap === 0 ? [0.42] : [0.38, 0.72];
-  // one site task in every checkpoint town
-  if (city.waypoints) taskFractions = city.waypoints.map((w) => (w.from + Math.min(w.to, len - GATE_ZONE)) / 2 / len);
-  const taskXs = taskFractions.map((f) => start + len * f).sort((a, b) => a - b);
-  // where the clear road before each task begins
-  const clearFrom = taskXs.map((tx) => tx - TASK_CLEAR_BEFORE * speedAt(tx));
-  let ti = 0;
-
   let x = start + (index === 0 ? 45 : ENTRY_CLEAR);
   let prev = '';
   let guard = 0;
   while (x < end - GATE_ZONE - 15 && guard++ < 500) {
-    // reached the next site task: leave the road clear around it
-    if (ti < taskXs.length && x >= clearFrom[ti]) {
-      const v = speedAt(x);
-      const tx = Math.max(taskXs[ti], x + TASK_CLEAR_BEFORE * v);
-      ti++;
-      if (tx + TASK_CLEAR_AFTER * v > end - GATE_ZONE) continue;
-      list.push({ k: 'task', x: tx, y: TASK_Y });
-      x = tx + TASK_CLEAR_AFTER * v;
-      continue;
-    }
     const tier = tierAt(x);
     const options = PATTERNS.filter((p) => p.tier <= tier && p.id !== prev).map((p) => {
       let w = p.w;
@@ -318,11 +314,6 @@ export function generateCity(seed, index) {
     const lenT = pat.f(ctx);
     const patEnd = x + lenT * v;
     if (patEnd > end - GATE_ZONE) break;
-    // a pattern may not run into the clear road before the next site task
-    if (ti < taskXs.length && patEnd > clearFrom[ti]) {
-      x = Math.max(x, clearFrom[ti]);
-      continue;
-    }
     for (const e of sub) list.push(e);
     prev = pat.id;
     x = patEnd + restGap(tier, rng) * v;

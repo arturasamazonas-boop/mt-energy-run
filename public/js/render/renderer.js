@@ -8,7 +8,7 @@ import { drawCharacter, runPose, jumpPose, slidePose, hangPose, idlePose, cheerP
 import { FX } from './fx.js';
 import { SpriteCache, clamp, lerp } from './util.js';
 
-const OBSTACLES = new Set(['cone', 'barrier', 'drum', 'rollDrum', 'cable', 'crate', 'stack', 'container', 'scaffold', 'beam', 'rack', 'birds']);
+const OBSTACLES = new Set(['cone', 'barrier', 'drum', 'rollDrum', 'cable', 'crate', 'stack', 'container', 'scaffold', 'beam', 'rack', 'birds', 'dropLoad', 'quad']);
 
 // How far the scenery is muted during a run (see calmBackdrop). A plain
 // translucent haze: blend modes such as 'saturation' are very slow on phones.

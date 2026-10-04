@@ -10,31 +10,18 @@ assert.equal(a, b, 'same seed → same course');
 assert.notEqual(a, JSON.stringify(generateCity('seed-2', 3)), 'different seed → different course');
 assert.equal(createRng('x').next(), createRng('x').next());
 
-// every city has a gate, three parts and at least one task + power-up
+// every city has a gate, three parts and at least one power-up
 for (let i = 0; i < CITIES.length + 2; i++) {
   const c = generateCity('seed-1', i);
   const k = (n) => c.entities.filter((e) => e.k === n).length;
   assert.equal(k('gate'), 1, `city ${i} gate`);
   assert.equal(k('part'), 3, `city ${i} parts`);
-  assert.ok(k('task') >= 1, `city ${i} task`);
   assert.ok(k('power') >= 1, `city ${i} power`);
   assert.ok(c.entities.every((e) => e.x >= c.start && e.x <= c.end), `city ${i} entities inside city`);
 }
 
-// site tasks stand on flat, empty road: nothing to jump over or collect around them
-for (const seed of ['seed-1', 'seed-2', 'daily-2026-10-24']) {
-  for (let i = 0; i < CITIES.length * 2; i++) {
-    const c = generateCity(seed, i);
-    const tasks = c.entities.filter((e) => e.k === 'task');
-    assert.equal(tasks.length, CITIES[i % CITIES.length].waypoints?.length ?? (i < 3 ? 1 : 2), `${seed} city ${i} task count`);
-    for (const t of tasks) {
-      assert.ok(t.y < 1.2, `${seed} city ${i} task on the ground`);
-      const v = speedAt(t.x);
-      const near = c.entities.filter((e) => e !== t && e.k !== 'checkpoint' && e.x + (e.w || 0) > t.x - 0.9 * v && e.x < t.x + 0.7 * v);
-      assert.deepEqual(near.map((e) => e.k), [], `${seed} city ${i} task at ${t.x.toFixed(1)} has clear road`);
-    }
-  }
-}
+// no site tasks: the run never stops for a mini-game
+for (let i = 0; i < CITIES.length * 2; i++) assert.equal(generateCity('seed-1', i).entities.filter((e) => e.k === 'task').length, 0, `city ${i} has no task`);
 
 // geography helpers
 assert.equal(cityAt(0).index, 0);

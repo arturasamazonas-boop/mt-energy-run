@@ -68,6 +68,10 @@ export function drawObstacle(ctx, e, t, env) {
       return rack(ctx, e.w, e.y0);
     case 'birds':
       return birds(ctx, t, env.theme === 'port');
+    case 'dropLoad':
+      return dropLoad(ctx, e, env);
+    case 'quad':
+      return quad(ctx, e, t);
     default:
   }
 }
@@ -248,6 +252,79 @@ function cable(ctx, t) {
   ctx.fill();
   outline(ctx, 0.02);
   textUp(ctx, '⚡', 0.07, 0.47, '700 16px sans-serif', '#1E1E1E');
+}
+
+/** Crate on a crane rope; a shadow on the road warns where it will land. */
+function dropLoad(ctx, e, env) {
+  const h = e.y1 - e.y0;
+  if (e.y0 > 0.05) {
+    const k = Math.max(0.15, 1 - e.y0 / 6);
+    ctx.fillStyle = `rgba(0,0,0,${0.28 * k})`;
+    ctx.beginPath();
+    ctx.ellipse(e.w / 2, 0.03, (e.w / 2) * (0.6 + 0.4 * k), 0.08, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  // crane rope and hook stay up there; the slings go with the crate until it lets go
+  const hookY = (e.top0 ?? e.y0) + h + 0.6;
+  ctx.strokeStyle = '#2E3238';
+  ctx.lineWidth = 0.035;
+  ctx.beginPath();
+  ctx.moveTo(e.w / 2, hookY);
+  ctx.lineTo(e.w / 2, (env.viewTop || 12) + 2);
+  if (!e.falling) {
+    ctx.moveTo(0.15, e.y0 + h);
+    ctx.lineTo(e.w / 2, hookY);
+    ctx.lineTo(e.w - 0.15, e.y0 + h);
+  }
+  ctx.stroke();
+  ctx.fillStyle = '#E0B800';
+  ctx.beginPath();
+  ctx.arc(e.w / 2, hookY + 0.08, 0.1, 0, Math.PI * 2);
+  ctx.fill();
+  outline(ctx, 0.02);
+  ctx.save();
+  ctx.translate(0, e.y0);
+  crate(ctx, e.w, h, env.lang);
+  ctx.restore();
+}
+
+/** Small inspection drone; its light blinks fast once it dives. */
+function quad(ctx, e, t) {
+  ctx.save();
+  ctx.translate(0, e.y0);
+  const w = e.w;
+  // arms + rotors
+  ctx.strokeStyle = '#2A2E35';
+  ctx.lineWidth = 0.06;
+  ctx.beginPath();
+  ctx.moveTo(0.12, 0.42);
+  ctx.lineTo(w - 0.12, 0.42);
+  ctx.stroke();
+  for (const x of [0.12, w - 0.12]) {
+    ctx.fillStyle = 'rgba(200,210,220,0.55)';
+    ctx.beginPath();
+    ctx.ellipse(x, 0.48, 0.24 * Math.abs(Math.cos(t * 40 + x)) + 0.04, 0.03, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  // body
+  ctx.fillStyle = '#3A4149';
+  roundRect(ctx, w / 2 - 0.26, 0.12, 0.52, 0.3, 0.08);
+  ctx.fill();
+  outline(ctx, 0.02);
+  ctx.fillStyle = '#FFD800';
+  ctx.fillRect(w / 2 - 0.26, 0.24, 0.52, 0.05);
+  // camera
+  ctx.fillStyle = '#1A1E29';
+  ctx.beginPath();
+  ctx.arc(w / 2 - 0.12, 0.08, 0.07, 0, Math.PI * 2);
+  ctx.fill();
+  // warning light
+  const on = e.diving ? Math.floor(t * 10) % 2 === 0 : Math.floor(t * 2) % 2 === 0;
+  ctx.fillStyle = on ? '#FF3B30' : '#6B1D1A';
+  ctx.beginPath();
+  ctx.arc(w / 2 + 0.14, 0.36, 0.05, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
 }
 
 function crate(ctx, w, h, lang) {

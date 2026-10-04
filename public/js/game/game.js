@@ -130,6 +130,7 @@ export class Game {
       this.slowT = Math.max(0, this.slowT - dt);
       scale = 0.35 + 0.65 * (1 - Math.min(1, this.slowT / 0.5));
     }
+    if (sim.slowT > 0 && this.mode === 'run') scale *= 0.5; // slow-motion ability
     if (this.mode === 'dying') scale = 0.3;
     if (this.tutorial?.active) scale = 0.18;
 
@@ -232,6 +233,7 @@ export class Game {
       power: s.power,
       charge: s.charge,
       shieldT: s.shieldT,
+      slowT: s.slowT,
       helmet: s.helmet,
       double: s.power.double > 0,
     };
@@ -367,6 +369,11 @@ export class Game {
             fx.text(sim.x + 1, hy + 1.5, `+${ev.points}`, '#7CF0B0', 48);
           }
           break;
+        case 'loadLanded':
+          R.shake = Math.max(R.shake || 0, 0.25);
+          fx.dust(ev.x, 0, 10, -3);
+          if (real) audio.sfx('land', { k: 0.9 });
+          break;
         case 'abilityReady':
           if (real) {
             audio.sfx('power');
@@ -382,13 +389,12 @@ export class Game {
             buzz([30, 30, 30]);
           }
           break;
-        case 'wave':
-          fx.ring(sim.x, hy, '#FFE14A', 4);
-          fx.ring(sim.x, hy, '#FFFFFF', 2.6);
-          R.flash = 0.15;
-          R.flashCol = '255,225,74';
+        case 'slow':
+          fx.ring(sim.x, hy, '#FFFFFF', 3.2);
+          R.flash = 0.2;
+          R.flashCol = '200,230,255';
           if (real) {
-            audio.sfx('token');
+            audio.sfx('power');
             buzz(40);
           }
           break;
@@ -518,7 +524,7 @@ export class Game {
       if (!e.alive || e.x < sim.x) continue;
       if (e.x > sim.x + 9) break;
       let kind = null;
-      if (['cone', 'barrier', 'drum', 'cable', 'crate'].includes(e.k)) kind = 'jump';
+      if (['cone', 'barrier', 'drum', 'cable', 'crate', 'dropLoad', 'quad'].includes(e.k)) kind = 'jump';
       else if (e.k === 'pit') kind = 'pit';
       else if (['beam', 'rack', 'birds'].includes(e.k)) kind = 'slide';
       else if (e.k === 'stack') kind = 'double';

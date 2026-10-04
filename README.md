@@ -12,19 +12,20 @@ Naršyklėje veikiantis bėgimo žaidimas (runner) MT GROUP komandai. Pagrindini
 | Dvigubas šuolis | bakstelėk dar kartą ore | dar kartą Tarpas |
 | Nusileisti / čiuožti (ore – greitas kritimas) | laikyk **kairę** ekrano pusę | ↓ / S |
 | 🛡️ Skydas (3 s kliūtys nekenkia) | mygtukas virš „Čiuožti“ | Q |
-| 🧲 Energijos banga (pritraukia visus žaibus priekyje) | mygtukas virš „Šuolis“ | E |
+| ⏱️ Sulėtinimas (3 s viskas juda perpus lėčiau) | mygtukas virš „Šuolis“ | E |
 | Pauzė | ⏸ mygtukas | P / Esc |
 
 - **Žaibai ⚡** suteikia taškų ir energijos. Už energiją Dirbtuvėse perkama įranga ir apranga.
 - **3 projekto detalės** kiekviename mieste. Surinkęs visas, miesto gale paleidi projektą ★★★ ir gauni daugiklį +1.
-- **Darbų užduotis** (oranžinis rombas) paleidžia 5 sekundžių mini žaidimą: laidai, įtampos matuoklis, vožtuvai arba varžtai. Sėkmė duoda daugiklį +1.
-- **Gebėjimai:** skydą ir energijos bangą įkrauna bėgimo metu surinkti žaibai (skydui reikia 160, bangai 120; panaudojus krūvis prasideda iš naujo). Bangos pritraukti žaibai ir žaibai, surinkti veikiant skydui, gebėjimų neįkrauna.
+- **Bėgimas be sustojimų:** darbų užduočių (mini žaidimų) nebėra. Daugiklis auga tik už ★★★ projektus.
+- **Netikėtumai:** nuo krano nukrentantis krovinys (žemėje matosi jo šešėlis) ir dronas, kuris skrenda aukštai, bet prieš pat herojų nusileidžia žemai – jį reikia peršokti. Vėlesnė bėgimo dalis greitesnė.
+- **Gebėjimai:** skydą ir sulėtinimą įkrauna bėgimo metu surinkti žaibai (skydui reikia 160, sulėtinimui 120; panaudojus krūvis prasideda iš naujo). Kol veikia gebėjimas, krūvis nekaupiamas.
 - **Galios priedai:** auksinis šalmas (apsaugo nuo vieno smūgio), transformatorius-magnetas, dronas (skrydis), ekskavatorius (griauna kliūtis), sutartis x2.
 - **Dienos iššūkis:** visi tą dieną gauna tą pačią trasą.
 - Rekordų lentelės: visų laikų, šios savaitės ir dienos iššūkio.
 - Trasoje stovi vėliavėlės: geltona – tavo atstumo rekordas, mėlyna – artimiausias kolega, kurį dar gali aplenkti.
 - Pabaigos ekrane rodoma, į ką atsitrenkei, patarimas ir kiti tikslai: kita stotelė, kiek taškų trūksta iki aukštesnės vietos ir iki kito pirkinio Dirbtuvėse.
-- Po pauzės (ar grįžus į naršyklę) bėgimas tęsiasi po atgalinio skaičiavimo 3-2-1. Telefonuose, kurie palaiko vibraciją, ji jaučiama surinkus detalę, žetoną, atlikus užduotį ir pan.
+- Po pauzės (ar grįžus į naršyklę) bėgimas tęsiasi po atgalinio skaičiavimo 3-2-1. Telefonuose, kurie palaiko vibraciją, ji jaučiama surinkus detalę, žetoną, įjungus gebėjimą ir pan.
 
 Maršrutas: Vilnius → Klaipėda → Ryga → Talinas → Helsinkis → Stokholmas → Kopenhaga → Hamburgas → Amsterdamas → Briuselis → Londonas → Paryžius → Madridas → Roma → Viena → Praha → Berlynas → Varšuva → vėl Vilnius (2-as ratas sunkesnis). MT GROUP projektų vietos (Vilnius, Klaipėdos SGD terminalas, Paldiskis, Kalundborgas, Brunsbüttel) pažymėtos atskirai.
 
@@ -102,6 +103,6 @@ public/js/ui/         HUD, mini žaidimai, ikonos
 public/js/main.js     ekranai, paskyra, parduotuvė, lentelės
 ```
 
-Serveris trasą atkuria iš to paties `seed` ir tikrina, ar pateikti skaičiai (žaibai, detalės, užduotys, taškai, laikas) yra įmanomi.
+Serveris trasą atkuria iš to paties `seed` ir tikrina, ar pateikti skaičiai (žaibai, detalės, taškai, laikas) yra įmanomi.
 
 Grafika piešiama kodu (vektoriai Canvas'e), todėl išorinių paveikslėlių, išskyrus MT GROUP logotipą, nėra. Muzika ir garsai sintezuojami Web Audio API, licencijų nereikia. Šriftai Barlow ir Roboto Slab naudojami pagal SIL OFL / Apache 2.0 licencijas.
