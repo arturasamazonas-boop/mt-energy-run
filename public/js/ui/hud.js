@@ -76,16 +76,16 @@ export class Hud {
     this.controls = { slide: c.querySelector('[data-k="slide"]'), jump: c.querySelector('[data-k="jump"]') };
   }
 
-  /** Ability buttons with a charge ring: above the slide (shield) and jump (slow-mo) icons. */
+  /** Ability buttons with a charge ring: above the slide (shield) and jump (jetpack) icons. */
   mountAbilities(touch) {
     const c = document.createElement('div');
     c.className = `abilities${touch ? ' touch' : ''}`;
     const ring = '<svg class="ring" viewBox="0 0 64 64"><circle cx="32" cy="32" r="29" fill="none" stroke="rgba(255,255,255,.18)" stroke-width="5"/><circle class="p" cx="32" cy="32" r="29" fill="none" stroke="#FFD800" stroke-width="5" stroke-linecap="round" stroke-dasharray="182.2" stroke-dashoffset="182.2" transform="rotate(-90 32 32)"/></svg>';
     const btn = (k, icon, label, key) => `<div class="ab ${k}" data-k="${k}">${ring}${icon}<small>${label}</small>${touch ? '' : `<kbd>${key}</kbd>`}</div>`;
-    c.innerHTML = btn('shield', ICON.abShield, t('abShield'), 'Q') + btn('slow', ICON.abSlow, t('abSlow'), 'E');
+    c.innerHTML = btn('shield', ICON.abShield, t('abShield'), 'Q') + btn('jet', ICON.abJet, t('abJet'), 'E');
     this.root.appendChild(c);
     this.abilities = {};
-    for (const k of ['shield', 'slow']) {
+    for (const k of ['shield', 'jet']) {
       const el = c.querySelector(`[data-k="${k}"]`);
       this.abilities[k] = { el, ring: el.querySelector('circle.p'), ready: false };
     }
@@ -159,7 +159,7 @@ export class Hud {
       if (on) p.ring.setAttribute('stroke-dashoffset', String(125.7 * (1 - Math.min(1, frac))));
     }
     if (this.abilities && s.charge) {
-      for (const k of ['shield', 'slow']) {
+      for (const k of ['shield', 'jet']) {
         const a = this.abilities[k];
         const frac = Math.min(1, s.charge[k] / ABILITIES[k].cost);
         const key = Math.round(frac * 100);
@@ -172,7 +172,7 @@ export class Hud {
           a.ready = ready;
           a.el.classList.toggle('ready', ready);
         }
-        const active = k === 'shield' ? s.shieldT > 0 : s.slowT > 0;
+        const active = k === 'shield' ? s.shieldT > 0 : s.jetT > 0;
         if (a.active !== active) {
           a.active = active;
           a.el.classList.toggle('active', active);

@@ -19,6 +19,33 @@ const CALM = {
 
 const MAX_CANVAS_PIXELS = 3.0e6;
 
+/** Twin-tank jetpack behind the hero with flickering flames (hero-local meters, y up). */
+function drawJetpack(ctx, t) {
+  for (const dx of [-0.42, -0.28]) {
+    const f = 0.35 + 0.15 * Math.sin(t * 50 + dx * 20);
+    const g = ctx.createLinearGradient(0, 0.75, 0, 0.75 - f);
+    g.addColorStop(0, 'rgba(255,240,150,0.95)');
+    g.addColorStop(0.5, 'rgba(255,150,0,0.8)');
+    g.addColorStop(1, 'rgba(255,80,0,0)');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.moveTo(dx - 0.05, 0.78);
+    ctx.lineTo(dx + 0.05, 0.78);
+    ctx.lineTo(dx, 0.75 - f);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = '#8A939C';
+    ctx.strokeStyle = '#1E1E1E';
+    ctx.lineWidth = 0.025;
+    ctx.beginPath();
+    ctx.roundRect ? ctx.roundRect(dx - 0.065, 0.78, 0.13, 0.5, 0.05) : ctx.rect(dx - 0.065, 0.78, 0.13, 0.5);
+    ctx.fill();
+    ctx.stroke();
+  }
+  ctx.fillStyle = '#FFD800';
+  ctx.fillRect(-0.48, 1.12, 0.26, 0.05);
+}
+
 export class Renderer {
   constructor(canvas) {
     this.canvas = canvas;
@@ -385,6 +412,8 @@ export class Renderer {
       pose = cheerPose(t);
     } else if (sim.flying) {
       pose = hangPose(t);
+    } else if (sim.jetT > 0) {
+      pose = jumpPose(1, t);
     } else if (sim.sliding) {
       pose = slidePose(t);
     } else if (!sim.onGround) {
@@ -417,6 +446,7 @@ export class Renderer {
       drawExcavator(ctx, t, outfit, blink);
     } else {
       if (sim.flying) drawDrone(ctx, t, 2.2);
+      else if (sim.jetT > 0) drawJetpack(ctx, t);
       drawCharacter(ctx, pose, { outfit, t, blink, expression, shield: sim.helmet });
     }
     ctx.globalAlpha = 1;

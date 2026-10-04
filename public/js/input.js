@@ -9,8 +9,8 @@ export class Input {
     this.target = target;
     this.enabled = false;
     this.jumpQueued = false;
-    this.abilityQueued = { shield: false, slow: false };
-    this.hitTest = null; // (clientX, clientY) -> 'shield' | 'slow' | null (ability buttons)
+    this.abilityQueued = { shield: false, jet: false };
+    this.hitTest = null; // (clientX, clientY) -> 'shield' | 'jet' | null (ability buttons)
     this.jumpKeys = new Set();
     this.slideKeys = new Set();
     this.touches = new Map(); // id -> 'jump' | 'slide'
@@ -41,14 +41,14 @@ export class Input {
   consume() {
     const jump = this.jumpQueued;
     this.jumpQueued = false;
-    const { shield, slow } = this.abilityQueued;
-    this.abilityQueued = { shield: false, slow: false };
-    return { jump, jumpHeld: this.jumpHeld || jump, slide: this.slideHeld, shield, slow };
+    const { shield, jet } = this.abilityQueued;
+    this.abilityQueued = { shield: false, jet: false };
+    return { jump, jumpHeld: this.jumpHeld || jump, slide: this.slideHeld, shield, jet };
   }
 
   reset() {
     this.jumpQueued = false;
-    this.abilityQueued = { shield: false, slow: false };
+    this.abilityQueued = { shield: false, jet: false };
     this.jumpKeys.clear();
     this.slideKeys.clear();
     this.touches.clear();
@@ -63,7 +63,7 @@ export class Input {
 
   press(kind) {
     if (!this.enabled) return;
-    if (kind === 'shield' || kind === 'slow') {
+    if (kind === 'shield' || kind === 'jet') {
       this.abilityQueued[kind] = true;
       this.onAnyAction?.(kind);
       return;
@@ -82,7 +82,7 @@ export class Input {
   bind() {
     const JUMP = new Set(['Space', 'ArrowUp', 'KeyW']);
     const SLIDE = new Set(['ArrowDown', 'KeyS']);
-    const ABILITY = { KeyQ: 'shield', KeyE: 'slow' };
+    const ABILITY = { KeyQ: 'shield', KeyE: 'jet' };
     window.addEventListener('keydown', (e) => {
       if (e.target && /INPUT|TEXTAREA/.test(e.target.tagName)) return;
       if (e.code === 'KeyP' || e.code === 'Escape') {

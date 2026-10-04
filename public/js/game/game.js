@@ -130,7 +130,6 @@ export class Game {
       this.slowT = Math.max(0, this.slowT - dt);
       scale = 0.35 + 0.65 * (1 - Math.min(1, this.slowT / 0.5));
     }
-    if (sim.slowT > 0 && this.mode === 'run') scale *= 0.5; // slow-motion ability
     if (this.mode === 'dying') scale = 0.3;
     if (this.tutorial?.active) scale = 0.18;
 
@@ -233,7 +232,7 @@ export class Game {
       power: s.power,
       charge: s.charge,
       shieldT: s.shieldT,
-      slowT: s.slowT,
+      jetT: s.jetT,
       helmet: s.helmet,
       double: s.power.double > 0,
     };
@@ -389,13 +388,13 @@ export class Game {
             buzz([30, 30, 30]);
           }
           break;
-        case 'slow':
-          fx.ring(sim.x, hy, '#FFFFFF', 3.2);
-          R.flash = 0.2;
-          R.flashCol = '200,230,255';
+        case 'jet':
+          fx.dust(sim.x, sim.y, 12, -2);
+          fx.sparks(sim.x - 0.3, sim.y + 0.6, 16, '#FFB000', 6);
           if (real) {
-            audio.sfx('power');
+            audio.sfx('doubleJump');
             buzz(40);
+            this.ui.event('jet', ev);
           }
           break;
         case 'revive':

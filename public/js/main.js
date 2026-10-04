@@ -887,10 +887,13 @@ function onGameEvent(type, ev) {
     case 'taskDone':
       break;
     case 'power':
-      if (ev.kind === 'drone') hud.banner(t('droneTitle'), t(isTouchDevice() ? 'droneHintTouch' : 'droneHintKeys'));
+      if (ev.kind === 'drone') hud.banner('🚁', t('droneTitle'), t(isTouchDevice() ? 'droneHintTouch' : 'droneHintKeys'));
+      break;
+    case 'jet':
+      hud.banner('🚀', t('jetTitle'), t(isTouchDevice() ? 'droneHintTouch' : 'droneHintKeys'));
       break;
     case 'abilityReady':
-      hud.banner(t('abTitle'), t(ev.kind === 'shield' ? 'abShieldReady' : 'abSlowReady'));
+      hud.banner(t('abTitle'), t(ev.kind === 'shield' ? 'abShieldReady' : 'abJetReady'));
       break;
     default:
   }

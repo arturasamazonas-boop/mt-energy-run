@@ -148,19 +148,40 @@ const PATTERNS = [
   // tier 2
   { id: 'stack', tier: 2, w: 2.4, f: (c) => { c.ob('stack', 0.7); c.jumpArc(0.7 - 0.42, 7, 0, true); return 1.35; } },
   {
-    id: 'dropLoad', tier: 1, w: 2.8, f: (c) => {
-      // hangs 5.5 m up; falls when the hero is 1.15 s away, lands well before he arrives
-      c.ob('dropLoad', 0.9, { y0: 5.5, top0: 5.5, h: DIM.dropLoad.h, drop: 1.15 * c.v, landable: true });
+    id: 'dropLoad', tier: 1, w: 2.6, f: (c) => {
+      // hangs 5.5 m up and lets go late (0.85-1.0 s before the hero): it lands just in time
+      c.ob('dropLoad', 0.9, { y0: 5.5, top0: 5.5, h: DIM.dropLoad.h, drop: c.rng.range(0.85, 1.0) * c.v, landable: true });
       c.jumpArc(0.9 - LEAD, 4);
       return 1.45;
     },
   },
   {
+    id: 'dropPair', tier: 2, w: 2.2, f: (c) => {
+      // two loads in quick succession: two separate jumps
+      for (const t of [0.9, 1.5]) {
+        c.ob('dropLoad', t, { y0: 5.5, top0: 5.5, h: DIM.dropLoad.h, drop: c.rng.range(0.85, 1.0) * c.v, landable: true });
+        c.jumpArc(t - LEAD, 3);
+      }
+      return 2.05;
+    },
+  },
+  {
+    id: 'dropTall', tier: 3, w: 1.8, f: (c) => {
+      // a double-height load: only a double jump clears it
+      c.ob('dropLoad', 0.9, { y0: 5.5, top0: 5.5, h: 2.5, drop: c.rng.range(0.9, 1.0) * c.v, landable: true });
+      c.jumpArc(0.9 - 0.42, 7, 0, true);
+      return 1.75;
+    },
+  },
+  {
     id: 'quad', tier: 2, w: 2.8, f: (c) => {
-      // cruises at head height, dives to knee height 0.75 s before the hero: jump it
-      c.ob('quad', 1.1, { y0: 1.35, h: DIM.quad.h, move: -2.4, dive: 0.75 * c.v, diveY0: 0.25 });
-      c.line(0.35, 0.75, 0.55, 3);
-      return 1.6;
+      // flies in, hovers where you can see it (keeping pace with the hero) for 1.4 s,
+      // blinks, then dives to knee height and waits: jump it
+      const hover = Math.min(0.8 * c.v + 3, 23);
+      c.ob('quad', 1.0, { y0: 2.1, baseY0: 2.1, h: DIM.quad.h, hover, hoverT: 1.4, diveY0: 0.25 });
+      // the dive happens about 1.4 s later than its starting place suggests
+      c.jumpArc(1.0 + 1.4 - LEAD, 4);
+      return 1.0 + 1.4 + 0.9;
     },
   },
   { id: 'birds', tier: 2, w: 2, f: (c) => { c.ob('birds', 1.0, { move: -2.6 }); c.line(0.55, 1.05, 0.45, 3); return 1.45; } },

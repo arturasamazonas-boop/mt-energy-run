@@ -284,7 +284,16 @@ function dropLoad(ctx, e, env) {
   outline(ctx, 0.02);
   ctx.save();
   ctx.translate(0, e.y0);
-  crate(ctx, e.w, h, env.lang);
+  // a tall load is two crates strapped together
+  if (h > 2) {
+    crate(ctx, e.w, h / 2, env.lang);
+    ctx.translate(0, h / 2);
+    crate(ctx, e.w, h / 2, env.lang);
+    ctx.fillStyle = '#E2362B';
+    ctx.fillRect(0.1, -0.08, e.w - 0.2, 0.08);
+  } else {
+    crate(ctx, e.w, h, env.lang);
+  }
   ctx.restore();
 }
 
@@ -318,8 +327,23 @@ function quad(ctx, e, t) {
   ctx.beginPath();
   ctx.arc(w / 2 - 0.12, 0.08, 0.07, 0, Math.PI * 2);
   ctx.fill();
-  // warning light
-  const on = e.diving ? Math.floor(t * 10) % 2 === 0 : Math.floor(t * 2) % 2 === 0;
+  // warning light: slow while it flies in, fast just before and during the dive
+  const alarm = e.diving || (e.hovering && e.hoverLeft < 0.7);
+  const on = alarm ? Math.floor(t * 12) % 2 === 0 : Math.floor(t * 2) % 2 === 0;
+  if (alarm && !e.diving) {
+    // "!" warning above the drone before it dives
+    ctx.fillStyle = on ? '#FF3B30' : '#FFD800';
+    ctx.beginPath();
+    ctx.moveTo(w / 2, 1.25);
+    ctx.lineTo(w / 2 - 0.22, 0.85);
+    ctx.lineTo(w / 2 + 0.22, 0.85);
+    ctx.closePath();
+    ctx.fill();
+    outline(ctx, 0.02);
+    ctx.fillStyle = '#1E1E1E';
+    ctx.fillRect(w / 2 - 0.02, 0.97, 0.04, 0.16);
+    ctx.fillRect(w / 2 - 0.02, 0.9, 0.04, 0.04);
+  }
   ctx.fillStyle = on ? '#FF3B30' : '#6B1D1A';
   ctx.beginPath();
   ctx.arc(w / 2 + 0.14, 0.36, 0.05, 0, Math.PI * 2);
