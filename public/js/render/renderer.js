@@ -10,6 +10,13 @@ import { SpriteCache, clamp, lerp } from './util.js';
 
 const OBSTACLES = new Set(['cone', 'barrier', 'drum', 'rollDrum', 'cable', 'crate', 'stack', 'container', 'scaffold', 'beam', 'rack', 'birds']);
 
+// How far the scenery is muted during a run (see calmBackdrop)
+const CALM = {
+  desaturate: 0.55,
+  dayHaze: [196, 206, 218, 34], // r, g, b, alpha %
+  nightHaze: [72, 82, 108, 30],
+};
+
 export class Renderer {
   constructor(canvas) {
     this.canvas = canvas;
@@ -120,11 +127,13 @@ export class Renderer {
     this.drawWorldBackdrop(ctx, sim, t, view.lang || this.lang);
     this.scenery.tint(ctx, sky, this.groundY, 0.6);
     emit(() => this.scenery.drawNear(ctx, this.camX, true, sky.night));
+    // during a run the scenery steps back so obstacles and pickups read at a glance
+    if (!view.attract && this.calm) this.calmBackdrop(ctx, sky);
 
     // ---- ground -------------------------------------------------------------
     const pits = [];
     for (const e of sim.entities) if (e.k === 'pit' && e.alive) pits.push(e);
-    this.scenery.drawGround(ctx, this.camX, ppm, this.sy(0), theme, pits, t);
+    this.scenery.drawGround(ctx, this.camX, ppm, this.sy(0), theme, pits, t, !view.attract && this.calm);
 
     if (view.markers) this.drawMarkers(ctx, view.markers, viewM);
 
@@ -206,6 +215,23 @@ export class Renderer {
       ctx.fillRect(0, 0, W, H);
       this.flash = Math.max(0, this.flash - dt * 2.5);
     }
+  }
+
+  /** Mute everything above the walkway: less colour, lower contrast (a light haze by day, a dark one at night). */
+  calmBackdrop(ctx, sky) {
+    const h = this.groundY;
+    ctx.save();
+    ctx.globalCompositeOperation = 'saturation';
+    ctx.fillStyle = `rgba(128,128,128,${CALM.desaturate})`;
+    ctx.fillRect(0, 0, this.W, h);
+    ctx.globalCompositeOperation = 'source-over';
+    const n = Math.min(1, sky.night || 0);
+    const day = CALM.dayHaze;
+    const night = CALM.nightHaze;
+    const c = day.map((v, i) => Math.round(v + (night[i] - v) * n));
+    ctx.fillStyle = `rgba(${c[0]},${c[1]},${c[2]},${c[3] / 100})`;
+    ctx.fillRect(0, 0, this.W, h);
+    ctx.restore();
   }
 
   /** Distance flags (own record, next colleague). Drawn in screen pixels so the label stays crisp. */

@@ -455,7 +455,7 @@ export class Scenery {
   }
 
   /** Walkable surface + utility cross-section. pits: [{x, w}] in world meters. */
-  drawGround(ctx, camX, ppm, groundY, theme, pits, t) {
+  drawGround(ctx, camX, ppm, groundY, theme, pits, t, calm = false) {
     const { W, H } = this;
     const top = groundY;
     const sw = Math.max(4, 0.26 * ppm);
@@ -507,6 +507,11 @@ export class Scenery {
       const step = ppm * 4;
       const o = (camX * ppm) % step;
       for (let x = -o; x < W; x += step) ctx.fillRect(x, y - r * ppm - 1, ppm * 0.12, r * 2 * ppm + 2);
+    }
+    // during a run the underground pipes stay in the background (trenches below stay sharp)
+    if (calm) {
+      ctx.fillStyle = 'rgba(58,42,30,0.5)';
+      ctx.fillRect(0, soilTop, W, H - soilTop);
     }
     // pits (cut through everything)
     for (const p of pits) {
