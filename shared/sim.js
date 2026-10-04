@@ -6,7 +6,11 @@ import { PHYSICS, SCORE, ABILITIES, speedAt, cityAt, cityStart, powerupDuration,
 import { generateCity } from './worldgen.js';
 
 const P = PHYSICS;
-const DRONE_Y = 4.6;
+const DRONE_Y = 4.6; // altitude the drone starts at
+const DRONE_MIN = 1.2; // the player steers between these (jump = up, slide = down)
+const DRONE_MAX = 6.5;
+const DRONE_CLIMB = 7; // m/s
+const DRONE_PULL_R = 3; // the drone only gathers bolts close by, so steering matters
 const MAGNET_R = 7.5;
 
 export class Sim {
@@ -49,6 +53,7 @@ export class Sim {
     this.shieldT = 0;
     this.slowT = 0; // slow motion left (the game layer halves the time scale)
     this.droneY = 0;
+    this.droneTarget = DRONE_Y;
 
     this.stats = {
       bolts: 0, parts: 0, tokens: 0, tasks: 0, tasksFailed: 0, powerups: 0,
@@ -192,8 +197,10 @@ export class Sim {
     if (!this.onGround) this.coyote = Math.max(0, this.coyote - dt);
 
     if (this.flying) {
-      // Drone: glide at altitude, no collisions.
-      this.droneY += (DRONE_Y - this.droneY) * Math.min(1, dt * 4);
+      // Drone: no collisions; hold jump to climb, hold slide to descend.
+      const climb = (input.jumpHeld ? 1 : 0) - (input.slide ? 1 : 0);
+      this.droneTarget = Math.max(DRONE_MIN, Math.min(DRONE_MAX, this.droneTarget + climb * DRONE_CLIMB * dt));
+      this.droneY += (this.droneTarget - this.droneY) * Math.min(1, dt * 6);
       this.y = this.droneY;
       this.vy = 0;
       this.onGround = false;
@@ -291,9 +298,9 @@ export class Sim {
         case 'task': {
           let dx = e.x - cx;
           let dy = e.y - cy;
-          const magnet = this.power.magnet > 0 || this.flying;
+          const pullR = this.power.magnet > 0 ? MAGNET_R : this.flying ? DRONE_PULL_R : 0;
           // pulled bolts (magnet or drone) keep flying to the hero
-          if (e.k === 'bolt' && (e.pulled || (magnet && dx > -3 && dx < MAGNET_R && Math.abs(dy) < MAGNET_R))) {
+          if (e.k === 'bolt' && (e.pulled || (pullR && dx > -3 && dx < pullR && Math.abs(dy) < pullR))) {
             e.pulled = true;
             const d = Math.hypot(dx, dy) || 1;
             const pull = Math.min(d, (v + 18) * dt);
@@ -433,6 +440,7 @@ export class Sim {
           this.power[e.kind] = powerupDuration(e.kind, this.upgrades);
           if (e.kind === 'drone') {
             this.droneY = this.y;
+            this.droneTarget = DRONE_Y;
             this.sliding = false;
           }
         }

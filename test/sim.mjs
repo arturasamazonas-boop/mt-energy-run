@@ -120,6 +120,23 @@ const run = (sim, secs, inp = () => ({})) => {
   assert.ok(q.diving && s.dead, 'the drone dives onto a sliding hero');
 }
 
+// drone flight: jump climbs, slide descends, within limits
+{
+  const fly = (inp) => {
+    const s = new Sim({ seed: 'phys' });
+    s.loadedUntil = 99;
+    s.entities = [];
+    s.power.drone = 5;
+    run(s, 1.5, () => inp);
+    return s.y;
+  };
+  const level = fly({});
+  const up = fly({ jumpHeld: true });
+  const down = fly({ slide: true });
+  assert.ok(up > level + 1 && up <= 6.5 + 1e-6, `climbs (${up.toFixed(2)} vs ${level.toFixed(2)})`);
+  assert.ok(down < level - 1 && down >= 1.2 - 1e-6, `descends (${down.toFixed(2)})`);
+}
+
 // a quick tap is a full jump (no short hop)
 {
   const apex = (held) => {
