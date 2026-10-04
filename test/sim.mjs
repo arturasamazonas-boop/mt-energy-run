@@ -96,6 +96,30 @@ const run = (sim, secs, inp = () => ({})) => {
   assert.ok(!s.dead && s.invuln > 0 && s.revived);
 }
 
+// surprises: a hanging load drops before the hero arrives; a drone dives low
+{
+  const s = new Sim({ seed: 'phys' });
+  s.loadedUntil = 99;
+  const load = { k: 'dropLoad', x: s.x + 20, w: 1.5, h: 1.25, y0: 5.5, y1: 6.75, drop: 1.15 * s.speed, landable: true, alive: true, id: 'L' };
+  s.entities = [load];
+  run(s, 0.3);
+  assert.ok(!load.falling && load.y0 === 5.5, 'still hanging while far away');
+  for (let i = 0; i < 240 && load.x - s.x > 1.5; i++) s.step(DT, {});
+  assert.equal(load.y0, 0, 'on the road before the hero reaches it');
+  assert.ok(!s.dead);
+  run(s, 1);
+  assert.ok(s.dead, 'running into the dropped load is a crash');
+}
+{
+  const s = new Sim({ seed: 'phys' });
+  s.loadedUntil = 99;
+  const q = { k: 'quad', x: s.x + 25, w: 1.1, h: 0.55, y0: 1.35, y1: 1.9, dive: 0.75 * s.speed, diveY0: 0.25, alive: true, id: 'Q' };
+  s.entities = [q];
+  // sliding under it fails: it dives before you get there
+  run(s, 3, () => ({ slide: true }));
+  assert.ok(q.diving && s.dead, 'the drone dives onto a sliding hero');
+}
+
 // a quick tap is a full jump (no short hop)
 {
   const apex = (held) => {
@@ -138,15 +162,19 @@ const run = (sim, secs, inp = () => ({})) => {
   assert.ok(s.dead, 'without the shield it is a crash');
 }
 {
-  // wave: pulls every bolt ahead, and those bolts do not recharge it
+  // slow motion: runs for its duration; bolts taken meanwhile charge nothing
   const s = new Sim({ seed: 'phys' });
   s.loadedUntil = 99;
-  s.entities = [5, 9, 14, 19].map((dx, i) => ({ k: 'bolt', x: s.x + dx, y: 3.2, alive: true, id: `w${i}` }));
-  s.charge.wave = ABILITIES.wave.cost;
-  run(s, 1.2, (i) => ({ wave: i === 0 }));
-  assert.equal(s.stats.bolts, 4, 'high bolts collected by the wave');
-  assert.equal(s.charge.wave, 0, 'wave bolts give no charge');
-  assert.equal(s.stats.waves, 1);
+  s.entities = [3, 5, 7].map((dx, i) => ({ k: 'bolt', x: s.x + dx, y: 0.8, alive: true, id: `s${i}` }));
+  s.charge.slow = ABILITIES.slow.cost;
+  run(s, 0.6, (i) => ({ slow: i === 0 }));
+  assert.equal(s.stats.slows, 1);
+  assert.ok(s.slowT > 0 && s.slowT < ABILITIES.slow.duration);
+  assert.equal(s.stats.bolts, 3);
+  assert.equal(s.charge.slow, 0, 'no charge while slowed');
+  assert.equal(s.charge.shield, 0, 'no charge while slowed');
+  run(s, ABILITIES.slow.duration);
+  assert.equal(s.slowT, 0);
 }
 
 // start options

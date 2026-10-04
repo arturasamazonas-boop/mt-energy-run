@@ -129,7 +129,6 @@ export function applyRun(data, s, run, { birthday = false } = {}) {
   if (s.cityIndex >= 11) give('paris');
   if (s.cityIndex >= 18) give('grandtour');
   if (s.perfectCities >= 1) give('stars3');
-  if (s.tasks >= 5) give('tasks5');
   if (s.maxMult >= 10) give('mult10');
   if (s.score >= 50000) give('score50k');
   if (s.score >= 250000) give('score250k');
@@ -154,7 +153,6 @@ export function applyRun(data, s, run, { birthday = false } = {}) {
   if (s.bolts >= 300) give('bolts300');
   if (s.tokens >= 3) give('tokens3');
   if (s.perfectCities >= 3) give('perfect3');
-  if (s.tasks >= 4 && s.tasksFailed === 0) give('nofail');
   if (s.maxMult >= 15) give('mult15');
   if (s.smashed >= 10) give('smash10');
   if (s.powerups >= 8) give('power8');
@@ -166,7 +164,6 @@ export function applyRun(data, s, run, { birthday = false } = {}) {
   if (st.totalDistance >= 600000) give('km200');
   if (st.totalBolts >= 25000) give('bolts25000');
   if (st.totalTokens >= 25) give('tokens25');
-  if (st.totalTasks >= 50) give('tasks50');
   const perfect = Object.values(d.cityStars).filter((v) => v >= 3).length;
   if (perfect >= 10) give('stars10');
   if (perfect >= 18) give('starsall');

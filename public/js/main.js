@@ -887,7 +887,7 @@ function onGameEvent(type, ev) {
     case 'taskDone':
       break;
     case 'abilityReady':
-      hud.banner(t('abTitle'), t(ev.kind === 'shield' ? 'abShieldReady' : 'abWaveReady'));
+      hud.banner(t('abTitle'), t(ev.kind === 'shield' ? 'abShieldReady' : 'abSlowReady'));
       break;
     default:
   }
@@ -1072,7 +1072,7 @@ async function onRunOver(info) {
 }
 
 const HIT_TIP = {
-  cone: 'jump', barrier: 'jump', drum: 'jump', rollDrum: 'jump', cable: 'jump', crate: 'jump',
+  cone: 'jump', barrier: 'jump', drum: 'jump', rollDrum: 'jump', cable: 'jump', crate: 'jump', dropLoad: 'jump', quad: 'quad',
   stack: 'double', container: 'double',
   beam: 'slide', rack: 'slide', birds: 'slide',
 };

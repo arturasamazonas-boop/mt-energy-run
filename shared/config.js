@@ -27,7 +27,7 @@ export const PHYSICS = {
 
 export const SPEED = {
   min: 10,
-  max: 24.5,
+  max: 27, // the later, harder part of a run is faster
   ramp: 3600, // meters; larger = slower ramp
 };
 
@@ -252,7 +252,7 @@ export function cityStart(index) {
 // during the run and emptied on use, so they come rarely: about once per 1-2 km.
 export const ABILITIES = {
   shield: { cost: 160, duration: 3 }, // obstacles pass through the hero
-  wave: { cost: 120, range: 22 }, // pulls every bolt ahead within `range` meters
+  slow: { cost: 120, duration: 3 }, // the game runs at half speed (3 s of run time = 6 s real)
 };
 
 export const POWERUPS = {
@@ -332,7 +332,6 @@ export const ACHIEVEMENTS = [
   { id: 'paris', reward: 500, lt: 'Paryžiaus šviesos', en: 'City of lights', descLt: 'Pasiek Paryžių', descEn: 'Reach Paris' },
   { id: 'grandtour', reward: 1500, lt: 'Didysis turas', en: 'Grand tour', descLt: 'Apibėk visą Europą ir grįžk į Vilnių', descEn: 'Run all of Europe back to Vilnius' },
   { id: 'stars3', reward: 100, lt: 'Projektas iki rakto', en: 'Turnkey', descLt: 'Surink visas 3 projekto detales mieste', descEn: 'Collect all 3 project parts in a city' },
-  { id: 'tasks5', reward: 150, lt: 'Meistras', en: 'Craftsman', descLt: 'Atlik 5 darbų užduotis per bėgimą', descEn: 'Complete 5 site tasks in one run' },
   { id: 'mult10', reward: 300, lt: 'Dešimtukas', en: 'Perfect ten', descLt: 'Pasiek x10 daugiklį', descEn: 'Reach a x10 multiplier' },
   { id: 'score50k', reward: 300, lt: '50 000 taškų', en: '50,000 points', descLt: 'Surink 50 000 taškų', descEn: 'Score 50,000 points' },
   { id: 'score250k', reward: 1000, lt: 'Ketvirtis milijono', en: 'Quarter million', descLt: 'Surink 250 000 taškų', descEn: 'Score 250,000 points' },
@@ -357,7 +356,6 @@ export const ACHIEVEMENTS = [
   { id: 'bolts300', reward: 200, lt: 'Aukšta įtampa', en: 'High voltage', descLt: 'Surink 300 žaibų per vieną bėgimą', descEn: 'Collect 300 bolts in one run' },
   { id: 'tokens3', reward: 250, lt: 'Auksinė trijulė', en: 'Golden trio', descLt: 'Surink 3 MT žetonus per vieną bėgimą', descEn: 'Collect 3 MT tokens in one run' },
   { id: 'perfect3', reward: 400, lt: 'Trys projektai iki rakto', en: 'Three turnkey projects', descLt: 'Surink visas detales 3 miestuose per vieną bėgimą', descEn: 'Collect every part in 3 cities in one run' },
-  { id: 'nofail', reward: 250, lt: 'Be priekaištų', en: 'Flawless', descLt: 'Atlik 4 užduotis per bėgimą be nė vienos klaidos', descEn: 'Complete 4 site tasks in a run without a miss' },
   { id: 'mult15', reward: 800, lt: 'Maksimali galia', en: 'Full power', descLt: 'Pasiek x15 daugiklį', descEn: 'Reach the x15 multiplier' },
   { id: 'smash10', reward: 200, lt: 'Griovimo brigada', en: 'Demolition crew', descLt: 'Ekskavatoriumi sugriauk 10 kliūčių per bėgimą', descEn: 'Smash 10 obstacles with the excavator in one run' },
   { id: 'power8', reward: 200, lt: 'Visas arsenalas', en: 'Full arsenal', descLt: 'Paimk 8 galios priedus per vieną bėgimą', descEn: 'Grab 8 power-ups in one run' },
@@ -369,7 +367,6 @@ export const ACHIEVEMENTS = [
   { id: 'km200', reward: 1500, lt: 'Vilnius–Klaipėda ir atgal', en: 'There and back again', descLt: 'Iš viso nubėk 600 km', descEn: 'Run 600 km in total' },
   { id: 'bolts25000', reward: 1200, lt: 'Atominė elektrinė', en: 'Power station', descLt: 'Iš viso surink 25 000 žaibų', descEn: 'Collect 25,000 bolts in total' },
   { id: 'tokens25', reward: 600, lt: 'Žetonų kolekcija', en: 'Token collection', descLt: 'Iš viso surink 25 MT žetonus', descEn: 'Collect 25 MT tokens in total' },
-  { id: 'tasks50', reward: 600, lt: 'Darbų vadovas', en: 'Site manager', descLt: 'Iš viso atlik 50 darbų užduočių', descEn: 'Complete 50 site tasks in total' },
   { id: 'stars10', reward: 800, lt: 'Dešimt objektų', en: 'Ten projects', descLt: 'Gauk ★★★ 10-yje skirtingų miestų', descEn: 'Earn ★★★ in 10 different cities' },
   { id: 'starsall', reward: 3000, lt: 'Visa Europa ★★★', en: 'All of Europe ★★★', descLt: 'Gauk ★★★ visuose 18 miestų', descEn: 'Earn ★★★ in all 18 cities' },
   { id: 'runs100', reward: 1000, lt: 'Šimtukas', en: 'Century', descLt: 'Sužaisk 100 bėgimų', descEn: 'Play 100 runs' },

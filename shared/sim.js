@@ -45,14 +45,15 @@ export class Sim {
 
     this.helmet = !!upgrades.startHelmet;
     this.power = { magnet: 0, drone: 0, excavator: 0, double: 0 };
-    this.charge = { shield: 0, wave: 0 }; // bolts towards each ability
+    this.charge = { shield: 0, slow: 0 }; // bolts towards each ability
     this.shieldT = 0;
+    this.slowT = 0; // slow motion left (the game layer halves the time scale)
     this.droneY = 0;
 
     this.stats = {
       bolts: 0, parts: 0, tokens: 0, tasks: 0, tasksFailed: 0, powerups: 0,
       smashed: 0, helmetsUsed: 0, gates: 0, stars: 0, perfectCities: 0, jumps: 0, slides: 0,
-      shields: 0, waves: 0,
+      shields: 0, slows: 0,
     };
     this.partsByCity = {};
     this.gateStars = {};
@@ -177,7 +178,11 @@ export class Sim {
       if (this.shieldT === 0) this.emit('shieldEnd');
     }
     if (input.shield) this.useAbility('shield');
-    if (input.wave) this.useAbility('wave');
+    if (this.slowT > 0) {
+      this.slowT = Math.max(0, this.slowT - dt);
+      if (this.slowT === 0) this.emit('slowEnd');
+    }
+    if (input.slow) this.useAbility('slow');
 
     // ---- input -------------------------------------------------------------
     if (input.jump) this.buffer = P.jumpBuffer;
@@ -287,7 +292,7 @@ export class Sim {
           let dx = e.x - cx;
           let dy = e.y - cy;
           const magnet = this.power.magnet > 0 || this.flying;
-          // pulled bolts (magnet, drone or energy wave) keep flying to the hero
+          // pulled bolts (magnet or drone) keep flying to the hero
           if (e.k === 'bolt' && (e.pulled || (magnet && dx > -3 && dx < MAGNET_R && Math.abs(dy) < MAGNET_R))) {
             e.pulled = true;
             const d = Math.hypot(dx, dy) || 1;
@@ -318,6 +323,24 @@ export class Sim {
         default: {
           // obstacles
           if (e.move && e.x - this.x < 32) e.x += e.move * dt;
+          if (e.drop !== undefined && e.y0 > 0) {
+            // a hanging load lets go when the hero comes close and falls to the road
+            if (!e.falling && e.x - this.x < e.drop) e.falling = true;
+            if (e.falling) {
+              e.vy = (e.vy || 0) - 30 * dt;
+              e.y0 = Math.max(0, e.y0 + e.vy * dt);
+              e.y1 = e.y0 + e.h;
+              if (e.y0 === 0) this.emit('loadLanded', { x: e.x + e.w / 2 });
+            }
+          }
+          if (e.dive !== undefined && e.y0 > e.diveY0) {
+            // a drone that dives from head height to knee height
+            if (!e.diving && e.x - this.x < e.dive) e.diving = true;
+            if (e.diving) {
+              e.y0 = Math.max(e.diveY0, e.y0 - 5 * dt);
+              e.y1 = e.y0 + e.h;
+            }
+          }
           if (px1 < e.x || px0 > e.x + e.w) continue;
           if (py1 < e.y0 || py0 > e.y1) continue;
           if (e.oneWay) continue;
@@ -384,8 +407,8 @@ export class Sim {
         this.stats.bolts++;
         const p = this.addScore(SCORE.bolt);
         this.emit('bolt', { x: e.x, y: e.y, points: p });
-        // bolts brought in by the wave itself, or while the shield is up, charge nothing
-        if (!e.waved && this.shieldT === 0) this.addCharge();
+        // nothing charges while an ability is running
+        if (this.shieldT === 0 && this.slowT === 0) this.addCharge();
         break;
       }
       case 'part': {
@@ -455,7 +478,7 @@ export class Sim {
   }
 
   addCharge() {
-    for (const k of ['shield', 'wave']) {
+    for (const k of ['shield', 'slow']) {
       const cost = ABILITIES[k].cost;
       if (this.charge[k] >= cost) continue;
       this.charge[k]++;
@@ -467,24 +490,14 @@ export class Sim {
   useAbility(kind) {
     const a = ABILITIES[kind];
     if (!a || this.charge[kind] < a.cost || this.dead) return false;
-    if (kind === 'shield' && this.shieldT > 0) return false;
+    if ((kind === 'shield' && this.shieldT > 0) || (kind === 'slow' && this.slowT > 0)) return false;
     this.charge[kind] = 0;
     if (kind === 'shield') {
       this.shieldT = a.duration;
       this.stats.shields++;
     } else {
-      let n = 0;
-      for (const e of this.entities) {
-        if (e.k !== 'bolt' || !e.alive || e.pulled) continue;
-        if (e.x < this.x - 2) continue;
-        if (e.x > this.x + a.range) continue;
-        e.pulled = true;
-        e.waved = true;
-        n++;
-      }
-      this.stats.waves++;
-      this.emit('wave', { count: n });
-      return true;
+      this.slowT = a.duration;
+      this.stats.slows++;
     }
     this.emit(kind);
     return true;
