@@ -20,7 +20,7 @@ Naršyklėje veikiantis bėgimo žaidimas (runner) MT GROUP komandai. Pagrindini
 - **Bėgimas be sustojimų:** darbų užduočių (mini žaidimų) nebėra. Daugiklis auga tik už ★★★ projektus.
 - **Netikėtumai:** nuo krano nukrentantis krovinys (žemėje matosi jo šešėlis) ir dronas, kuris skrenda aukštai, bet prieš pat herojų nusileidžia žemai – jį reikia peršokti. Vėlesnė bėgimo dalis greitesnė.
 - **Gebėjimai:** skydą ir sulėtinimą įkrauna bėgimo metu surinkti žaibai (skydui reikia 160, sulėtinimui 120; panaudojus krūvis prasideda iš naujo). Kol veikia gebėjimas, krūvis nekaupiamas.
-- **Galios priedai:** auksinis šalmas (apsaugo nuo vieno smūgio), transformatorius-magnetas, dronas (skrydis), ekskavatorius (griauna kliūtis), sutartis x2.
+- **Galios priedai:** auksinis šalmas (apsaugo nuo vieno smūgio), transformatorius-magnetas, dronas (skrydis: dešinė pusė / ↑ – aukštyn, kairė / ↓ – žemyn), ekskavatorius (griauna kliūtis), sutartis x2.
 - **Dienos iššūkis:** visi tą dieną gauna tą pačią trasą.
 - Rekordų lentelės: visų laikų, šios savaitės ir dienos iššūkio.
 - Trasoje stovi vėliavėlės: geltona – tavo atstumo rekordas, mėlyna – artimiausias kolega, kurį dar gali aplenkti.
