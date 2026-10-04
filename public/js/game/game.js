@@ -136,6 +136,13 @@ export class Game {
     const stepping = this.mode === 'run' || this.mode === 'attract' || this.mode === 'dying';
     this.prevX = sim.x;
     this.prevY = sim.y;
+    // state before the latest simulation step: frames are drawn between two steps
+    // so motion stays smooth at any refresh rate (60, 75, 144 Hz…)
+    if (this.lerpSim !== sim) {
+      this.lerpSim = sim;
+      this.fromX = sim.x;
+      this.fromY = sim.y;
+    }
     if (stepping && !sim.dead) {
       this.acc += dt * scale;
       let n = 0;
@@ -146,6 +153,8 @@ export class Game {
         if (this.bot) inp = this.bot.input(sim);
         else if (this.mode === 'run') inp = this.input.consume();
         else inp = {};
+        this.fromX = sim.x;
+        this.fromY = sim.y;
         sim.step(DT, inp);
         this.handleEvents();
         if (sim.dead || sim.pendingTask) break;
@@ -176,6 +185,7 @@ export class Game {
 
     audio.setIntensity((sim.speed - 10) / 14);
 
+    const alpha = stepping && !sim.dead && !sim.pendingTask ? Math.min(1, this.acc / DT) : 1;
     this.renderer.render({
       sim,
       t: this.t,
@@ -186,6 +196,8 @@ export class Game {
       heroFrac: this.mode === 'attract' ? this.attractFrac ?? 0.62 : 0.24,
       birthday: this.birthday,
       lang: this.renderer.lang,
+      heroX: this.fromX + (sim.x - this.fromX) * alpha,
+      heroY: this.fromY + (sim.y - this.fromY) * alpha,
       markers: this.mode === 'run' || this.mode === 'dying' || this.mode === 'paused' || this.mode === 'task' ? this.markers : null,
     });
 
