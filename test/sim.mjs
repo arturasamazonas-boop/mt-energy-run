@@ -111,13 +111,20 @@ const run = (sim, secs, inp = () => ({})) => {
   assert.ok(s.dead, 'running into the dropped load is a crash');
 }
 {
+  // the drone hovers in view (keeping pace) for its hover time, then dives in place
   const s = new Sim({ seed: 'phys' });
   s.loadedUntil = 99;
-  const q = { k: 'quad', x: s.x + 25, w: 1.1, h: 0.55, y0: 1.35, y1: 1.9, dive: 0.75 * s.speed, diveY0: 0.25, alive: true, id: 'Q' };
+  const q = { k: 'quad', x: s.x + 30, w: 1.1, h: 0.55, y0: 2.1, baseY0: 2.1, y1: 2.65, hover: 18, hoverT: 1.4, diveY0: 0.25, alive: true, id: 'Q' };
   s.entities = [q];
-  // sliding under it fails: it dives before you get there
+  for (let i = 0; i < 600 && !q.hovering; i++) s.step(DT, {});
+  const gap = q.x - s.x;
+  run(s, 1.0);
+  assert.ok(q.hovering && !q.diving && Math.abs(q.x - s.x - gap) < 0.6, 'hovers at the same distance ahead');
+  run(s, 0.8);
+  assert.ok(q.diving && q.y0 < 0.5, 'dives after hovering');
+  // sliding under it no longer works: it is at knee height
   run(s, 3, () => ({ slide: true }));
-  assert.ok(q.diving && s.dead, 'the drone dives onto a sliding hero');
+  assert.ok(s.dead, 'the dived drone hits a sliding hero');
 }
 
 // drone flight: jump climbs, slide descends, within limits
@@ -179,19 +186,22 @@ const run = (sim, secs, inp = () => ({})) => {
   assert.ok(s.dead, 'without the shield it is a crash');
 }
 {
-  // slow motion: runs for its duration; bolts taken meanwhile charge nothing
+  // jetpack: lifts off, climbs/descends, obstacles still hit, nothing charges meanwhile
   const s = new Sim({ seed: 'phys' });
   s.loadedUntil = 99;
-  s.entities = [3, 5, 7].map((dx, i) => ({ k: 'bolt', x: s.x + dx, y: 0.8, alive: true, id: `s${i}` }));
-  s.charge.slow = ABILITIES.slow.cost;
-  run(s, 0.6, (i) => ({ slow: i === 0 }));
-  assert.equal(s.stats.slows, 1);
-  assert.ok(s.slowT > 0 && s.slowT < ABILITIES.slow.duration);
-  assert.equal(s.stats.bolts, 3);
-  assert.equal(s.charge.slow, 0, 'no charge while slowed');
-  assert.equal(s.charge.shield, 0, 'no charge while slowed');
-  run(s, ABILITIES.slow.duration);
-  assert.equal(s.slowT, 0);
+  s.entities = [3, 5].map((dx, i) => ({ k: 'bolt', x: s.x + dx, y: 0.8, alive: true, id: `j${i}` }));
+  s.charge.jet = ABILITIES.jet.cost;
+  run(s, 0.8, (i) => ({ jet: i === 0 }));
+  assert.equal(s.stats.jets, 1);
+  assert.ok(s.jetT > 0 && s.y > 2, `airborne (${s.y.toFixed(2)})`);
+  assert.equal(s.charge.jet, 0, 'no charge while flying');
+  const level = s.y;
+  run(s, 0.6, () => ({ jumpHeld: true }));
+  assert.ok(s.y > level + 1, 'climbs');
+  // a hanging load in the flight path is a crash (unlike the drone power-up)
+  s.entities = [{ k: 'crate', x: s.x + 3, w: 1.5, y0: s.y - 0.5, y1: s.y + 1, alive: true, id: 'c' }];
+  run(s, 0.6, () => ({}));
+  assert.ok(s.dead, 'jetpack does not pass through obstacles');
 }
 
 // start options

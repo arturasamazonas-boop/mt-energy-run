@@ -49,16 +49,16 @@ export class Sim {
 
     this.helmet = !!upgrades.startHelmet;
     this.power = { magnet: 0, drone: 0, excavator: 0, double: 0 };
-    this.charge = { shield: 0, slow: 0 }; // bolts towards each ability
+    this.charge = { shield: 0, jet: 0 }; // bolts towards each ability
     this.shieldT = 0;
-    this.slowT = 0; // slow motion left (the game layer halves the time scale)
+    this.jetT = 0; // jetpack flight left
     this.droneY = 0;
     this.droneTarget = DRONE_Y;
 
     this.stats = {
       bolts: 0, parts: 0, tokens: 0, tasks: 0, tasksFailed: 0, powerups: 0,
       smashed: 0, helmetsUsed: 0, gates: 0, stars: 0, perfectCities: 0, jumps: 0, slides: 0,
-      shields: 0, slows: 0,
+      shields: 0, jets: 0,
     };
     this.partsByCity = {};
     this.gateStars = {};
@@ -183,11 +183,21 @@ export class Sim {
       if (this.shieldT === 0) this.emit('shieldEnd');
     }
     if (input.shield) this.useAbility('shield');
-    if (this.slowT > 0) {
-      this.slowT = Math.max(0, this.slowT - dt);
-      if (this.slowT === 0) this.emit('slowEnd');
+    if (this.jetT > 0) {
+      this.jetT = Math.max(0, this.jetT - dt);
+      // like the drone, never let go over a trench
+      if (this.jetT === 0 && !this.flying && this.overPit(this.x, 0.5, 14)) this.jetT = 0.05;
+      if (this.jetT === 0) {
+        this.emit('jetEnd');
+        if (!this.flying) {
+          this.invuln = Math.max(this.invuln, 1.0);
+          this.onGround = false;
+          this.jumps = 2;
+          this.vy = 0;
+        }
+      }
     }
-    if (input.slow) this.useAbility('slow');
+    if (input.jet) this.useAbility('jet');
 
     // ---- input -------------------------------------------------------------
     if (input.jump) this.buffer = P.jumpBuffer;
@@ -196,8 +206,8 @@ export class Sim {
     this.slideHeld = !!input.slide;
     if (!this.onGround) this.coyote = Math.max(0, this.coyote - dt);
 
-    if (this.flying) {
-      // Drone: no collisions; hold jump to climb, hold slide to descend.
+    if (this.flying || this.jetT > 0) {
+      // Drone (no collisions) or jetpack (obstacles still hit): hold jump to climb, slide to descend.
       const climb = (input.jumpHeld ? 1 : 0) - (input.slide ? 1 : 0);
       this.droneTarget = Math.max(DRONE_MIN, Math.min(DRONE_MAX, this.droneTarget + climb * DRONE_CLIMB * dt));
       this.droneY += (this.droneTarget - this.droneY) * Math.min(1, dt * 6);
@@ -298,7 +308,7 @@ export class Sim {
         case 'task': {
           let dx = e.x - cx;
           let dy = e.y - cy;
-          const pullR = this.power.magnet > 0 ? MAGNET_R : this.flying ? DRONE_PULL_R : 0;
+          const pullR = this.power.magnet > 0 ? MAGNET_R : this.flying || this.jetT > 0 ? DRONE_PULL_R : 0;
           // pulled bolts (magnet or drone) keep flying to the hero
           if (e.k === 'bolt' && (e.pulled || (pullR && dx > -3 && dx < pullR && Math.abs(dy) < pullR))) {
             e.pulled = true;
@@ -340,13 +350,23 @@ export class Sim {
               if (e.y0 === 0) this.emit('loadLanded', { x: e.x + e.w / 2 });
             }
           }
-          if (e.dive !== undefined && e.y0 > e.diveY0) {
-            // a drone that dives from head height to knee height
-            if (!e.diving && e.x - this.x < e.dive) e.diving = true;
-            if (e.diving) {
-              e.y0 = Math.max(e.diveY0, e.y0 - 5 * dt);
-              e.y1 = e.y0 + e.h;
+          if (e.hover !== undefined && !e.diving) {
+            // a drone flies in, hovers in view keeping pace with the hero, then dives
+            if (!e.hovering && e.x - this.x < e.hover) {
+              e.hovering = true;
+              e.hoverLeft = e.hoverT;
             }
+            if (e.hovering) {
+              e.x += v * dt;
+              e.hoverLeft -= dt;
+              e.y0 = e.baseY0 + 0.2 * Math.sin(e.hoverLeft * 7);
+              e.y1 = e.y0 + e.h;
+              if (e.hoverLeft <= 0) e.diving = true;
+            }
+          }
+          if (e.diving && e.y0 > e.diveY0) {
+            e.y0 = Math.max(e.diveY0, e.y0 - 6 * dt);
+            e.y1 = e.y0 + e.h;
           }
           if (px1 < e.x || px0 > e.x + e.w) continue;
           if (py1 < e.y0 || py0 > e.y1) continue;
@@ -415,7 +435,7 @@ export class Sim {
         const p = this.addScore(SCORE.bolt);
         this.emit('bolt', { x: e.x, y: e.y, points: p });
         // nothing charges while an ability is running
-        if (this.shieldT === 0 && this.slowT === 0) this.addCharge();
+        if (this.shieldT === 0 && this.jetT === 0) this.addCharge();
         break;
       }
       case 'part': {
@@ -486,7 +506,7 @@ export class Sim {
   }
 
   addCharge() {
-    for (const k of ['shield', 'slow']) {
+    for (const k of ['shield', 'jet']) {
       const cost = ABILITIES[k].cost;
       if (this.charge[k] >= cost) continue;
       this.charge[k]++;
@@ -498,14 +518,19 @@ export class Sim {
   useAbility(kind) {
     const a = ABILITIES[kind];
     if (!a || this.charge[kind] < a.cost || this.dead) return false;
-    if ((kind === 'shield' && this.shieldT > 0) || (kind === 'slow' && this.slowT > 0)) return false;
+    if ((kind === 'shield' && this.shieldT > 0) || (kind === 'jet' && this.jetT > 0)) return false;
     this.charge[kind] = 0;
     if (kind === 'shield') {
       this.shieldT = a.duration;
       this.stats.shields++;
     } else {
-      this.slowT = a.duration;
-      this.stats.slows++;
+      this.jetT = a.duration;
+      this.stats.jets++;
+      if (!this.flying) {
+        this.droneY = this.y;
+        this.droneTarget = Math.max(this.y, 3.2);
+      }
+      this.sliding = false;
     }
     this.emit(kind);
     return true;

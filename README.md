@@ -12,14 +12,14 @@ Naršyklėje veikiantis bėgimo žaidimas (runner) MT GROUP komandai. Pagrindini
 | Dvigubas šuolis | bakstelėk dar kartą ore | dar kartą Tarpas |
 | Nusileisti / čiuožti (ore – greitas kritimas) | laikyk **kairę** ekrano pusę | ↓ / S |
 | 🛡️ Skydas (3 s kliūtys nekenkia) | mygtukas virš „Čiuožti“ | Q |
-| ⏱️ Sulėtinimas (3 s viskas juda perpus lėčiau) | mygtukas virš „Šuolis“ | E |
+| 🚀 Jetpack (4 s skrydis: dešinė / ↑ – aukštyn, kairė / ↓ – žemyn; kliūtys kenkia) | mygtukas virš „Šuolis“ | E |
 | Pauzė | ⏸ mygtukas | P / Esc |
 
 - **Žaibai ⚡** suteikia taškų ir energijos. Už energiją Dirbtuvėse perkama įranga ir apranga.
 - **3 projekto detalės** kiekviename mieste. Surinkęs visas, miesto gale paleidi projektą ★★★ ir gauni daugiklį +1.
 - **Bėgimas be sustojimų:** darbų užduočių (mini žaidimų) nebėra. Daugiklis auga tik už ★★★ projektus.
-- **Netikėtumai:** nuo krano nukrentantis krovinys (žemėje matosi jo šešėlis) ir dronas, kuris skrenda aukštai, bet prieš pat herojų nusileidžia žemai – jį reikia peršokti. Vėlesnė bėgimo dalis greitesnė.
-- **Gebėjimai:** skydą ir sulėtinimą įkrauna bėgimo metu surinkti žaibai (skydui reikia 160, sulėtinimui 120; panaudojus krūvis prasideda iš naujo). Kol veikia gebėjimas, krūvis nekaupiamas.
+- **Netikėtumai:** nuo krano vėlai nukrentantys kroviniai (po vieną, poromis arba dvigubo aukščio – tada reikia dvigubo šuolio) ir dronas, kuris atskrenda, pakimba matomoje vietoje, mirksi ir tada nusileidžia iki kelių aukščio – jį reikia peršokti. Vėlesnė bėgimo dalis greitesnė.
+- **Gebėjimai:** skydą ir jetpack įkrauna bėgimo metu surinkti žaibai (skydui reikia 160, jetpack 120; panaudojus krūvis prasideda iš naujo). Kol veikia gebėjimas, krūvis nekaupiamas.
 - **Galios priedai:** auksinis šalmas (apsaugo nuo vieno smūgio), transformatorius-magnetas, dronas (skrydis: dešinė pusė / ↑ – aukštyn, kairė / ↓ – žemyn), ekskavatorius (griauna kliūtis), sutartis x2.
 - **Dienos iššūkis:** visi tą dieną gauna tą pačią trasą.
 - Rekordų lentelės: visų laikų, šios savaitės ir dienos iššūkio.
