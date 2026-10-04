@@ -21,6 +21,21 @@ for (let i = 0; i < CITIES.length + 2; i++) {
   assert.ok(c.entities.every((e) => e.x >= c.start && e.x <= c.end), `city ${i} entities inside city`);
 }
 
+// site tasks stand on flat, empty road: nothing to jump over or collect around them
+for (const seed of ['seed-1', 'seed-2', 'daily-2026-10-24']) {
+  for (let i = 0; i < CITIES.length * 2; i++) {
+    const c = generateCity(seed, i);
+    const tasks = c.entities.filter((e) => e.k === 'task');
+    assert.equal(tasks.length, CITIES[i % CITIES.length].waypoints?.length ?? (i < 3 ? 1 : 2), `${seed} city ${i} task count`);
+    for (const t of tasks) {
+      assert.ok(t.y < 1.2, `${seed} city ${i} task on the ground`);
+      const v = speedAt(t.x);
+      const near = c.entities.filter((e) => e !== t && e.k !== 'checkpoint' && e.x + (e.w || 0) > t.x - 0.9 * v && e.x < t.x + 0.7 * v);
+      assert.deepEqual(near.map((e) => e.k), [], `${seed} city ${i} task at ${t.x.toFixed(1)} has clear road`);
+    }
+  }
+}
+
 // geography helpers
 assert.equal(cityAt(0).index, 0);
 assert.equal(cityAt(cityStart(5) + 1).index, 5);

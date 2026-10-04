@@ -265,6 +265,11 @@ const POWER_WEIGHTS = [
 ];
 
 const ENTRY_CLEAR = 30; // meters of calm road after the city sign
+// A site task stands on flat, empty road (no obstacles, no bolts) so it is never
+// collected mid-jump: seconds of clear road before and after it at the nominal speed.
+const TASK_CLEAR_BEFORE = 1.0;
+const TASK_CLEAR_AFTER = 0.8;
+const TASK_Y = 0.85;
 const GATE_ZONE = 75; // meters reserved for the project gate
 
 /** Generate all entities for one city. Pure function of (seed, index). */
@@ -276,10 +281,29 @@ export function generateCity(seed, index) {
   const end = start + len;
   const list = [];
 
+  const lap = Math.floor(index / CITIES.length);
+  let taskFractions = index < 3 && lap === 0 ? [0.42] : [0.38, 0.72];
+  // one site task in every checkpoint town
+  if (city.waypoints) taskFractions = city.waypoints.map((w) => (w.from + Math.min(w.to, len - GATE_ZONE)) / 2 / len);
+  const taskXs = taskFractions.map((f) => start + len * f).sort((a, b) => a - b);
+  // where the clear road before each task begins
+  const clearFrom = taskXs.map((tx) => tx - TASK_CLEAR_BEFORE * speedAt(tx));
+  let ti = 0;
+
   let x = start + (index === 0 ? 45 : ENTRY_CLEAR);
   let prev = '';
   let guard = 0;
   while (x < end - GATE_ZONE - 15 && guard++ < 500) {
+    // reached the next site task: leave the road clear around it
+    if (ti < taskXs.length && x >= clearFrom[ti]) {
+      const v = speedAt(x);
+      const tx = Math.max(taskXs[ti], x + TASK_CLEAR_BEFORE * v);
+      ti++;
+      if (tx + TASK_CLEAR_AFTER * v > end - GATE_ZONE) continue;
+      list.push({ k: 'task', x: tx, y: TASK_Y });
+      x = tx + TASK_CLEAR_AFTER * v;
+      continue;
+    }
     const tier = tierAt(x);
     const options = PATTERNS.filter((p) => p.tier <= tier && p.id !== prev).map((p) => {
       let w = p.w;
@@ -294,6 +318,11 @@ export function generateCity(seed, index) {
     const lenT = pat.f(ctx);
     const patEnd = x + lenT * v;
     if (patEnd > end - GATE_ZONE) break;
+    // a pattern may not run into the clear road before the next site task
+    if (ti < taskXs.length && patEnd > clearFrom[ti]) {
+      x = Math.max(x, clearFrom[ti]);
+      continue;
+    }
     for (const e of sub) list.push(e);
     prev = pat.id;
     x = patEnd + restGap(tier, rng) * v;
@@ -319,7 +348,6 @@ export function generateCity(seed, index) {
     return best;
   };
 
-  const lap = Math.floor(index / CITIES.length);
   [0.22, 0.55, 0.86].forEach((f, i) => {
     const b = takeNear(start + len * f, 'high');
     if (b) {
@@ -328,16 +356,7 @@ export function generateCity(seed, index) {
     }
   });
 
-  let taskFractions = index < 3 && lap === 0 ? [0.42] : [0.38, 0.72];
-  if (city.waypoints) {
-    // one site task in every checkpoint town
-    taskFractions = city.waypoints.map((w) => (w.from + Math.min(w.to, len - GATE_ZONE)) / 2 / len);
-    for (const w of city.waypoints) list.push({ k: 'checkpoint', x: start + w.from + 6, w: 1, wp: w.id });
-  }
-  for (const f of taskFractions) {
-    const b = takeNear(start + len * f);
-    if (b) b.k = 'task';
-  }
+  for (const w of city.waypoints || []) list.push({ k: 'checkpoint', x: start + w.from + 6, w: 1, wp: w.id });
 
   const powers = Math.max(1, Math.round(len / 330));
   for (let i = 0; i < powers; i++) {
