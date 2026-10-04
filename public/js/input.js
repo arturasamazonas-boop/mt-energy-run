@@ -9,6 +9,8 @@ export class Input {
     this.target = target;
     this.enabled = false;
     this.jumpQueued = false;
+    this.abilityQueued = { shield: false, wave: false };
+    this.hitTest = null; // (clientX, clientY) -> 'shield' | 'wave' | null (ability buttons)
     this.jumpKeys = new Set();
     this.slideKeys = new Set();
     this.touches = new Map(); // id -> 'jump' | 'slide'
@@ -39,11 +41,14 @@ export class Input {
   consume() {
     const jump = this.jumpQueued;
     this.jumpQueued = false;
-    return { jump, jumpHeld: this.jumpHeld || jump, slide: this.slideHeld };
+    const { shield, wave } = this.abilityQueued;
+    this.abilityQueued = { shield: false, wave: false };
+    return { jump, jumpHeld: this.jumpHeld || jump, slide: this.slideHeld, shield, wave };
   }
 
   reset() {
     this.jumpQueued = false;
+    this.abilityQueued = { shield: false, wave: false };
     this.jumpKeys.clear();
     this.slideKeys.clear();
     this.touches.clear();
@@ -58,6 +63,11 @@ export class Input {
 
   press(kind) {
     if (!this.enabled) return;
+    if (kind === 'shield' || kind === 'wave') {
+      this.abilityQueued[kind] = true;
+      this.onAnyAction?.(kind);
+      return;
+    }
     if (kind === 'jump') {
       // two jump presses this close together are one tap reported twice, not a
       // double jump (a deliberate second tap comes much later in the air)
@@ -72,6 +82,7 @@ export class Input {
   bind() {
     const JUMP = new Set(['Space', 'ArrowUp', 'KeyW']);
     const SLIDE = new Set(['ArrowDown', 'KeyS']);
+    const ABILITY = { KeyQ: 'shield', KeyE: 'wave' };
     window.addEventListener('keydown', (e) => {
       if (e.target && /INPUT|TEXTAREA/.test(e.target.tagName)) return;
       if (e.code === 'KeyP' || e.code === 'Escape') {
@@ -89,6 +100,9 @@ export class Input {
           this.jumpKeys.add(e.code);
           this.press('jump');
         }
+      } else if (ABILITY[e.code]) {
+        e.preventDefault();
+        if (!e.repeat) this.press(ABILITY[e.code]);
       } else if (SLIDE.has(e.code)) {
         e.preventDefault();
         if (!this.slideKeys.has(e.code)) this.press('slide');
@@ -110,6 +124,11 @@ export class Input {
         this.lastKind = 'touch';
         this.lastTouch = performance.now();
         for (const touch of e.changedTouches) {
+          const ability = this.hitTest?.(touch.clientX, touch.clientY);
+          if (ability) {
+            this.press(ability);
+            continue;
+          }
           const z = this.zoneFor(touch.clientX);
           this.touches.set(touch.identifier, z);
           this.press(z);
@@ -128,6 +147,11 @@ export class Input {
       // some phones still send a "mouse" click after a tap: it is the same tap
       if (performance.now() - this.lastTouch < TOUCH_MOUSE_GUARD_MS) return;
       this.lastKind = 'mouse';
+      const ability = this.hitTest?.(e.clientX, e.clientY);
+      if (ability) {
+        this.press(ability);
+        return;
+      }
       this.mouse = this.zoneFor(e.clientX);
       this.press(this.mouse);
     });

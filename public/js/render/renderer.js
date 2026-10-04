@@ -168,6 +168,7 @@ export class Renderer {
 
     // ---- hero -----------------------------------------------------------------
     if (!view.hideHero) this.drawHero(ctx, sim, view, t);
+    if (sim.shieldT > 0 && !sim.dead) this.drawShield(ctx, sim, view, t);
 
     // gameplay tint (lighter than background so the action stays readable)
     this.scenery.tint(ctx, sky, H, 0.35);
@@ -231,6 +232,28 @@ export class Renderer {
     const c = day.map((v, i) => Math.round(v + (night[i] - v) * n));
     ctx.fillStyle = `rgba(${c[0]},${c[1]},${c[2]},${c[3] / 100})`;
     ctx.fillRect(0, 0, this.W, h);
+  }
+
+  /** Energy shield bubble around the hero; it flickers during the last moments. */
+  drawShield(ctx, sim, view, t) {
+    if (sim.shieldT < 0.8 && Math.floor(t * 12) % 2) return;
+    const x = this.sx(view.heroX ?? sim.x);
+    const y = this.sy((view.heroY ?? sim.y) + sim.height * 0.5);
+    const r = this.ppm * 1.15;
+    ctx.save();
+    const g = ctx.createRadialGradient(x, y, r * 0.55, x, y, r);
+    g.addColorStop(0, 'rgba(159,227,255,0)');
+    g.addColorStop(1, 'rgba(159,227,255,0.38)');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(220,245,255,0.9)';
+    ctx.lineWidth = Math.max(2, this.ppm * 0.06);
+    ctx.setLineDash([this.ppm * 0.35, this.ppm * 0.18]);
+    ctx.lineDashOffset = -t * this.ppm * 2;
+    ctx.stroke();
+    ctx.restore();
   }
 
   /** Distance flags (own record, next colleague). Drawn in screen pixels so the label stays crisp. */

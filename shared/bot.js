@@ -6,8 +6,6 @@ const HORIZON = 1.4;
 
 const PLANS = [
   { name: 'jumpFull', hold: 9, dbl: null },
-  { name: 'jumpMid', hold: 0.17, dbl: null },
-  { name: 'jumpShort', hold: 0.1, dbl: null },
   { name: 'dbl15', hold: 9, dbl: 0.15 },
   { name: 'dbl25', hold: 9, dbl: 0.25 },
   { name: 'dbl35', hold: 9, dbl: 0.35 },

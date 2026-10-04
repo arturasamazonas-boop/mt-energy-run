@@ -15,7 +15,6 @@ export const PHYSICS = {
   gravity: 52,
   jumpVelocity: 15.2,
   doubleJumpVelocity: 13.4,
-  jumpCutFactor: 0.45, // vy multiplier when the jump button is released early
   fastFallVelocity: -24,
   coyoteTime: 0.1,
   jumpBuffer: 0.13,
@@ -249,6 +248,13 @@ export function cityStart(index) {
 // ---------------------------------------------------------------------------
 // Power-ups
 // ---------------------------------------------------------------------------
+// Abilities the player triggers (buttons / Q, E). Charged by bolts collected
+// during the run and emptied on use, so they come rarely: about once per 1-2 km.
+export const ABILITIES = {
+  shield: { cost: 160, duration: 3 }, // obstacles pass through the hero
+  wave: { cost: 120, range: 22 }, // pulls every bolt ahead within `range` meters
+};
+
 export const POWERUPS = {
   magnet: { icon: 'magnet', base: 7, perLevel: 1.6 },
   drone: { icon: 'drone', base: 5, perLevel: 0.9 },

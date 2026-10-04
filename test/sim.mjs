@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { Sim, computeEnergy } from '../shared/sim.js';
-import { PHYSICS, cityStart } from '../shared/config.js';
+import { PHYSICS, ABILITIES, cityStart } from '../shared/config.js';
 
 const DT = 1 / 120;
 const run = (sim, secs, inp = () => ({})) => {
@@ -94,6 +94,59 @@ const run = (sim, secs, inp = () => ({})) => {
   s.die('crash');
   s.revive();
   assert.ok(!s.dead && s.invuln > 0 && s.revived);
+}
+
+// a quick tap is a full jump (no short hop)
+{
+  const apex = (held) => {
+    const s = new Sim({ seed: 'phys' });
+    s.entities = [];
+    s.loadedUntil = 99;
+    let maxY = 0;
+    s.step(DT, { jump: true, jumpHeld: true });
+    for (let i = 0; i < 120; i++) {
+      s.step(DT, { jumpHeld: held });
+      maxY = Math.max(maxY, s.y);
+    }
+    return maxY;
+  };
+  assert.ok(Math.abs(apex(false) - apex(true)) < 1e-9, 'releasing early does not shorten the jump');
+}
+
+// abilities: charged by bolts, emptied on use
+{
+  const s = new Sim({ seed: 'phys' });
+  s.loadedUntil = 99;
+  s.entities = [];
+  assert.equal(s.useAbility('shield'), false, 'not charged yet');
+  s.charge.shield = ABILITIES.shield.cost - 1;
+  s.entities = [{ k: 'bolt', x: 3, y: 0.8, alive: true, id: 'b' }];
+  const ready = [];
+  run(s, 0.5);
+  s.events.forEach((e) => e.type === 'abilityReady' && ready.push(e.kind));
+  assert.deepEqual(ready, ['shield'], 'one more bolt fills the shield');
+  // shield: an obstacle passes through
+  s.entities = [{ k: 'barrier', x: s.x + 4, w: 1.35, y0: 0, y1: 1.05, alive: true, id: 'o' }];
+  assert.equal(s.useAbility('shield'), true);
+  assert.equal(s.charge.shield, 0);
+  run(s, 0.6);
+  assert.ok(!s.dead, 'shielded hero runs through');
+  run(s, ABILITIES.shield.duration);
+  assert.equal(s.shieldT, 0);
+  s.entities = [{ k: 'barrier', x: s.x + 4, w: 1.35, y0: 0, y1: 1.05, alive: true, id: 'o2' }];
+  run(s, 0.6);
+  assert.ok(s.dead, 'without the shield it is a crash');
+}
+{
+  // wave: pulls every bolt ahead, and those bolts do not recharge it
+  const s = new Sim({ seed: 'phys' });
+  s.loadedUntil = 99;
+  s.entities = [5, 9, 14, 19].map((dx, i) => ({ k: 'bolt', x: s.x + dx, y: 3.2, alive: true, id: `w${i}` }));
+  s.charge.wave = ABILITIES.wave.cost;
+  run(s, 1.2, (i) => ({ wave: i === 0 }));
+  assert.equal(s.stats.bolts, 4, 'high bolts collected by the wave');
+  assert.equal(s.charge.wave, 0, 'wave bolts give no charge');
+  assert.equal(s.stats.waves, 1);
 }
 
 // start options

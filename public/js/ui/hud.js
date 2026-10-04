@@ -1,5 +1,5 @@
 // In-run heads-up display (DOM), banners and tutorial hints.
-import { CITIES, powerupDuration } from '/shared/config.js';
+import { CITIES, ABILITIES, powerupDuration } from '/shared/config.js';
 import { t, L, fmtNum, fmtDist } from '../i18n.js';
 import { ICON } from './icons.js';
 import { drawPowerIcon } from '../render/entities.js';
@@ -59,7 +59,9 @@ export class Hud {
       this.el.powers.appendChild(d);
     }
     this.controls = null;
-    if (isTouchDevice()) this.mountControls(faint);
+    const touch = isTouchDevice();
+    if (touch) this.mountControls(faint);
+    this.mountAbilities(touch);
     this.last = {};
   }
 
@@ -74,9 +76,33 @@ export class Hud {
     this.controls = { slide: c.querySelector('[data-k="slide"]'), jump: c.querySelector('[data-k="jump"]') };
   }
 
+  /** Ability buttons with a charge ring: above the slide (shield) and jump (wave) icons. */
+  mountAbilities(touch) {
+    const c = document.createElement('div');
+    c.className = `abilities${touch ? ' touch' : ''}`;
+    const ring = '<svg class="ring" viewBox="0 0 64 64"><circle cx="32" cy="32" r="29" fill="none" stroke="rgba(255,255,255,.18)" stroke-width="5"/><circle class="p" cx="32" cy="32" r="29" fill="none" stroke="#FFD800" stroke-width="5" stroke-linecap="round" stroke-dasharray="182.2" stroke-dashoffset="182.2" transform="rotate(-90 32 32)"/></svg>';
+    const btn = (k, icon, label, key) => `<div class="ab ${k}" data-k="${k}">${ring}${icon}<small>${label}</small>${touch ? '' : `<kbd>${key}</kbd>`}</div>`;
+    c.innerHTML = btn('shield', ICON.abShield, t('abShield'), 'Q') + btn('wave', ICON.abWave, t('abWave'), 'E');
+    this.root.appendChild(c);
+    this.abilities = {};
+    for (const k of ['shield', 'wave']) {
+      const el = c.querySelector(`[data-k="${k}"]`);
+      this.abilities[k] = { el, ring: el.querySelector('circle.p'), ready: false };
+    }
+  }
+
+  /** Which ability button (with a little slack) is under a screen point. */
+  abilityAt(x, y) {
+    for (const [k, a] of Object.entries(this.abilities || {})) {
+      const r = a.el.getBoundingClientRect();
+      if (r.width && x >= r.left - 8 && x <= r.right + 8 && y >= r.top - 8 && y <= r.bottom + 8) return k;
+    }
+    return null;
+  }
+
   /** Brief highlight on the icon of the zone that was pressed. */
   pulse(kind) {
-    const el = this.controls?.[kind];
+    const el = this.controls?.[kind] || this.abilities?.[kind]?.el;
     if (!el) return;
     el.classList.remove('on');
     void el.offsetWidth;
@@ -84,6 +110,8 @@ export class Hud {
   }
 
   unmount() {
+    this.abilities = null;
+    this.controls = null;
     this.root.hidden = true;
     this.root.innerHTML = '';
   }
@@ -129,6 +157,27 @@ export class Hud {
       }
       if (p.el.hidden === on) p.el.hidden = !on;
       if (on) p.ring.setAttribute('stroke-dashoffset', String(125.7 * (1 - Math.min(1, frac))));
+    }
+    if (this.abilities && s.charge) {
+      for (const k of ['shield', 'wave']) {
+        const a = this.abilities[k];
+        const frac = Math.min(1, s.charge[k] / ABILITIES[k].cost);
+        const key = Math.round(frac * 100);
+        if (a.key !== key) {
+          a.key = key;
+          a.ring.setAttribute('stroke-dashoffset', String(182.2 * (1 - frac)));
+        }
+        const ready = frac >= 1;
+        if (a.ready !== ready) {
+          a.ready = ready;
+          a.el.classList.toggle('ready', ready);
+        }
+        const active = k === 'shield' && s.shieldT > 0;
+        if (a.active !== active) {
+          a.active = active;
+          a.el.classList.toggle('active', active);
+        }
+      }
     }
     Object.assign(l, s, { pct, legKey });
   }

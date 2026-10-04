@@ -51,6 +51,7 @@ const game = new Game({
   },
 });
 input.onAnyAction = (kind) => hud.pulse(kind);
+input.hitTest = (x, y) => hud.abilityAt(x, y);
 input.onPause = () => {
   if (game.mode === 'run') game.pause();
   else if (game.mode === 'paused') {
@@ -884,6 +885,9 @@ function onGameEvent(type, ev) {
       showPause();
       break;
     case 'taskDone':
+      break;
+    case 'abilityReady':
+      hud.banner(t('abTitle'), t(ev.kind === 'shield' ? 'abShieldReady' : 'abWaveReady'));
       break;
     default:
   }
