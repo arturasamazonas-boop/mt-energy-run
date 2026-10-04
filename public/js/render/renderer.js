@@ -10,11 +10,11 @@ import { SpriteCache, clamp, lerp } from './util.js';
 
 const OBSTACLES = new Set(['cone', 'barrier', 'drum', 'rollDrum', 'cable', 'crate', 'stack', 'container', 'scaffold', 'beam', 'rack', 'birds']);
 
-// How far the scenery is muted during a run (see calmBackdrop)
+// How far the scenery is muted during a run (see calmBackdrop). A plain
+// translucent haze: blend modes such as 'saturation' are very slow on phones.
 const CALM = {
-  desaturate: 0.55,
-  dayHaze: [196, 206, 218, 34], // r, g, b, alpha %
-  nightHaze: [72, 82, 108, 30],
+  dayHaze: [178, 186, 198, 44], // r, g, b, alpha %
+  nightHaze: [70, 80, 104, 38],
 };
 
 export class Renderer {
@@ -42,7 +42,7 @@ export class Renderer {
   resize() {
     const cssW = this.canvas.clientWidth || window.innerWidth;
     const cssH = this.canvas.clientHeight || window.innerHeight;
-    const maxDpr = this.quality < 1 ? 1.25 : 2;
+    const maxDpr = this.quality >= 1 ? 2 : this.quality > 0.5 ? 1.25 : 1;
     this.dpr = Math.min(window.devicePixelRatio || 1, maxDpr);
     const W = Math.round(cssW * this.dpr);
     const H = Math.round(cssH * this.dpr);
@@ -218,21 +218,15 @@ export class Renderer {
     }
   }
 
-  /** Mute everything above the walkway: less colour, lower contrast (a light haze by day, a dark one at night). */
+  /** Mute everything above the walkway: a grey haze lowers colour and contrast (lighter by day, blue-grey at night). */
   calmBackdrop(ctx, sky) {
     const h = this.groundY;
-    ctx.save();
-    ctx.globalCompositeOperation = 'saturation';
-    ctx.fillStyle = `rgba(128,128,128,${CALM.desaturate})`;
-    ctx.fillRect(0, 0, this.W, h);
-    ctx.globalCompositeOperation = 'source-over';
     const n = Math.min(1, sky.night || 0);
     const day = CALM.dayHaze;
     const night = CALM.nightHaze;
     const c = day.map((v, i) => Math.round(v + (night[i] - v) * n));
     ctx.fillStyle = `rgba(${c[0]},${c[1]},${c[2]},${c[3] / 100})`;
     ctx.fillRect(0, 0, this.W, h);
-    ctx.restore();
   }
 
   /** Distance flags (own record, next colleague). Drawn in screen pixels so the label stays crisp. */

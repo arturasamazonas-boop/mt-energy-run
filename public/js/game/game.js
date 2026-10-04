@@ -104,15 +104,15 @@ export class Game {
   }
 
   // ---------------------------------------------------------------------------
-  /** Lower the canvas resolution once if the device cannot keep up. */
+  /** Lower the canvas resolution (up to twice) if the device cannot keep up. */
   adaptQuality(dt) {
-    if (this.renderer.quality < 1 || this.mode !== 'run') return;
+    if (this.renderer.quality <= 0.5 || this.mode !== 'run') return;
     this.frameTimes.push(dt);
     if (this.frameTimes.length < 150) return;
     const sorted = [...this.frameTimes].sort((a, b) => a - b);
     this.frameTimes.length = 0;
     if (sorted[Math.floor(sorted.length / 2)] > 0.024) {
-      this.renderer.quality = 0.75;
+      this.renderer.quality = this.renderer.quality >= 1 ? 0.75 : 0.5;
       this.renderer.W = 0;
       this.renderer.resize();
     }
