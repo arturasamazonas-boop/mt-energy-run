@@ -4,7 +4,7 @@
 
 import { PHYSICS, SCORE, ABILITIES, speedAt, cityAt, cityStart, powerupDuration, boltValue, CITIES } from './config.js';
 import { generateCity } from './worldgen.js';
-import { TUNNEL, generateTunnel, tunnelLength, enterTunnel, stepTunnel } from './tunnel.js';
+import { TUNNEL, generateTunnel, nextTunnel, enterTunnel, stepTunnel } from './tunnel.js';
 
 const P = PHYSICS;
 const DRONE_Y = 4.6; // altitude the drone starts at
@@ -68,7 +68,7 @@ export class Sim {
     this.entities = [];
     this.events = [];
     this.pendingTask = null;
-    // cable tunnels (test build: switched on with ?tunnel)
+    // bonus cable tunnels (the game switches them on; tests and look-ahead may not)
     this.tunnelsOn = !!tunnels;
     this.tunnelPlan = [];
     this.tunnel = null;
@@ -112,9 +112,10 @@ export class Sim {
     let added = false;
     for (;;) {
       const last = this.tunnelPlan[this.tunnelPlan.length - 1];
-      const x0 = last ? last.x0 + last.len + TUNNEL.every : this.startX + TUNNEL.firstAt;
+      const next = nextTunnel(this.seed, this.startX, last || null);
+      const x0 = next.x0;
       if (x0 > this.x + 400) return added;
-      const p = { i: this.tunnelPlan.length, x0, len: tunnelLength(x0) };
+      const p = { ...next };
       this.tunnelPlan.push(p);
       // portals are drawn 6 m wide with the opening in the middle
       this.entities.push({ k: 'tunnelIn', x: x0 - 3, w: 6, alive: true, tunnel: p.i });

@@ -107,10 +107,11 @@ Serveris trasą atkuria iš to paties `seed` ir tikrina, ar pateikti skaičiai (
 
 Grafika piešiama kodu (vektoriai Canvas'e), todėl išorinių paveikslėlių, išskyrus MT GROUP logotipą, nėra. Muzika ir garsai sintezuojami Web Audio API, licencijų nereikia. Šriftai Barlow ir Roboto Slab naudojami pagal SIL OFL / Apache 2.0 licencijas.
 
-## Kabelių tunelis (bandomoji versija)
+## Bonus kabelių tunelis
 
-Įjungiamas tik su `?tunnel` nuoroda (pvz. `https://mt-energy-run.onrender.com/?tunnel`): treniruotės bėgimas, rezultatai nesiunčiami.
-Po ~150 m ir vėliau kas ~1,1 km herojus įbėga į MT kabelių tunelį ir ~24 s bėga „Temple Run“ principu, vaizdas už nugaros:
+Kiekviename bėgime: pirmas tunelis ~550–850 m, vėliau kas ~1,3–1,9 km (vieta priklauso nuo bėgimo seed, serveris ją perskaičiuoja).
+Herojus įbėga į MT kabelių tunelį ir ~24 s bėga „Temple Run“ principu, vaizdas už nugaros:
 trys juostos (braukti ← → arba ← → / A D), šuolis (braukti ↑ / tarpas), čiuožimas (braukti ↓ / ↓),
-posūkiai – prie rodyklės braukti jos kryptimi. Tai bonus lygis: tunelyje surinkta energija ir taškai ×5,
-o atsitrenkus žaidimas nesibaigia – herojus išlenda pro liuką į trasą ir bėga toliau. Atstumas skaičiuojamas toliau.
+posūkiai – prie rodyklės braukti jos kryptimi. Tunelyje surinkta energija ir taškai ×5,
+o atsitrenkus žaidimas nesibaigia – herojus išlenda pro liuką į trasą ir bėga toliau.
+Serveris tikrina `tunnelBolts` pagal tame bėgime galimus tunelio žaibus. `?notunnel` išjungia tunelius (testavimui).

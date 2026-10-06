@@ -1,12 +1,13 @@
 // Server-side game rules: run validation, progression, shop.
 import {
   SCORE, UPGRADES, UPGRADE_BY_ID, COSMETIC_BY_ID, ACHIEVEMENTS, ACHIEVEMENT_BY_ID,
-  minTimeFor, cityAt,
+  minTimeFor, cityAt, cityStart,
 } from '../shared/config.js';
 import { countAvailable } from '../shared/worldgen.js';
 import { computeEnergy } from '../shared/sim.js';
+import { TUNNEL, tunnelBoltsAvailable } from '../shared/tunnel.js';
 
-const INT_FIELDS = ['distance', 'score', 'bolts', 'parts', 'tokens', 'tasks', 'tasksFailed', 'gates', 'stars', 'perfectCities', 'maxMult', 'cityIndex', 'powerups', 'smashed'];
+const INT_FIELDS = ['distance', 'score', 'bolts', 'tunnelBolts', 'parts', 'tokens', 'tasks', 'tasksFailed', 'gates', 'stars', 'perfectCities', 'maxMult', 'cityIndex', 'powerups', 'smashed'];
 
 export function emptyPlayerData() {
   return {
@@ -62,7 +63,9 @@ export function validateRun(run, raw, elapsedSec) {
   if (s.distance > 200000) reasons.push('too_far');
 
   const avail = countAvailable(run.seed, s.distance, 12);
-  if (s.bolts > avail.bolts) reasons.push('bolts');
+  // bolts = road bolts + bonus tunnel bolts (each tunnel bolt counts ×TUNNEL.bonus)
+  if (s.tunnelBolts > s.bolts || s.tunnelBolts > tunnelBoltsAvailable(run.seed, cityStart(0), s.distance)) reasons.push('tunnel_bolts');
+  if (s.bolts - s.tunnelBolts > avail.bolts) reasons.push('bolts');
   if (s.parts > avail.parts) reasons.push('parts');
   if (s.tokens > avail.tokens) reasons.push('tokens');
   if (s.tasks + s.tasksFailed > avail.tasks) reasons.push('tasks');
@@ -78,6 +81,7 @@ export function validateRun(run, raw, elapsedSec) {
     2 *
     (s.distance * Math.max(1, s.maxMult) +
       s.bolts * SCORE.bolt +
+      s.tunnelBolts * SCORE.bolt * (TUNNEL.bonus - 1) +
       s.tokens * SCORE.token +
       s.parts * SCORE.part +
       s.tasks * SCORE.taskSuccess +

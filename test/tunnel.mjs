@@ -2,7 +2,9 @@
 import assert from 'node:assert/strict';
 import { Sim, computeEnergy } from '../shared/sim.js';
 import { Bot } from '../shared/bot.js';
-import { generateTunnel, TUNNEL } from '../shared/tunnel.js';
+import { generateTunnel, nextTunnel, TUNNEL } from '../shared/tunnel.js';
+import { validateRun } from '../server/rules.mjs';
+import { minTimeFor } from '../shared/config.js';
 
 const DT = 1 / 120;
 
@@ -37,7 +39,9 @@ for (const [seed, startAt] of [['t1', null], ['t2', null], ['t3', null], ['t4', 
 // a missed corner throws the hero back onto the road: the run goes on
 {
   const s = new Sim({ seed: 'm', tunnels: true });
-  s.x = s.tunnelPlan[0].x0 - 2;
+  s.x = nextTunnel('m', s.startX, null).x0 - 2;
+  s.lastScoredX = s.x;
+  s.ensureLoaded();
   for (let i = 0; i < 120 * 3 && !s.tunnel; i++) s.step(DT, {});
   assert.ok(s.tunnel, 'runs into the tunnel');
   s.invuln = 0;
@@ -69,12 +73,21 @@ for (const [seed, startAt] of [['t1', null], ['t2', null], ['t3', null], ['t4', 
 {
   const s = new Sim({ seed: 'e5', tunnels: true });
   const bot = new Bot();
-  for (let i = 0; i < 120 * 40 && !s.dead; i++) s.step(DT, bot.input(s));
+  for (let i = 0; i < 120 * 90 && !s.dead; i++) s.step(DT, bot.input(s));
   assert.ok(s.stats.tunnelBolts > 10);
   const sum = s.summary();
   const plain = { ...sum, tunnelBolts: 0 };
   assert.equal(computeEnergy(sum) - computeEnergy(plain), sum.tunnelBolts * (TUNNEL.bonus - 1));
   assert.equal(s.energyEarned(), computeEnergy(sum));
+  // the server accepts an honest run with a tunnel and rejects made-up tunnel bolts
+  const run = { seed: 'e5', upgrades: {} };
+  const ok = validateRun(run, sum, minTimeFor(sum.distance) + 1);
+  assert.ok(ok.ok, JSON.stringify(ok.reasons));
+  assert.equal(ok.summary.tunnelBolts, sum.tunnelBolts);
+  const fake = validateRun(run, { ...sum, tunnelBolts: sum.tunnelBolts + 500, bolts: sum.bolts + 500 }, minTimeFor(sum.distance) + 1);
+  assert.ok(fake.reasons.includes('tunnel_bolts'));
+  const fake2 = validateRun(run, { ...sum, bolts: sum.bolts + 80 }, minTimeFor(sum.distance) + 1);
+  assert.ok(fake2.reasons.includes('bolts'));
 }
 assert.equal(new Sim({ seed: 'm' }).entities.some((e) => e.k === 'tunnelIn'), false);
 assert.ok(TUNNEL.duration > 10);
