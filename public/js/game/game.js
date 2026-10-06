@@ -49,7 +49,7 @@ export class Game {
   // ---------------------------------------------------------------------------
   attract() {
     this.mode = 'attract';
-    this.sim = new Sim({ seed: `attract-${Math.floor(Date.now() / 3.6e6)}`, upgrades: { magnet: 3 } });
+    this.sim = new Sim({ seed: `attract-${Math.floor(Date.now() / 3.6e6)}`, upgrades: { magnet: 3 }, tunnels: true });
     this.bot = new Bot();
     this.input.enabled = false;
     this.resetHero();

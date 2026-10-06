@@ -31,8 +31,8 @@ const state = {
 
 const params = new URLSearchParams(location.search);
 const DEBUG = params.has('debug');
-// test build of the cable tunnel: ?tunnel (practice runs only, nothing is submitted)
-const TUNNELS = params.has('tunnel');
+// bonus cable tunnels are part of every run (?notunnel switches them off for testing)
+const TUNNELS = !params.has('notunnel');
 
 // ---------------------------------------------------------------------------
 // Core objects
@@ -789,7 +789,7 @@ async function startRun(mode) {
   clearPortraits();
   let run = { mode, seed: params.get('seed') || `local-${Date.now()}`, upgrades: state.profile.upgrades || {}, runId: null };
   const boardReq = state.online && !state.profile.guest ? fetchBoardQuick(mode === 'daily' ? 'daily' : 'all') : Promise.resolve(null);
-  if (state.online && !state.profile.guest && !params.has('practice') && !TUNNELS && !(DEBUG && params.has('autoplay'))) {
+  if (state.online && !state.profile.guest && !params.has('practice') && !(DEBUG && params.has('autoplay'))) {
     try {
       const r = await api.startRun(mode);
       run = { mode, seed: r.seed, upgrades: r.upgrades, runId: r.runId };
@@ -803,7 +803,7 @@ async function startRun(mode) {
   show('', { shadeMode: 'none' });
   // the touch icons step back once a player knows the controls
   hud.mount(run.upgrades, { faint: (state.profile.stats.runs || 0) >= 10 });
-  const tutorial = !prefs.get('tutDone') && !(state.profile.stats.runs > 0) && !params.has('autoplay') && !TUNNELS;
+  const tutorial = !prefs.get('tutDone') && !(state.profile.stats.runs > 0) && !params.has('autoplay');
   game.play({
     seed: run.seed,
     upgrades: run.upgrades,
