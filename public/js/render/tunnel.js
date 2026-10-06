@@ -21,6 +21,13 @@ export class TunnelView {
   constructor() {
     this.boltFrames = null;
     this.camX = 0;
+    this.camY = CAM_H;
+    this.pops = []; // times of bonus bolt pickups ("+5" floats up)
+  }
+
+  pop(t) {
+    this.pops.push(t);
+    if (this.pops.length > 8) this.pops.shift();
   }
 
   /** Pre-render the spinning bolt once (drawing gradients per bolt per frame is slow on phones). */
@@ -49,14 +56,17 @@ export class TunnelView {
     const heroX = tn.lx * TUNNEL.lane;
     // the camera follows the hero sideways, but lazily
     this.camX += (heroX * 0.7 - this.camX) * Math.min(1, dt * 8);
+    // and rises with a jump so the hero stays in view below the HUD
+    this.camY += (CAM_H + tn.y * 0.7 - this.camY) * Math.min(1, dt * 12);
+    const camY = this.camY;
     const camZ = tn.z - CAM_BACK;
     const f = H * 0.9;
-    const hy = H * 0.3;
+    const hy = H * 0.33;
     const cx = W / 2;
     const camX = this.camX;
     const P = (x, y, z) => {
       const dz = Math.max(0.35, z - camZ);
-      return [cx + ((x - camX) * f) / dz, hy + ((CAM_H - y) * f) / dz];
+      return [cx + ((x - camX) * f) / dz, hy + ((camY - y) * f) / dz];
     };
     const poly = (pts, fill) => {
       ctx.beginPath();
@@ -217,6 +227,37 @@ export class TunnelView {
       } else this.drawObstacle(ctx, P, it.o, fogAt(it.o.z), t);
     }
 
+    // ---- bonus: "+5" over the hero for each bolt, and a badge --------------------------
+    const [px, py] = P(heroX, tn.y + 2.1, tn.z);
+    const fs = Math.round(H * 0.045);
+    ctx.font = `800 ${fs}px Oswald, Inter, sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    this.pops = this.pops.filter((p0) => t - p0 < 0.6);
+    for (const p0 of this.pops) {
+      const k = (t - p0) / 0.6;
+      ctx.globalAlpha = 1 - k;
+      ctx.fillStyle = '#FFE14A';
+      ctx.strokeStyle = 'rgba(0,0,0,0.6)';
+      ctx.lineWidth = 3;
+      ctx.strokeText(`+${TUNNEL.bonus}⚡`, px, py - k * H * 0.08);
+      ctx.fillText(`+${TUNNEL.bonus}⚡`, px, py - k * H * 0.08);
+    }
+    ctx.globalAlpha = 1;
+    {
+      const label = `BONUS ⚡×${TUNNEL.bonus}`;
+      const bw = ctx.measureText(label).width + fs * 1.2;
+      const bx = W * 0.5 - bw / 2;
+      const by = H * 0.87; // on the floor, away from the hero and the HUD
+      ctx.fillStyle = 'rgba(255,216,0,0.92)';
+      ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(bx, by, bw, fs * 1.3, fs * 0.65);
+      else ctx.rect(bx, by, bw, fs * 1.3);
+      ctx.fill();
+      ctx.fillStyle = '#1E1E1E';
+      ctx.fillText(label, W * 0.5, by + fs * 0.68);
+    }
+
     // ---- turn prompt -----------------------------------------------------------------
     if (corner && inTurnWindow(tn, v) && !sim.dead) {
       const d = corner.dir;
@@ -256,8 +297,8 @@ export class TunnelView {
         ctx.fillStyle = c;
         ctx.fill();
       };
-      if (y1 < CAM_H && top) q([P(x0, y1, z0), P(x1, y1, z0), P(x1, y1, z1), P(x0, y1, z1)], mix(top, fo));
-      if (y0 > CAM_H && top) q([P(x0, y0, z0), P(x1, y0, z0), P(x1, y0, z1), P(x0, y0, z1)], mix(side, fo));
+      if (y1 < this.camY && top) q([P(x0, y1, z0), P(x1, y1, z0), P(x1, y1, z1), P(x0, y1, z1)], mix(top, fo));
+      if (y0 > this.camY && top) q([P(x0, y0, z0), P(x1, y0, z0), P(x1, y0, z1), P(x0, y0, z1)], mix(side, fo));
       if (camLeft) q([P(x0, y0, z0), P(x0, y1, z0), P(x0, y1, z1), P(x0, y0, z1)], mix(side, fo));
       if (camRight) q([P(x1, y0, z0), P(x1, y1, z0), P(x1, y1, z1), P(x1, y0, z1)], mix(side, fo));
       q([P(x0, y0, z0), P(x1, y0, z0), P(x1, y1, z0), P(x0, y1, z0)], mix(front, fo));

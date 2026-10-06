@@ -59,7 +59,7 @@ export class Sim {
     this.stats = {
       bolts: 0, parts: 0, tokens: 0, tasks: 0, tasksFailed: 0, powerups: 0,
       smashed: 0, helmetsUsed: 0, gates: 0, stars: 0, perfectCities: 0, jumps: 0, slides: 0,
-      shields: 0, jets: 0, tunnels: 0,
+      shields: 0, jets: 0, tunnels: 0, tunnelBolts: 0, tunnelCrashes: 0,
     };
     this.partsByCity = {};
     this.gateStars = {};
@@ -129,8 +129,9 @@ export class Sim {
     for (const e of this.entities) {
       if (!e.alive || keep.has(e.k)) continue;
       for (const p of this.tunnelPlan) {
-        if (e.x + (e.w || 0) > p.x0 - 22 && e.x < p.x0 + p.len + 28) {
+        if (e.x + (e.w || 0) > p.x0 - 22 && e.x < (p.cut ?? p.x0 + p.len + 28)) {
           e.alive = false;
+          e.tunnelCleared = p.i;
           break;
         }
       }
@@ -174,12 +175,40 @@ export class Sim {
       this.emit('helmetSave', { k: 'tunnel', x: this.x, y: 1 });
       return;
     }
-    this.die('crash', { k: 'tunnel' });
+    this.tunnelCrash('tunnel');
+  }
+
+  /** A crash underground is not the end: the hero pops out onto the road and runs on. */
+  tunnelCrash(kind) {
+    const p = this.tunnelPlan[this.tunnel.def.i];
+    this.tunnel = null;
+    // the regular course comes back a little way ahead
+    p.cut = this.x + 25;
+    for (const e of this.entities) {
+      if (e.tunnelCleared === p.i && e.x >= p.cut) {
+        e.alive = true;
+        delete e.tunnelCleared;
+      }
+      if (e.k === 'tunnelOut' && e.tunnel === p.i) e.alive = false;
+    }
+    // a service hatch to climb out of
+    this.entities.push({ k: 'tunnelOut', x: this.x - 3, w: 6, alive: true, tunnel: p.i, hatch: true });
+    this.entities.sort((a, b) => a.x - b.x);
+    this.stats.tunnelCrashes++;
+    this.y = 0;
+    this.vy = 0;
+    this.onGround = true;
+    this.sliding = false;
+    this.jumps = 0;
+    this.invuln = Math.max(this.invuln, 1.5);
+    this.emit('tunnelCrash', { kind });
   }
 
   collectTunnelBolt() {
+    // bonus stage: each bolt is worth TUNNEL.bonus bolts of energy and points
     this.stats.bolts++;
-    const p = this.addScore(SCORE.bolt);
+    this.stats.tunnelBolts++;
+    const p = this.addScore(SCORE.bolt * TUNNEL.bonus);
     this.emit('bolt', { x: this.x + 1, y: 1, points: p, tunnel: true });
     if (this.shieldT === 0 && this.jetT === 0) this.addCharge();
   }
@@ -289,7 +318,10 @@ export class Sim {
       const r = stepTunnel(this, this.tunnel, dt, input, v);
       if (this.dead) return;
       if (r === 'out') this.exitTunnel();
-      else {
+      else if (r === 'crash') {
+        this.afterStep();
+        return;
+      } else {
         this.y = 0;
         this.ensureLoaded();
         // city gates passed underground still count
@@ -750,6 +782,7 @@ export class Sim {
       distance: Math.floor(this.x - this.startX),
       score: Math.floor(this.score),
       bolts: this.stats.bolts,
+      tunnelBolts: this.stats.tunnelBolts,
       parts: this.stats.parts,
       tokens: this.stats.tokens,
       tasks: this.stats.tasks,
@@ -773,7 +806,9 @@ export class Sim {
 }
 
 export function computeEnergy(s, upgrades = {}) {
-  return Math.floor(s.bolts * boltValue(upgrades)) + s.tokens * SCORE.tokenEnergy + s.stars * SCORE.starEnergy;
+  // bolts from a bonus tunnel count TUNNEL.bonus times
+  const bolts = s.bolts + (s.tunnelBolts || 0) * (TUNNEL.bonus - 1);
+  return Math.floor(bolts * boltValue(upgrades)) + s.tokens * SCORE.tokenEnergy + s.stars * SCORE.starEnergy;
 }
 
 export function cityName(index, lang = 'lt') {

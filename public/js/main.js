@@ -896,7 +896,10 @@ function onGameEvent(type, ev) {
       hud.banner('🚀', t('jetTitle'), t(isTouchDevice() ? 'droneHintTouch' : 'droneHintKeys'));
       break;
     case 'tunnelIn':
-      hud.banner('🚇', t('tunnelTitle'), t(isTouchDevice() ? 'tunnelHintTouch' : 'tunnelHintKeys'));
+      hud.banner(`⚡×5 · ${t('tunnelSub')}`, t('tunnelTitle'), t(isTouchDevice() ? 'tunnelHintTouch' : 'tunnelHintKeys'));
+      break;
+    case 'tunnelCrash':
+      hud.banner('💥', t('tunnelCrash'));
       break;
     case 'tunnelOut':
       hud.banner('☀️', t('tunnelOut'));
