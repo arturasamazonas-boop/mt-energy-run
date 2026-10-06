@@ -4,6 +4,7 @@
 
 import { PHYSICS, SCORE, ABILITIES, speedAt, cityAt, cityStart, powerupDuration, boltValue, CITIES } from './config.js';
 import { generateCity } from './worldgen.js';
+import { TUNNEL, generateTunnel, tunnelLength, enterTunnel, stepTunnel } from './tunnel.js';
 
 const P = PHYSICS;
 const DRONE_Y = 4.6; // altitude the drone starts at
@@ -14,7 +15,7 @@ const DRONE_PULL_R = 3; // the drone only gathers bolts close by, so steering ma
 const MAGNET_R = 7.5;
 
 export class Sim {
-  constructor({ seed, upgrades = {}, startCity = 0, startAt = null } = {}) {
+  constructor({ seed, upgrades = {}, startCity = 0, startAt = null, tunnels = false } = {}) {
     this.seed = seed;
     this.upgrades = upgrades;
     this.x = startAt ?? cityStart(startCity);
@@ -58,7 +59,7 @@ export class Sim {
     this.stats = {
       bolts: 0, parts: 0, tokens: 0, tasks: 0, tasksFailed: 0, powerups: 0,
       smashed: 0, helmetsUsed: 0, gates: 0, stars: 0, perfectCities: 0, jumps: 0, slides: 0,
-      shields: 0, jets: 0,
+      shields: 0, jets: 0, tunnels: 0,
     };
     this.partsByCity = {};
     this.gateStars = {};
@@ -67,6 +68,10 @@ export class Sim {
     this.entities = [];
     this.events = [];
     this.pendingTask = null;
+    // cable tunnels (test build: switched on with ?tunnel)
+    this.tunnelsOn = !!tunnels;
+    this.tunnelPlan = [];
+    this.tunnel = null;
     this.ensureLoaded();
   }
 
@@ -83,7 +88,9 @@ export class Sim {
   }
 
   ensureLoaded() {
+    let loaded = false;
     while (cityStart(this.loadedUntil) < this.x + 140) {
+      loaded = true;
       const c = generateCity(this.seed, this.loadedUntil);
       for (const e of c.entities) {
         e.alive = true;
@@ -92,10 +99,89 @@ export class Sim {
       }
       this.loadedUntil++;
     }
+    const planned = this.tunnelsOn && this.planTunnels();
+    if (planned || (this.tunnelsOn && loaded)) this.clearTunnelRoads();
     // prune entities far behind
     if (this.entities.length > 400 || (this.entities[0] && this.entities[0].x < this.x - 40)) {
       this.entities = this.entities.filter((e) => e.x + (e.w || 0) > this.x - 30);
     }
+  }
+
+  /** Plan tunnels a little ahead; returns true when a new one was added. */
+  planTunnels() {
+    let added = false;
+    for (;;) {
+      const last = this.tunnelPlan[this.tunnelPlan.length - 1];
+      const x0 = last ? last.x0 + last.len + TUNNEL.every : this.startX + TUNNEL.firstAt;
+      if (x0 > this.x + 400) return added;
+      const p = { i: this.tunnelPlan.length, x0, len: tunnelLength(x0) };
+      this.tunnelPlan.push(p);
+      // portals are drawn 6 m wide with the opening in the middle
+      this.entities.push({ k: 'tunnelIn', x: x0 - 3, w: 6, alive: true, tunnel: p.i });
+      this.entities.push({ k: 'tunnelOut', x: x0 + p.len - 3, w: 6, alive: true, tunnel: p.i });
+      added = true;
+    }
+  }
+
+  /** The road around a tunnel is empty: the hero is underground meanwhile. */
+  clearTunnelRoads() {
+    const keep = new Set(['gate', 'checkpoint', 'tunnelIn', 'tunnelOut']);
+    for (const e of this.entities) {
+      if (!e.alive || keep.has(e.k)) continue;
+      for (const p of this.tunnelPlan) {
+        if (e.x + (e.w || 0) > p.x0 - 22 && e.x < p.x0 + p.len + 28) {
+          e.alive = false;
+          break;
+        }
+      }
+    }
+    this.entities.sort((a, b) => a.x - b.x);
+  }
+
+  startTunnel(e) {
+    const p = this.tunnelPlan[e.tunnel];
+    this.tunnel = enterTunnel(generateTunnel(this.seed, p.i, p.x0));
+    this.power.drone = 0;
+    this.power.excavator = 0;
+    this.jetT = 0;
+    this.y = 0;
+    this.vy = 0;
+    this.onGround = true;
+    this.sliding = false;
+    this.stats.tunnels++;
+    this.emit('tunnelIn', { i: p.i });
+  }
+
+  exitTunnel() {
+    this.tunnel = null;
+    this.y = 0;
+    this.vy = 0;
+    this.onGround = true;
+    this.sliding = false;
+    this.jumps = 0;
+    this.invuln = Math.max(this.invuln, 0.8);
+    this.emit('tunnelOut');
+  }
+
+  tunnelHit(o) {
+    if (this.shieldT > 0 || this.invuln > 0) return;
+    if (this.helmet) {
+      this.helmet = false;
+      this.stats.helmetsUsed++;
+      o.alive = false;
+      this.invuln = 1.2;
+      this.setMult(this.mult - 1);
+      this.emit('helmetSave', { k: 'tunnel', x: this.x, y: 1 });
+      return;
+    }
+    this.die('crash', { k: 'tunnel' });
+  }
+
+  collectTunnelBolt() {
+    this.stats.bolts++;
+    const p = this.addScore(SCORE.bolt);
+    this.emit('bolt', { x: this.x + 1, y: 1, points: p, tunnel: true });
+    if (this.shieldT === 0 && this.jetT === 0) this.addCharge();
   }
 
   emit(type, data = {}) {
@@ -143,7 +229,7 @@ export class Sim {
     const half = P.playerWidth / 2 - 0.1;
     for (const e of this.entities) {
       if (!e.alive || e.k === 'pit' || e.oneWay) continue;
-      if (e.k === 'bolt' || e.k === 'part' || e.k === 'token' || e.k === 'power' || e.k === 'task' || e.k === 'gate' || e.k === 'checkpoint') continue;
+      if (e.k === 'bolt' || e.k === 'part' || e.k === 'token' || e.k === 'power' || e.k === 'task' || e.k === 'gate' || e.k === 'checkpoint' || e.k === 'tunnelIn' || e.k === 'tunnelOut') continue;
       if (this.x + half < e.x || this.x - half > e.x + e.w) continue;
       if (e.y0 > this.y + P.slideHeight - 0.05 && e.y0 < this.y + P.playerHeight) return true;
     }
@@ -198,6 +284,27 @@ export class Sim {
       }
     }
     if (input.jet) this.useAbility('jet');
+
+    if (this.tunnel) {
+      const r = stepTunnel(this, this.tunnel, dt, input, v);
+      if (this.dead) return;
+      if (r === 'out') this.exitTunnel();
+      else {
+        this.y = 0;
+        this.ensureLoaded();
+        // city gates passed underground still count
+        for (const e of this.entities) {
+          if (e.x > this.x) break;
+          if ((e.k === 'gate' || e.k === 'checkpoint') && e.alive && !e.passed) {
+            e.passed = true;
+            if (e.k === 'gate') this.passGate(e);
+            else this.emit('checkpoint', { wp: e.wp, x: e.x });
+          }
+        }
+        this.afterStep();
+        return;
+      }
+    }
 
     // ---- input -------------------------------------------------------------
     if (input.jump) this.buffer = P.jumpBuffer;
@@ -336,6 +443,14 @@ export class Sim {
           }
           break;
         case 'pit':
+        case 'tunnelOut':
+          break;
+        case 'tunnelIn':
+          if (this.tunnelsOn && !e.passed && this.x >= e.x + 3) {
+            e.passed = true;
+            this.startTunnel(e);
+            return;
+          }
           break;
         default: {
           // obstacles
@@ -379,6 +494,10 @@ export class Sim {
       }
     }
 
+    this.afterStep();
+  }
+
+  afterStep() {
     // ---- score ---------------------------------------------------------------
     const gained = (this.x - this.lastScoredX) * this.mult;
     this.lastScoredX = this.x;
@@ -518,6 +637,7 @@ export class Sim {
   useAbility(kind) {
     const a = ABILITIES[kind];
     if (!a || this.charge[kind] < a.cost || this.dead) return false;
+    if (kind === 'jet' && this.tunnel) return false; // no room to fly underground
     if ((kind === 'shield' && this.shieldT > 0) || (kind === 'jet' && this.jetT > 0)) return false;
     this.charge[kind] = 0;
     if (kind === 'shield') {
@@ -581,6 +701,15 @@ export class Sim {
     this.sliding = false;
     this.jumps = 0;
     this.invuln = 2.5;
+    const tn = this.tunnel;
+    if (tn) {
+      for (const o of tn.def.obs) if (o.z < tn.z + 28 && o.z + 4 > tn.z - 3) o.alive = false;
+      for (const c of tn.def.corners) if (c.z < tn.z + 28 && c.z > tn.z - 3) c.ok = true;
+      tn.y = 0;
+      tn.vy = 0;
+      tn.onGround = true;
+      tn.slideT = 0;
+    }
     this.emit('revive');
   }
 
@@ -598,6 +727,10 @@ export class Sim {
     c.partsByCity = { ...this.partsByCity };
     c.gateStars = { ...this.gateStars };
     c.pendingTask = null;
+    // look-ahead copies treat a tunnel stretch as open road
+    c.tunnelsOn = false;
+    c.tunnelPlan = [];
+    c.tunnel = null;
     c.events = [];
     c.entities = [];
     for (const e of this.entities) {

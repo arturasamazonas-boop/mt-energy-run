@@ -1,5 +1,6 @@
 // Look-ahead autopilot. Used by tests (course feasibility) and the menu attract mode.
 import { Sim } from './sim.js';
+import { tunnelBotInput } from './tunnel.js';
 
 const DT = 1 / 120;
 const HORIZON = 1.4;
@@ -70,6 +71,10 @@ export class Bot {
 
   /** Returns an input object for the next step of `sim`. */
   input(sim) {
+    if (sim.tunnel) {
+      this.runner = null;
+      return tunnelBotInput(sim);
+    }
     if (this.runner) {
       const inp = this.runner.next(sim);
       if (this.runner.done) this.runner = null;

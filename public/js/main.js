@@ -31,6 +31,8 @@ const state = {
 
 const params = new URLSearchParams(location.search);
 const DEBUG = params.has('debug');
+// test build of the cable tunnel: ?tunnel (practice runs only, nothing is submitted)
+const TUNNELS = params.has('tunnel');
 
 // ---------------------------------------------------------------------------
 // Core objects
@@ -787,7 +789,7 @@ async function startRun(mode) {
   clearPortraits();
   let run = { mode, seed: params.get('seed') || `local-${Date.now()}`, upgrades: state.profile.upgrades || {}, runId: null };
   const boardReq = state.online && !state.profile.guest ? fetchBoardQuick(mode === 'daily' ? 'daily' : 'all') : Promise.resolve(null);
-  if (state.online && !state.profile.guest && !params.has('practice') && !(DEBUG && params.has('autoplay'))) {
+  if (state.online && !state.profile.guest && !params.has('practice') && !TUNNELS && !(DEBUG && params.has('autoplay'))) {
     try {
       const r = await api.startRun(mode);
       run = { mode, seed: r.seed, upgrades: r.upgrades, runId: r.runId };
@@ -801,7 +803,7 @@ async function startRun(mode) {
   show('', { shadeMode: 'none' });
   // the touch icons step back once a player knows the controls
   hud.mount(run.upgrades, { faint: (state.profile.stats.runs || 0) >= 10 });
-  const tutorial = !prefs.get('tutDone') && !(state.profile.stats.runs > 0) && !params.has('autoplay');
+  const tutorial = !prefs.get('tutDone') && !(state.profile.stats.runs > 0) && !params.has('autoplay') && !TUNNELS;
   game.play({
     seed: run.seed,
     upgrades: run.upgrades,
@@ -809,6 +811,7 @@ async function startRun(mode) {
     startCity: DEBUG ? Number(params.get('city') || 0) : 0,
     startAt: DEBUG && params.has('at') ? Number(params.get('at')) : null,
     autoplay: DEBUG && params.has('autoplay'),
+    tunnels: TUNNELS,
     markers,
   });
   if (tutorial) game.sim.helmet = true;
@@ -891,6 +894,12 @@ function onGameEvent(type, ev) {
       break;
     case 'jet':
       hud.banner('🚀', t('jetTitle'), t(isTouchDevice() ? 'droneHintTouch' : 'droneHintKeys'));
+      break;
+    case 'tunnelIn':
+      hud.banner('🚇', t('tunnelTitle'), t(isTouchDevice() ? 'tunnelHintTouch' : 'tunnelHintKeys'));
+      break;
+    case 'tunnelOut':
+      hud.banner('☀️', t('tunnelOut'));
       break;
     case 'abilityReady':
       hud.banner(t('abTitle'), t(ev.kind === 'shield' ? 'abShieldReady' : 'abJetReady'));
@@ -1081,6 +1090,7 @@ const HIT_TIP = {
   cone: 'jump', barrier: 'jump', drum: 'jump', rollDrum: 'jump', cable: 'jump', crate: 'jump', dropLoad: 'jump', quad: 'quad',
   stack: 'double', container: 'double',
   beam: 'slide', rack: 'slide', birds: 'slide',
+  tunnelWall: 'turn',
 };
 
 function deathText(info) {

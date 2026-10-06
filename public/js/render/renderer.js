@@ -7,6 +7,7 @@ import { drawFacility } from './projects.js';
 import { drawCharacter, runPose, jumpPose, slidePose, hangPose, idlePose, cheerPose, drawDrone, drawExcavator, drawShield } from './character.js';
 import { FX } from './fx.js';
 import { SpriteCache, clamp, lerp } from './util.js';
+import { TunnelView } from './tunnel.js';
 
 const OBSTACLES = new Set(['cone', 'barrier', 'drum', 'rollDrum', 'cable', 'crate', 'stack', 'container', 'scaffold', 'beam', 'rack', 'birds', 'dropLoad', 'quad']);
 
@@ -18,6 +19,74 @@ const CALM = {
 };
 
 const MAX_CANVAS_PIXELS = 3.0e6;
+
+/** Cable tunnel portal on the roadside (meters, y up, origin at the left foot). */
+function drawPortal(ctx, e, t, lang) {
+  // earth mound over the structure
+  ctx.fillStyle = '#5E7F45';
+  ctx.beginPath();
+  ctx.moveTo(-2.2, 0);
+  ctx.quadraticCurveTo(-1.2, 5.6, 3, 5.7);
+  ctx.quadraticCurveTo(7.2, 5.6, 8.2, 0);
+  ctx.closePath();
+  ctx.fill();
+  // concrete head wall
+  ctx.fillStyle = '#9AA3AD';
+  ctx.fillRect(-0.3, 0, 6.6, 4.4);
+  ctx.fillStyle = '#7E8792';
+  ctx.fillRect(-0.3, 4.1, 6.6, 0.3);
+  // opening with hazard frame
+  const arch = (pad) => {
+    ctx.beginPath();
+    ctx.moveTo(1.6 - pad, 0);
+    ctx.lineTo(1.6 - pad, 2.2);
+    ctx.arc(3, 2.2, 1.4 + pad, Math.PI, 0, true);
+    ctx.lineTo(4.4 + pad, 0);
+    ctx.closePath();
+  };
+  ctx.fillStyle = '#FFD200';
+  arch(0.22);
+  ctx.fill();
+  ctx.save();
+  arch(0.22);
+  ctx.clip();
+  ctx.fillStyle = '#1E1E1E';
+  for (let i = -4; i < 8; i++) {
+    ctx.beginPath();
+    ctx.moveTo(1 + i * 0.5, 0);
+    ctx.lineTo(1.25 + i * 0.5, 0);
+    ctx.lineTo(2.25 + i * 0.5, 4);
+    ctx.lineTo(2 + i * 0.5, 4);
+    ctx.closePath();
+    ctx.fill();
+  }
+  ctx.restore();
+  const g = ctx.createLinearGradient(0, 3.6, 0, 0);
+  g.addColorStop(0, '#05070A');
+  g.addColorStop(1, '#1B222B');
+  ctx.fillStyle = g;
+  arch(0);
+  ctx.fill();
+  // lamps inside, receding
+  const blink = 0.6 + 0.4 * Math.sin(t * 3);
+  ctx.fillStyle = `rgba(255,220,140,${0.5 * blink})`;
+  for (const [x, y, r] of [[3, 3.1, 0.12], [3, 2.6, 0.07], [3, 2.35, 0.04]]) {
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  // sign
+  ctx.fillStyle = '#FFD800';
+  ctx.fillRect(0.6, 3.75, 4.8, 0.6);
+  ctx.save();
+  ctx.scale(1, -1);
+  ctx.fillStyle = '#1E1E1E';
+  ctx.font = '800 0.36px Oswald, Inter, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(lang === 'en' ? 'MT CABLE TUNNEL' : 'MT KABELIŲ TUNELIS', 3, -4.05);
+  ctx.restore();
+}
 
 /** Twin-tank jetpack behind the hero with flickering flames (hero-local meters, y up). */
 function drawJetpack(ctx, t) {
@@ -54,6 +123,7 @@ export class Renderer {
     this.fx = new FX();
     this.sprites = new SpriteCache(80);
     this.ppm = 50;
+    this.tunnelView = new TunnelView();
     this.dpr = 1;
     this.W = 0;
     this.H = 0;
@@ -111,6 +181,16 @@ export class Renderer {
     const dt = view.dt || 0;
     this.scenery.lang = this.lang;
     this.scenery.birthday = !!view.birthday;
+    if (sim.tunnel) {
+      this.tunnelView.draw(ctx, W, H, view);
+      this.drawVignette(ctx, 0.45);
+      if (this.flash > 0.01) {
+        ctx.fillStyle = `rgba(${this.flashCol},${this.flash})`;
+        ctx.fillRect(0, 0, W, H);
+        this.flash = Math.max(0, this.flash - dt * 2.5);
+      }
+      return;
+    }
 
     // ---- camera -------------------------------------------------------------
     const target = this.targetPpm(sim.speed);
@@ -179,6 +259,10 @@ export class Renderer {
       if (OBSTACLES.has(e.k)) {
         this.worldAt(ctx, ex, 0);
         drawObstacle(ctx, e, t, { lang: this.lang, theme: city.theme, viewTop: this.groundY / ppm + this.camY });
+        ctx.restore();
+      } else if (e.k === 'tunnelIn' || e.k === 'tunnelOut') {
+        this.worldAt(ctx, ex, 0);
+        drawPortal(ctx, e, t, this.lang);
         ctx.restore();
       } else if (e.k === 'pit') {
         this.worldAt(ctx, ex, 0);

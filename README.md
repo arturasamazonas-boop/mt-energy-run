@@ -106,3 +106,10 @@ public/js/main.js     ekranai, paskyra, parduotuvė, lentelės
 Serveris trasą atkuria iš to paties `seed` ir tikrina, ar pateikti skaičiai (žaibai, detalės, taškai, laikas) yra įmanomi.
 
 Grafika piešiama kodu (vektoriai Canvas'e), todėl išorinių paveikslėlių, išskyrus MT GROUP logotipą, nėra. Muzika ir garsai sintezuojami Web Audio API, licencijų nereikia. Šriftai Barlow ir Roboto Slab naudojami pagal SIL OFL / Apache 2.0 licencijas.
+
+## Kabelių tunelis (bandomoji versija)
+
+Įjungiamas tik su `?tunnel` nuoroda (pvz. `https://mt-energy-run.onrender.com/?tunnel`): treniruotės bėgimas, rezultatai nesiunčiami.
+Po ~150 m ir vėliau kas ~1,1 km herojus įbėga į MT kabelių tunelį ir ~24 s bėga „Temple Run“ principu, vaizdas už nugaros:
+trys juostos (braukti ← → arba ← → / A D), šuolis (braukti ↑ / tarpas), čiuožimas (braukti ↓ / ↓),
+posūkiai – prie rodyklės braukti jos kryptimi, kitaip atsitrenki į sieną. Atstumas, taškai ir žaibai skaičiuojami toliau.

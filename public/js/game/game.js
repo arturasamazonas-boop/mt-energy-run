@@ -60,7 +60,8 @@ export class Game {
   play(opts) {
     this.opts = opts;
     this.mode = 'run';
-    this.sim = new Sim({ seed: opts.seed, upgrades: opts.upgrades || {}, startCity: opts.startCity || 0, startAt: opts.startAt ?? null });
+    this.sim = new Sim({ seed: opts.seed, upgrades: opts.upgrades || {}, startCity: opts.startCity || 0, startAt: opts.startAt ?? null, tunnels: !!opts.tunnels });
+    this.input.swipeMode = false;
     this.bot = opts.autoplay ? new Bot() : null;
     this.input.reset();
     this.input.enabled = true;
@@ -386,6 +387,24 @@ export class Game {
           if (real) {
             audio.sfx('helmet');
             buzz([30, 30, 30]);
+          }
+          break;
+        case 'tunnelIn':
+        case 'tunnelOut':
+          R.flash = 1;
+          R.flashCol = '0,0,0';
+          this.input.swipeMode = ev.type === 'tunnelIn';
+          this.input.touches.clear();
+          this.input.swipes.clear();
+          if (real) this.ui.event(ev.type, ev);
+          break;
+        case 'tunnelLane':
+          if (real) audio.sfx('slide');
+          break;
+        case 'tunnelTurn':
+          if (real) {
+            audio.sfx('doubleJump');
+            buzz(15);
           }
           break;
         case 'jet':
