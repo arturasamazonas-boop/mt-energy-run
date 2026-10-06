@@ -207,7 +207,7 @@ export class Sim {
     if (!this.onGround) this.coyote = Math.max(0, this.coyote - dt);
 
     if (this.flying || this.jetT > 0) {
-      // Drone (no collisions) or jetpack (obstacles still hit): hold jump to climb, slide to descend.
+      // Drone power-up or jetpack (both ignore obstacles): hold jump to climb, slide to descend.
       const climb = (input.jumpHeld ? 1 : 0) - (input.slide ? 1 : 0);
       this.droneTarget = Math.max(DRONE_MIN, Math.min(DRONE_MAX, this.droneTarget + climb * DRONE_CLIMB * dt));
       this.droneY += (this.droneTarget - this.droneY) * Math.min(1, dt * 6);
@@ -537,7 +537,7 @@ export class Sim {
   }
 
   hit(e) {
-    if (this.flying) return;
+    if (this.flying || this.jetT > 0) return; // drone power-up and jetpack fly through obstacles
     if (this.shieldT > 0) return; // obstacles pass through the energy shield
     if (this.power.excavator > 0) {
       e.alive = false;

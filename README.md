@@ -12,7 +12,7 @@ Naršyklėje veikiantis bėgimo žaidimas (runner) MT GROUP komandai. Pagrindini
 | Dvigubas šuolis | bakstelėk dar kartą ore | dar kartą Tarpas |
 | Nusileisti / čiuožti (ore – greitas kritimas) | laikyk **kairę** ekrano pusę | ↓ / S |
 | 🛡️ Skydas (3 s kliūtys nekenkia) | mygtukas virš „Čiuožti“ | Q |
-| 🚀 Jetpack (4 s skrydis: dešinė / ↑ – aukštyn, kairė / ↓ – žemyn; kliūtys kenkia) | mygtukas virš „Šuolis“ | E |
+| 🚀 Jetpack (4 s skrydis: dešinė / ↑ – aukštyn, kairė / ↓ – žemyn; kliūtys nekenkia) | mygtukas virš „Šuolis“ | E |
 | Pauzė | ⏸ mygtukas | P / Esc |
 
 - **Žaibai ⚡** suteikia taškų ir energijos. Už energiją Dirbtuvėse perkama įranga ir apranga.
