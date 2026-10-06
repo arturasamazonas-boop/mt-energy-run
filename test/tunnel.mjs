@@ -1,6 +1,6 @@
 // Cable tunnel (test build): deterministic, passable, and wired into the run.
 import assert from 'node:assert/strict';
-import { Sim } from '../shared/sim.js';
+import { Sim, computeEnergy } from '../shared/sim.js';
 import { Bot } from '../shared/bot.js';
 import { generateTunnel, TUNNEL } from '../shared/tunnel.js';
 
@@ -34,7 +34,7 @@ for (const [seed, startAt] of [['t1', null], ['t2', null], ['t3', null], ['t4', 
   assert.ok(s.stats.bolts > 0);
 }
 
-// a missed corner is a crash; no tunnels unless switched on
+// a missed corner throws the hero back onto the road: the run goes on
 {
   const s = new Sim({ seed: 'm', tunnels: true });
   s.x = s.tunnelPlan[0].x0 - 2;
@@ -44,13 +44,37 @@ for (const [seed, startAt] of [['t1', null], ['t2', null], ['t3', null], ['t4', 
   // only steer around obstacles, never turn
   const c = s.tunnel.def.corners[0];
   s.tunnel.def.obs.forEach((o) => (o.alive = false));
-  for (let i = 0; i < 120 * 30 && !s.dead; i++) s.step(DT, {});
-  assert.ok(s.dead && s.deathKind === 'tunnelWall', 'corner not taken');
-  assert.ok(Math.abs(s.tunnel.z - c.z) < 1);
   // the jetpack has no room underground
-  s.dead = false;
   s.charge.jet = 999;
   assert.equal(s.useAbility('jet'), false);
+  let crash = null;
+  for (let i = 0; i < 120 * 30 && s.tunnel; i++) {
+    s.step(DT, {});
+    crash = s.events.find((e) => e.type === 'tunnelCrash') || crash;
+    s.events.length = 0;
+  }
+  assert.ok(!s.dead && !s.tunnel && crash?.kind === 'tunnelWall', 'corner not taken: back on the road');
+  assert.equal(s.stats.tunnelCrashes, 1);
+  const x = s.x;
+  assert.ok(Math.abs(x - (s.tunnelPlan[0].x0 + c.z)) < 2);
+  // the regular course is back a little way ahead, the hero runs on
+  assert.ok(s.entities.some((e) => e.alive && e.x > x + 25 && e.x < x + 140 && e.k !== 'bolt' && e.k !== 'tunnelOut'), 'course restored');
+  assert.ok(!s.entities.some((e) => e.alive && e.k === 'tunnelOut' && !e.hatch && e.tunnel === 0), 'no exit portal any more');
+  const bot = new Bot();
+  for (let i = 0; i < 120 * 10 && !s.dead; i++) s.step(DT, bot.input(s));
+  assert.ok(!s.dead, 'keeps running');
+}
+
+// bonus: tunnel bolts are worth ×5 energy
+{
+  const s = new Sim({ seed: 'e5', tunnels: true });
+  const bot = new Bot();
+  for (let i = 0; i < 120 * 40 && !s.dead; i++) s.step(DT, bot.input(s));
+  assert.ok(s.stats.tunnelBolts > 10);
+  const sum = s.summary();
+  const plain = { ...sum, tunnelBolts: 0 };
+  assert.equal(computeEnergy(sum) - computeEnergy(plain), sum.tunnelBolts * (TUNNEL.bonus - 1));
+  assert.equal(s.energyEarned(), computeEnergy(sum));
 }
 assert.equal(new Sim({ seed: 'm' }).entities.some((e) => e.k === 'tunnelIn'), false);
 assert.ok(TUNNEL.duration > 10);

@@ -2,6 +2,7 @@
 import { Sim } from '/shared/sim.js';
 import { Bot } from '/shared/bot.js';
 import { CITIES, cityAt, waypointAt, legAt, SCORE } from '/shared/config.js';
+import { TUNNEL } from '/shared/tunnel.js';
 import { buzz } from '../haptics.js';
 import { audio } from '../audio.js';
 
@@ -222,7 +223,7 @@ export class Game {
     return {
       score: Math.floor(s.score),
       mult: s.mult,
-      bolts: s.stats.bolts,
+      bolts: s.stats.bolts + s.stats.tunnelBolts * (TUNNEL.bonus - 1), // tunnel bolts count ×5
       energy: s.energyEarned(),
       distance: Math.floor(s.x - s.startX),
       cityIndex: ca.index,
@@ -273,6 +274,7 @@ export class Game {
           if (real) audio.sfx('dive');
           break;
         case 'bolt':
+          if (ev.tunnel) R.tunnelView.pop(this.t);
           fx.ring(ev.x, ev.y, '#FFE14A', 0.7);
           if (real) audio.sfx('bolt');
           break;
@@ -397,6 +399,19 @@ export class Game {
           this.input.touches.clear();
           this.input.swipes.clear();
           if (real) this.ui.event(ev.type, ev);
+          break;
+        case 'tunnelCrash':
+          R.flash = 0.9;
+          R.flashCol = '0,0,0';
+          R.shake = 0.6;
+          this.input.swipeMode = false;
+          this.input.touches.clear();
+          this.input.swipes.clear();
+          if (real) {
+            audio.sfx('helmet');
+            buzz([40, 40, 40]);
+            this.ui.event('tunnelCrash', ev);
+          }
           break;
         case 'tunnelLane':
           if (real) audio.sfx('slide');

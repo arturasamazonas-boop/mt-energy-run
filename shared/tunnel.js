@@ -1,6 +1,8 @@
 // Cable tunnel: a Temple-Run style stretch. The hero runs away from the camera
 // down a three-lane utility tunnel: switch lanes, jump, slide and turn at
 // corners. Distance (sim.x) keeps counting, so score and cities carry on.
+// It is a bonus stage: energy counts ×TUNNEL.bonus, and a crash only throws the
+// hero back onto the road (the run goes on).
 // Local units: z = meters into the tunnel, lane centres at -1/0/1 × TUNNEL.lane.
 
 import { PHYSICS, speedAt } from './config.js';
@@ -16,6 +18,7 @@ export const TUNNEL = {
   laneSpeed: 10, // lanes per second
   slideTime: 0.8,
   turnWindow: 0.95, // seconds before a corner in which the turn can be called
+  bonus: 5, // energy multiplier for bolts collected underground
 };
 
 const HERO_HALF = 0.38; // half width (m)
@@ -150,7 +153,7 @@ export function inTurnWindow(tn, v) {
 /**
  * One tunnel step. `sim` supplies helpers (collect energy, hit, die, emit).
  * input: { jump, slide (held), slideTap, left, right }
- * Returns 'out' when the hero reaches the exit.
+ * Returns 'out' at the exit, 'crash' when the hero was thrown out.
  */
 export function stepTunnel(sim, tn, dt, input, v) {
   const P = PHYSICS;
@@ -180,8 +183,8 @@ export function stepTunnel(sim, tn, dt, input, v) {
       tn.lx = 0;
       sim.emit('tunnelTurn', { dir: c.dir });
     } else {
-      sim.die('crash', { k: 'tunnelWall' });
-      return null;
+      sim.tunnelCrash('tunnelWall');
+      return 'crash';
     }
   }
 
@@ -244,8 +247,8 @@ export function stepTunnel(sim, tn, dt, input, v) {
       // over the trench with nothing under your feet
       if (tn.y <= 0.02 && tn.z > o.z + 0.35 && tn.z < o.z + d - 0.35) {
         if (sim.invuln > 0 || sim.shieldT > 0) continue;
-        sim.die('fall', { k: 'tunnelGap' });
-        return null;
+        sim.tunnelCrash('tunnelGap');
+        return 'crash';
       }
       continue;
     }
@@ -257,7 +260,7 @@ export function stepTunnel(sim, tn, dt, input, v) {
     else hit = tn.y < TOBS.wall.h;
     if (hit) {
       sim.tunnelHit(o);
-      if (sim.dead) return null;
+      if (!sim.tunnel) return 'crash';
     }
   }
 

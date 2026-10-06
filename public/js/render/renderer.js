@@ -22,6 +22,20 @@ const MAX_CANVAS_PIXELS = 3.0e6;
 
 /** Cable tunnel portal on the roadside (meters, y up, origin at the left foot). */
 function drawPortal(ctx, e, t, lang) {
+  if (e.hatch) {
+    // service hatch the hero climbs out of after a crash underground
+    ctx.fillStyle = '#7E8792';
+    ctx.fillRect(2.1, 0, 1.8, 0.45);
+    ctx.fillStyle = '#1B222B';
+    ctx.fillRect(2.3, 0.3, 1.4, 0.15);
+    ctx.save();
+    ctx.translate(3.9, 0.45);
+    ctx.rotate(1.2);
+    ctx.fillStyle = '#FFD200';
+    ctx.fillRect(0, -0.06, 1.5, 0.12);
+    ctx.restore();
+    return;
+  }
   // earth mound over the structure
   ctx.fillStyle = '#5E7F45';
   ctx.beginPath();
