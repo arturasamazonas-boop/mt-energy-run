@@ -186,7 +186,7 @@ const run = (sim, secs, inp = () => ({})) => {
   assert.ok(s.dead, 'without the shield it is a crash');
 }
 {
-  // jetpack: lifts off, climbs/descends, obstacles still hit, nothing charges meanwhile
+  // jetpack: lifts off, climbs/descends, flies through obstacles, nothing charges meanwhile
   const s = new Sim({ seed: 'phys' });
   s.loadedUntil = 99;
   s.entities = [3, 5].map((dx, i) => ({ k: 'bolt', x: s.x + dx, y: 0.8, alive: true, id: `j${i}` }));
@@ -198,10 +198,10 @@ const run = (sim, secs, inp = () => ({})) => {
   const level = s.y;
   run(s, 0.6, () => ({ jumpHeld: true }));
   assert.ok(s.y > level + 1, 'climbs');
-  // a hanging load in the flight path is a crash (unlike the drone power-up)
+  // like the drone power-up, obstacles in the flight path are harmless
   s.entities = [{ k: 'crate', x: s.x + 3, w: 1.5, y0: s.y - 0.5, y1: s.y + 1, alive: true, id: 'c' }];
   run(s, 0.6, () => ({}));
-  assert.ok(s.dead, 'jetpack does not pass through obstacles');
+  assert.ok(!s.dead, 'jetpack passes through obstacles');
 }
 
 // start options

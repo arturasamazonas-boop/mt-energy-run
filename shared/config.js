@@ -252,7 +252,7 @@ export function cityStart(index) {
 // during the run and emptied on use, so they come rarely: about once per 1-2 km.
 export const ABILITIES = {
   shield: { cost: 160, duration: 3 }, // obstacles pass through the hero
-  jet: { cost: 120, duration: 4 }, // fly: jump = up, slide = down; obstacles still hit
+  jet: { cost: 120, duration: 4 }, // fly: jump = up, slide = down; obstacles can't hit
 };
 
 export const POWERUPS = {
