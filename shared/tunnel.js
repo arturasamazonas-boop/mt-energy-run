@@ -5,7 +5,7 @@
 // hero back onto the road (the run goes on).
 // Local units: z = meters into the tunnel, lane centres at -1/0/1 × TUNNEL.lane.
 
-import { PHYSICS, speedAt } from './config.js';
+import { PHYSICS, speedAt, cityStart, cityLength, cityAt } from './config.js';
 import { createRng } from './rng.js';
 
 export const TUNNEL = {
@@ -13,8 +13,9 @@ export const TUNNEL = {
   width: 5.8, // wall to wall
   height: 4.2,
   duration: 24, // seconds inside
-  firstAt: [550, 850], // meters after the start of the run (varies per seed)
-  every: [1300, 1900], // meters of open road between tunnels (varies per seed)
+  chance: 0.3, // per leg between two cities (Vilnius → Klaipėda, Klaipėda → Ryga, …)
+  legMargin: [100, 90], // meters kept clear after a city start / before the next city
+  minLen: 150,
   laneSpeed: 10, // lanes per second
   slideTime: 0.8,
   turnWindow: 0.95, // seconds before a corner in which the turn can be called
@@ -31,21 +32,32 @@ export const TOBS = {
 };
 
 /**
- * Where the next tunnel starts: after `prev` ({ x0, len }) or, for the first one,
- * after the run start. Deterministic per seed, shared by the game and the server.
+ * The bonus tunnel on leg `ci` (the road from city ci to the next one), or null.
+ * Each leg has a TUNNEL.chance chance of one: a random event, but fixed per run
+ * seed so the game and the server agree. Returns { i: ci, x0, len }.
  */
-export function nextTunnel(seed, startX, prev) {
-  const i = prev ? prev.i + 1 : 0;
-  const rng = createRng(`${seed}:tplan:${i}`);
-  const x0 = Math.round(prev ? prev.x0 + prev.len + rng.range(...TUNNEL.every) : startX + rng.range(...TUNNEL.firstAt));
-  return { i, x0, len: tunnelLength(x0) };
+export function tunnelInLeg(seed, ci, startX = 0) {
+  const rng = createRng(`${seed}:tleg:${ci}`);
+  const roll = rng.next();
+  const where = rng.next();
+  if (roll >= TUNNEL.chance) return null;
+  const start = cityStart(ci);
+  const legLen = cityLength(ci);
+  const end = start + legLen;
+  // keep clear of the city gate and sign at both ends of the leg
+  let len = Math.min(tunnelLength(start + TUNNEL.legMargin[0]), legLen - TUNNEL.legMargin[0] - TUNNEL.legMargin[1]);
+  let x0 = start + TUNNEL.legMargin[0] + where * Math.max(0, legLen - TUNNEL.legMargin[0] - TUNNEL.legMargin[1] - len);
+  x0 = Math.round(Math.max(x0, startX + 200)); // never right at the start of a run
+  len = Math.min(len, end - TUNNEL.legMargin[1] - x0);
+  return len >= TUNNEL.minLen ? { i: ci, x0, len } : null;
 }
 
 /** Upper bound of tunnel bolts a run of `distance` meters can collect (server checks). */
 export function tunnelBoltsAvailable(seed, startX, distance) {
   let n = 0;
-  for (let p = nextTunnel(seed, startX, null); p.x0 <= startX + distance + 5; p = nextTunnel(seed, startX, p)) {
-    n += generateTunnel(seed, p.i, p.x0).bolts.length;
+  for (let ci = cityAt(startX).index; cityStart(ci) <= startX + distance + 5; ci++) {
+    const p = tunnelInLeg(seed, ci, startX);
+    if (p && p.x0 <= startX + distance + 5) n += generateTunnel(seed, p.i, p.x0, p.len).bolts.length;
   }
   return n;
 }
@@ -56,12 +68,11 @@ export function tunnelLength(x0) {
 }
 
 /**
- * Build tunnel #i that starts at run distance x0.
+ * Build tunnel #i that starts at run distance x0 and is `len` meters long.
  * Returns { i, x0, len, obs: [{ z, kind, lanes? }], bolts: [{ z, lane, y }], corners: [{ z, dir }] }.
  */
-export function generateTunnel(seed, i, x0) {
+export function generateTunnel(seed, i, x0, len = tunnelLength(x0)) {
   const rng = createRng(`${seed}:tunnel:${i}`);
-  const len = tunnelLength(x0);
   const obs = [];
   const bolts = [];
   const corners = [];

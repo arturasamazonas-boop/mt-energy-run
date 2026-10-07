@@ -109,7 +109,8 @@ Grafika piešiama kodu (vektoriai Canvas'e), todėl išorinių paveikslėlių, i
 
 ## Bonus kabelių tunelis
 
-Kiekviename bėgime: pirmas tunelis ~550–850 m, vėliau kas ~1,3–1,9 km (vieta priklauso nuo bėgimo seed, serveris ją perskaičiuoja).
+Atsitiktinis įvykis: kiekvienoje atkarpoje tarp miestų (Vilnius → Klaipėda, Klaipėda → Ryga, …) tunelis atsiranda su 30 % tikimybe,
+atsitiktinėje atkarpos vietoje. Tai nulemia bėgimo seed, todėl serveris tą patį perskaičiuoja (dienos iššūkyje visiems vienodai).
 Herojus įbėga į MT kabelių tunelį ir ~24 s bėga „Temple Run“ principu, vaizdas už nugaros:
 trys juostos (braukti ← → arba ← → / A D), šuolis (braukti ↑ / tarpas), čiuožimas (braukti ↓ / ↓),
 posūkiai – prie rodyklės braukti jos kryptimi. Tunelyje surinkta energija ir taškai ×5,
