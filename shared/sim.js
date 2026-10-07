@@ -4,7 +4,7 @@
 
 import { PHYSICS, SCORE, ABILITIES, speedAt, cityAt, cityStart, powerupDuration, boltValue, CITIES } from './config.js';
 import { generateCity } from './worldgen.js';
-import { TUNNEL, generateTunnel, nextTunnel, enterTunnel, stepTunnel } from './tunnel.js';
+import { TUNNEL, generateTunnel, tunnelInLeg, enterTunnel, stepTunnel } from './tunnel.js';
 
 const P = PHYSICS;
 const DRONE_Y = 4.6; // altitude the drone starts at
@@ -110,18 +110,19 @@ export class Sim {
   /** Plan tunnels a little ahead; returns true when a new one was added. */
   planTunnels() {
     let added = false;
-    for (;;) {
-      const last = this.tunnelPlan[this.tunnelPlan.length - 1];
-      const next = nextTunnel(this.seed, this.startX, last || null);
-      const x0 = next.x0;
-      if (x0 > this.x + 400) return added;
-      const p = { ...next };
+    if (this.nextLeg === undefined) this.nextLeg = cityAt(this.startX).index;
+    for (; cityStart(this.nextLeg) <= this.x + 400; this.nextLeg++) {
+      // a random event: some legs between cities have a tunnel, most do not
+      const p = tunnelInLeg(this.seed, this.nextLeg, this.startX);
+      if (!p) continue;
+      const x0 = p.x0;
       this.tunnelPlan.push(p);
       // portals are drawn 6 m wide with the opening in the middle
       this.entities.push({ k: 'tunnelIn', x: x0 - 3, w: 6, alive: true, tunnel: p.i });
       this.entities.push({ k: 'tunnelOut', x: x0 + p.len - 3, w: 6, alive: true, tunnel: p.i });
       added = true;
     }
+    return added;
   }
 
   /** The road around a tunnel is empty: the hero is underground meanwhile. */
@@ -141,8 +142,8 @@ export class Sim {
   }
 
   startTunnel(e) {
-    const p = this.tunnelPlan[e.tunnel];
-    this.tunnel = enterTunnel(generateTunnel(this.seed, p.i, p.x0));
+    const p = this.tunnelPlan.find((q) => q.i === e.tunnel);
+    this.tunnel = enterTunnel(generateTunnel(this.seed, p.i, p.x0, p.len));
     this.power.drone = 0;
     this.power.excavator = 0;
     this.jetT = 0;
@@ -181,7 +182,7 @@ export class Sim {
 
   /** A crash underground is not the end: the hero pops out onto the road and runs on. */
   tunnelCrash(kind) {
-    const p = this.tunnelPlan[this.tunnel.def.i];
+    const p = this.tunnelPlan.find((q) => q.i === this.tunnel.def.i);
     this.tunnel = null;
     // the regular course comes back a little way ahead
     p.cut = this.x + 25;
