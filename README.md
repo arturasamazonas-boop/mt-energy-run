@@ -116,3 +116,9 @@ trys juostos (braukti ← → arba ← → / A D), šuolis (braukti ↑ / tarpas
 posūkiai – prie rodyklės braukti jos kryptimi. Tunelyje surinkta energija ir taškai ×5,
 o atsitrenkus žaidimas nesibaigia – herojus išlenda pro liuką į trasą ir bėga toliau.
 Serveris tikrina `tunnelBolts` pagal tame bėgime galimus tunelio žaibus. `?notunnel` išjungia tunelius (testavimui).
+
+## Sveikinimų stendai
+
+Pakelėje (dvi vietos kiekvienoje atkarpoje tarp miestų, ne prie tunelių) stovi stendai su 10 gimtadienio sveikinimų Mindaugui
+(LT / EN, „– MT GROUP komanda“). Kuris sveikinimas kur – priklauso nuo bėgimo seed, todėl kiekvieną bėgimą matai kitus.
+Tekstai: `public/js/render/billboards.js` (`GREETINGS`). Stendai tik vizualūs – žaidimui ir rezultatams įtakos neturi.

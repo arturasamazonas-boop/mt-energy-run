@@ -8,6 +8,7 @@ import { drawCharacter, runPose, jumpPose, slidePose, hangPose, idlePose, cheerP
 import { FX } from './fx.js';
 import { SpriteCache, clamp, lerp } from './util.js';
 import { TunnelView } from './tunnel.js';
+import { billboardsIn, drawBillboard } from './billboards.js';
 
 const OBSTACLES = new Set(['cone', 'barrier', 'drum', 'rollDrum', 'cable', 'crate', 'stack', 'container', 'scaffold', 'beam', 'rack', 'birds', 'dropLoad', 'quad']);
 
@@ -443,6 +444,12 @@ export class Renderer {
         drawCitySign(ctx, city, lang);
         ctx.restore();
       }
+    }
+    // birthday wishes for Mindaugas on roadside billboards
+    for (const b of billboardsIn(sim.seed, this.camX - 6, this.camX + viewM + 1, sim.tunnelPlan)) {
+      this.worldAt(ctx, b.x, 0.15);
+      drawBillboard(ctx, b.idx, lang);
+      ctx.restore();
     }
     for (const e of sim.entities) {
       if (e.k !== 'checkpoint') continue;
