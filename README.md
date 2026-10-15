@@ -121,5 +121,5 @@ Serveris tikrina `tunnelBolts` pagal tame bėgime galimus tunelio žaibus. `?not
 
 Lėktuvas danguje tempia juostą su vienu iš 10 trumpų gimtadienio sveikinimų Mindaugui (LT / EN).
 Juosta lėtai slenka fone (parallax), todėl matosi ~6–8 s. Du praskridimai kiekvienoje atkarpoje tarp miestų,
-atokiau nuo miestų ir kontrolinių punktų užrašų. Kuris sveikinimas – priklauso nuo bėgimo seed.
+atokiau nuo miestų ir kontrolinių punktų užrašų. Pirmas sveikinimas, kurį žaidėjas pamato, visada „Mindaugai – su gimtadieniu!“, toliau jie eina iš eilės ir tęsiasi per kitus bėgimus (localStorage).
 Tekstai: `public/js/render/billboards.js` (`GREETINGS`). Tik vizualu – žaidimui įtakos neturi.

@@ -6,7 +6,7 @@ import { cityStart, cityLength, CITIES } from '/shared/config.js';
 
 // short on purpose: one line, readable at a glance
 export const GREETINGS = [
-  { lt: 'Su gimtadieniu, Mindaugai!', en: 'Happy birthday, Mindaugas!' },
+  { lt: 'Mindaugai – su gimtadieniu!', en: 'Mindaugas – happy birthday!' }, // always the first one a player sees
   { lt: 'Daugiau metų – daugiau kilovatų!', en: 'More years, more kilowatts!' },
   { lt: 'Ilgiausių metų, Mindaugai!', en: 'Many happy returns, Mindaugas!' },
   { lt: 'Energijos – kaip visam tinklui!', en: 'Energy for the whole grid!' },
@@ -20,6 +20,26 @@ export const GREETINGS = [
 
 // candidate flyover spots (share of the leg between two cities); the first two
 // that keep clear of the city / checkpoint banners are used
+const NEXT_KEY = 'mter.nextWish';
+let memNext = 0; // fallback when storage is blocked
+
+/** The next wish for this player: 0 (the birthday wish) first, then the others in turn. */
+export function nextWish() {
+  let n = memNext;
+  try {
+    n = Number(localStorage.getItem(NEXT_KEY)) || 0;
+  } catch {
+    /* private mode */
+  }
+  memNext = n + 1;
+  try {
+    localStorage.setItem(NEXT_KEY, String(memNext));
+  } catch {
+    /* private mode */
+  }
+  return n % GREETINGS.length;
+}
+
 const SPOTS = [0.25, 0.45, 0.65, 0.85];
 const CLEAR = 80; // meters away from a city start, checkpoint or the next city
 export const PARALLAX = 0.22; // the banner moves at 22 % of the road speed on screen

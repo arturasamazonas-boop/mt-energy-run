@@ -8,7 +8,7 @@ import { drawCharacter, runPose, jumpPose, slidePose, hangPose, idlePose, cheerP
 import { FX } from './fx.js';
 import { SpriteCache, clamp, lerp } from './util.js';
 import { TunnelView } from './tunnel.js';
-import { bannersNear, drawSkyBanner, PARALLAX } from './billboards.js';
+import { bannersNear, drawSkyBanner, nextWish, PARALLAX } from './billboards.js';
 
 const OBSTACLES = new Set(['cone', 'barrier', 'drum', 'rollDrum', 'cable', 'crate', 'stack', 'container', 'scaffold', 'beam', 'rack', 'birds', 'dropLoad', 'quad']);
 
@@ -257,7 +257,7 @@ export class Renderer {
     // during a run the scenery steps back so obstacles and pickups read at a glance
     if (!view.attract && this.calm) this.calmBackdrop(ctx, sky);
     // birthday wishes towed across the sky (after the haze, so they stay crisp)
-    this.drawSkyBanners(ctx, sim, heroX, t, view.lang || this.lang);
+    this.drawSkyBanners(ctx, sim, heroX, t, view.lang || this.lang, view.attract);
 
     // ---- ground -------------------------------------------------------------
     const pits = [];
@@ -352,13 +352,25 @@ export class Renderer {
   }
 
   /** A plane towing a birthday wish; it drifts slowly so there is time to read it. */
-  drawSkyBanners(ctx, sim, heroX, t, lang) {
+  drawSkyBanners(ctx, sim, heroX, t, lang, attract) {
     const u = Math.round(this.H * 0.058);
     const px = this.ppm * PARALLAX; // screen pixels per road meter on this layer
     const range = (this.W * 1.2 + u * 26) / px;
+    if (this.bannerSim !== sim) {
+      this.bannerSim = sim;
+      this.bannerIdx = new Map(); // flyover → wish shown in this run
+    }
     for (const b of bannersNear(sim.seed, heroX, range)) {
       const cx = this.W * 0.55 + (b.x - heroX) * px;
-      drawSkyBanner(ctx, b.idx, lang, cx, this.H * 0.335, u, t);
+      let idx = this.bannerIdx.get(b.x);
+      if (idx === undefined) {
+        if (cx > this.W + u * 12) continue; // still off screen: pick its wish when it arrives
+        // in a run the wishes come in order and carry on across runs, so the very
+        // first one a player ever sees is the birthday wish and none repeat early
+        idx = attract ? b.idx : nextWish();
+        this.bannerIdx.set(b.x, idx);
+      }
+      drawSkyBanner(ctx, idx, lang, cx, this.H * 0.335, u, t);
     }
   }
 
