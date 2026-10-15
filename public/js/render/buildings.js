@@ -591,80 +591,101 @@ export function drawHoarding(ctx, s, em) {
 export { mix };
 
 // ---------------------------------------------------------------------------
-// Market stall (Rietavas market) and market sign
+// Rietavas car market: used cars for sale, and the market sign
 // ---------------------------------------------------------------------------
 export const STALL = { w: 3.2, h: 2.9 };
 
-const AWNINGS = [
-  ['#C0392B', '#F4F1EA'],
-  ['#2F6E5A', '#F4F1EA'],
-  ['#2C4E86', '#F4F1EA'],
-  ['#E0A21B', '#F4F1EA'],
-  ['#7A3E8C', '#F4F1EA'],
-];
+const CAR_COLS = ['#C0392B', '#2C4E86', '#E8E8E8', '#3A3A3A', '#2F6E5A', '#9AA3AD', '#E0A21B', '#7A1F2B'];
 
+/** One car for sale (kept the "stall" name: same slot in the scenery). */
 export function drawStall(ctx, s, seed) {
   const r = createRng(seed);
-  const [a1, a2] = r.pick(AWNINGS);
-  const W = STALL.w * s;
+  const col = r.pick(CAR_COLS);
+  const kind = r.pick(['sedan', 'sedan', 'hatch', 'van', 'wagon']);
   const H = STALL.h * s;
-  // posts
-  ctx.fillStyle = '#6B4A30';
-  ctx.fillRect(0.15 * s, 0.55 * s, 0.1 * s, H - 0.55 * s);
-  ctx.fillRect(W - 0.25 * s, 0.55 * s, 0.1 * s, H - 0.55 * s);
-  // awning
-  const stripes = 7;
-  for (let i = 0; i < stripes; i++) {
-    ctx.fillStyle = i % 2 ? a2 : a1;
+  const g = H - 0.02 * s; // ground line
+  const x0 = 0.12 * s;
+  const L = 2.95 * s;
+  const wheel = 0.3 * s;
+  // body (side view, facing right)
+  const bodyTop = g - 0.95 * s;
+  ctx.fillStyle = col;
+  ctx.beginPath();
+  ctx.moveTo(x0, g - 0.3 * s);
+  ctx.lineTo(x0, bodyTop + 0.15 * s);
+  ctx.quadraticCurveTo(x0, bodyTop, x0 + 0.2 * s, bodyTop);
+  ctx.lineTo(x0 + L - 0.15 * s, bodyTop + 0.12 * s);
+  ctx.quadraticCurveTo(x0 + L, bodyTop + 0.2 * s, x0 + L, g - 0.35 * s);
+  ctx.lineTo(x0 + L, g - 0.3 * s);
+  ctx.closePath();
+  ctx.fill();
+  // cabin
+  const roof = kind === 'van' ? g - 1.95 * s : g - 1.55 * s;
+  const rearX = kind === 'sedan' ? x0 + 0.55 * s : x0 + 0.08 * s;
+  const frontX = kind === 'van' ? x0 + L - 0.35 * s : x0 + L - 0.95 * s;
+  ctx.beginPath();
+  ctx.moveTo(rearX, bodyTop + 0.02 * s);
+  ctx.lineTo(rearX + (kind === 'sedan' ? 0.35 : 0.08) * s, roof);
+  ctx.lineTo(frontX - (kind === 'van' ? 0.25 : 0.55) * s, roof);
+  ctx.lineTo(frontX, bodyTop + 0.02 * s);
+  ctx.closePath();
+  ctx.fill();
+  // windows
+  ctx.fillStyle = '#9CC7E3';
+  const wTop = roof + 0.1 * s;
+  const wBot = bodyTop - 0.03 * s;
+  const wl = rearX + (kind === 'sedan' ? 0.4 : 0.15) * s;
+  const wr = frontX - (kind === 'van' ? 0.3 : 0.6) * s;
+  const mid = (wl + wr) / 2;
+  ctx.beginPath();
+  ctx.moveTo(wl, wBot);
+  ctx.lineTo(wl + 0.08 * s, wTop);
+  ctx.lineTo(mid - 0.05 * s, wTop);
+  ctx.lineTo(mid - 0.05 * s, wBot);
+  ctx.closePath();
+  ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(mid + 0.05 * s, wBot);
+  ctx.lineTo(mid + 0.05 * s, wTop);
+  ctx.lineTo(wr, wTop);
+  ctx.lineTo(wr + 0.35 * s, wBot);
+  ctx.closePath();
+  ctx.fill();
+  // lights, bumper, door line
+  ctx.fillStyle = '#FFE9A0';
+  ctx.fillRect(x0 + L - 0.12 * s, bodyTop + 0.25 * s, 0.1 * s, 0.14 * s);
+  ctx.fillStyle = '#C0392B';
+  ctx.fillRect(x0, bodyTop + 0.25 * s, 0.08 * s, 0.14 * s);
+  ctx.fillStyle = 'rgba(0,0,0,0.35)';
+  ctx.fillRect(x0, g - 0.38 * s, L, 0.08 * s);
+  ctx.fillRect(mid, bodyTop + 0.05 * s, 0.03 * s, 0.5 * s);
+  // wheels
+  for (const wx of [x0 + 0.55 * s, x0 + L - 0.6 * s]) {
+    ctx.fillStyle = '#1E1E1E';
     ctx.beginPath();
-    ctx.moveTo((i * W) / stripes, 0.15 * s);
-    ctx.lineTo(((i + 1) * W) / stripes, 0.15 * s);
-    ctx.lineTo(((i + 1) * W) / stripes + 0.05 * s, 0.7 * s);
-    ctx.lineTo((i * W) / stripes + 0.05 * s, 0.7 * s);
+    ctx.arc(wx, g - wheel, wheel, 0, Math.PI * 2);
     ctx.fill();
-    // scalloped edge
+    ctx.fillStyle = '#B8BEC6';
     ctx.beginPath();
-    ctx.arc((i + 0.5) * (W / stripes) + 0.05 * s, 0.7 * s, W / stripes / 2, 0, Math.PI);
+    ctx.arc(wx, g - wheel, wheel * 0.45, 0, Math.PI * 2);
     ctx.fill();
   }
-  ctx.fillStyle = 'rgba(0,0,0,0.25)';
-  ctx.fillRect(0, 0.1 * s, W, 0.08 * s);
-  // table
-  const ty = H - 1.0 * s;
-  ctx.fillStyle = '#9A6B3E';
-  ctx.fillRect(0.05 * s, ty, W - 0.1 * s, 0.14 * s);
-  ctx.fillStyle = '#7C5530';
-  ctx.fillRect(0.1 * s, ty + 0.14 * s, W - 0.2 * s, H - ty - 0.14 * s);
-  ctx.fillStyle = 'rgba(0,0,0,0.15)';
-  for (let x = 0.4; x < STALL.w - 0.2; x += 0.5) ctx.fillRect(x * s, ty + 0.2 * s, 0.03 * s, H - ty - 0.25 * s);
-  // produce crates
-  const goods = [
-    ['#C8352B', '#E85A4C'], // apples
-    ['#6FA24A', '#8DC264'], // cabbages
-    ['#E8862A', '#F5A54A'], // pumpkins
-    ['#E9C44A', '#F5DA74'], // potatoes / honey
-    ['#7A3E8C', '#9E5DB0'], // plums
-  ];
-  let x = 0.2 * s;
-  while (x < W - 0.7 * s) {
-    const [g1, g2] = r.pick(goods);
-    const cw = r.range(0.6, 0.85) * s;
-    ctx.fillStyle = '#B98A55';
-    ctx.fillRect(x, ty - 0.28 * s, cw, 0.28 * s);
-    for (let k = 0; k < 4; k++) {
-      ctx.fillStyle = k % 2 ? g1 : g2;
-      ctx.beginPath();
-      ctx.arc(x + ((k + 0.5) * cw) / 4, ty - 0.3 * s, cw / 7, 0, Math.PI * 2);
-      ctx.fill();
-    }
-    x += cw + 0.08 * s;
-  }
-  // price tag
+  // "for sale" card behind the side window, with the asking price
+  const price = `${r.int(1, 9)} ${r.pick(['200', '500', '900', '999'])} €`;
+  const cw = 0.78 * s;
+  const ch = 0.42 * s;
+  const cx = mid - cw - 0.1 * s;
+  const cy = wTop + 0.04 * s;
   ctx.fillStyle = '#FFFFFF';
-  ctx.fillRect(W * 0.62, ty + 0.25 * s, 0.5 * s, 0.3 * s);
+  ctx.fillRect(cx, cy, cw, ch);
+  ctx.fillStyle = '#C0392B';
+  ctx.font = `800 ${0.15 * s}px "Barlow Condensed", sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.fillText('PARDUODU', cx + cw / 2, cy + 0.16 * s);
   ctx.fillStyle = '#1E1E1E';
-  ctx.font = `700 ${0.2 * s}px "Barlow Condensed", sans-serif`;
-  ctx.fillText(`${r.int(1, 4)},${r.pick(['50', '90', '20'])} €`, W * 0.62 + 0.05 * s, ty + 0.48 * s);
+  ctx.font = `800 ${0.19 * s}px "Barlow Condensed", sans-serif`;
+  ctx.fillText(price, cx + cw / 2, cy + 0.37 * s);
+  ctx.textAlign = 'left';
 }
 
 export const MARKET_SIGN = { w: 5.4, h: 3.8 };
@@ -683,7 +704,7 @@ export function drawMarketSign(ctx, s, lang) {
   ctx.fillStyle = '#5A3E28';
   ctx.font = `800 ${0.58 * s}px "Barlow Condensed", sans-serif`;
   ctx.textAlign = 'center';
-  ctx.fillText(lang === 'lt' ? 'RIETAVO TURGUS' : 'RIETAVAS MARKET', W / 2, 0.82 * s);
+  ctx.fillText(lang === 'lt' ? 'RIETAVO AUTOTURGUS' : 'RIETAVAS CAR MARKET', W / 2, 0.82 * s);
   ctx.textAlign = 'left';
   // bunting
   const cols = ['#C0392B', '#FFD800', '#2F6E5A', '#2C4E86'];

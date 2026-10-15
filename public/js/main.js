@@ -895,9 +895,7 @@ function onGameEvent(type, ev) {
     case 'jet':
       hud.banner('🚀', t('jetTitle'), t(isTouchDevice() ? 'droneHintTouch' : 'droneHintKeys'));
       break;
-    case 'tunnelIn':
-      hud.banner(`⚡×5 · ${t('tunnelSub')}`, t('tunnelTitle'), t(isTouchDevice() ? 'tunnelHintTouch' : 'tunnelHintKeys'));
-      break;
+    // no banner on the way into a tunnel: it hid the first obstacles
     case 'tunnelCrash':
       hud.banner('💥', t('tunnelCrash'));
       break;

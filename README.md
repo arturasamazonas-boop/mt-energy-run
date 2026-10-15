@@ -117,8 +117,9 @@ posūkiai – prie rodyklės braukti jos kryptimi. Tunelyje surinkta energija ir
 o atsitrenkus žaidimas nesibaigia – herojus išlenda pro liuką į trasą ir bėga toliau.
 Serveris tikrina `tunnelBolts` pagal tame bėgime galimus tunelio žaibus. `?notunnel` išjungia tunelius (testavimui).
 
-## Sveikinimų stendai
+## Sveikinimai danguje
 
-Pakelėje (dvi vietos kiekvienoje atkarpoje tarp miestų, ne prie tunelių) stovi stendai su 10 gimtadienio sveikinimų Mindaugui
-(LT / EN, „– MT GROUP komanda“). Kuris sveikinimas kur – priklauso nuo bėgimo seed, todėl kiekvieną bėgimą matai kitus.
-Tekstai: `public/js/render/billboards.js` (`GREETINGS`). Stendai tik vizualūs – žaidimui ir rezultatams įtakos neturi.
+Lėktuvas danguje tempia juostą su vienu iš 10 trumpų gimtadienio sveikinimų Mindaugui (LT / EN).
+Juosta lėtai slenka fone (parallax), todėl matosi ~6–8 s. Du praskridimai kiekvienoje atkarpoje tarp miestų,
+atokiau nuo miestų ir kontrolinių punktų užrašų. Pirmas sveikinimas, kurį žaidėjas pamato, visada „Mindaugai – su gimtadieniu!“, toliau jie eina iš eilės ir tęsiasi per kitus bėgimus (localStorage).
+Tekstai: `public/js/render/billboards.js` (`GREETINGS`). Tik vizualu – žaidimui įtakos neturi.

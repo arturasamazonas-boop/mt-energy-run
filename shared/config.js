@@ -70,7 +70,7 @@ export const CITIES = [
       {
         id: 'rietavas', from: 400, to: 650, theme: 'town', sights: [['rietavaschurch', 0.1, 1.15]], market: true,
         name: { lt: 'Rietavas', en: 'Rietavas' },
-        sub: { lt: 'Rietavo turgus · MT GROUP baterijų parkas 140 MWh', en: 'Rietavas market · MT GROUP 140 MWh battery park' },
+        sub: { lt: 'Rietavo automobilių turgus · MT GROUP baterijų parkas 140 MWh', en: 'Rietavas car market · MT GROUP 140 MWh battery park' },
       },
     ],
   },
@@ -342,7 +342,7 @@ export const ACHIEVEMENTS = [
   { id: 'bdaygift', reward: 1024, lt: 'Dovana Mindaugui', en: 'A gift for Mindaugas', descLt: 'Spalio 24-ąją surink bent 2 410 taškų', descEn: 'Score at least 2,410 on October 24th' },
   // route
   { id: 'raseiniai', reward: 40, lt: 'Žemaičių vartai', en: 'Gateway to Samogitia', descLt: 'Pasiek Raseinius', descEn: 'Reach Raseiniai' },
-  { id: 'rietavas', reward: 60, lt: 'Turgaus diena', en: 'Market day', descLt: 'Pasiek Rietavo turgų', descEn: 'Reach the Rietavas market' },
+  { id: 'rietavas', reward: 60, lt: 'Turgaus diena', en: 'Market day', descLt: 'Pasiek Rietavo automobilių turgų', descEn: 'Reach the Rietavas car market' },
   { id: 'klaipeda', reward: 80, lt: 'Uostamiestis', en: 'Port city', descLt: 'Pasiek Klaipėdą', descEn: 'Reach Klaipėda' },
   { id: 'tallinn', reward: 150, lt: 'Baltijos kelias', en: 'The Baltic Way', descLt: 'Pasiek Taliną', descEn: 'Reach Tallinn' },
   { id: 'stockholm', reward: 200, lt: 'Šiaurės žvaigždė', en: 'North star', descLt: 'Pasiek Stokholmą', descEn: 'Reach Stockholm' },
