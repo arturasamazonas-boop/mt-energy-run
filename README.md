@@ -42,7 +42,7 @@ Maršrutas: Vilnius → Klaipėda → Ryga → Talinas → Helsinkis → Stokhol
 
 ```bash
 npm install
-npm start            # http://localhost:3000 (be DATABASE_URL duomenys laikomi atmintyje)
+npm start            # http://localhost:3000 (lokaliai be DATABASE_URL duomenys laikomi atmintyje)
 npm run check        # sintaksės patikra
 npm test             # visi testai
 ```
@@ -58,7 +58,7 @@ Kūrėjo įrankiai:
 
 Projektas visiškai atskirtas nuo *Penkto gurkšnio*: atskira repozitorija, atskiras Render servisas ir atskira duomenų bazė.
 
-Duomenų bazė laikoma [Neon](https://neon.com) nemokamame plane (0,5 GB, neištrinama; kai niekas nežaidžia, išsijungia po 5 min.). Render'io nemokama PostgreSQL netinka, nes ištrinama po 30 dienų.
+Duomenų bazė laikoma [Neon](https://neon.com) nemokamame plane (1 GB projektui; kai niekas nežaidžia, išsijungia po 5 min.). Render'io nemokama PostgreSQL netinka, nes ištrinama po 30 dienų.
 
 1. Neon → sukurk projektą (regionas Europoje, pvz. Frankfurtas) ir nusikopijuok *connection string* (baigiasi `?sslmode=require`).
 2. Render → **New → Blueprint** → pasirink repozitoriją `mt-energy-run`. `render.yaml` sukurs web servisą ir paklaus `DATABASE_URL` – įklijuok Neon adresą.
@@ -123,3 +123,19 @@ Lėktuvas danguje tempia juostą su vienu iš 10 trumpų gimtadienio sveikinimų
 Juosta lėtai slenka fone (parallax), todėl matosi ~6–8 s. Du praskridimai kiekvienoje atkarpoje tarp miestų,
 atokiau nuo miestų ir kontrolinių punktų užrašų. Pirmas sveikinimas, kurį žaidėjas pamato, visada „Mindaugai – su gimtadieniu!“, toliau jie eina iš eilės ir tęsiasi per kitus bėgimus (localStorage).
 Tekstai: `public/js/render/billboards.js` (`GREETINGS`). Tik vizualu – žaidimui įtakos neturi.
+
+## Patikimas rezultatų išsaugojimas
+
+- Užbaigto bėgimo rezultatas įrašomas į naršyklės laukiančių siuntimų eilę prieš siunčiant į serverį. Nutrūkus ryšiui, siuntimas kartojamas kas 30 s, atkūrus ryšį ir vėl prisijungus ta pačia paskyra tame pačiame domene. Užblokavus naršyklės saugyklą, eilė išlieka tik kol puslapis atidarytas.
+- Pakartotinis to paties `runId` siuntimas grąžina jau įrašytą rezultatą, nedubliuoja energijos ar bėgimų. Rezultatas ir atlygis įrašomi vienoje PostgreSQL transakcijoje.
+- Svečio / treniruotės režimas rezultatų į bendrą lentelę nesiunčia. Naršyklės uždarymas dar nebaigus bėgimo nėra užbaigtas rezultatas.
+- `NODE_ENV=production` reikalauja `DATABASE_URL`; klaidinga konfigūracija nebegali tyliai saugoti progreso tik operatyviojoje atmintyje.
+- Registracijos limitas bendram biuro IP: 300 per valandą. Bendras API limitas: 6000 užklausų per minutę. Bėgimų pradžios limitas išlieka 240 per valandą vienam žaidėjui.
+
+## energyrun.lt
+
+Render domenai: `energyrun.lt` ir `www.energyrun.lt` (www nukreipiamas į pagrindinį domeną). DNS pas tiekėją: `A @ 216.24.57.1`, `CNAME www mt-energy-run.onrender.com`; po pakeitimo patikrinti DNS ir TLS Render skydelyje. El. pašto MX/TXT įrašų nekeisti.
+
+Domeno keitimas neperkelia prisijungimo slapuko ar naršyklės siuntimų eilės. Prieš pradedant viešą žaidimą naudoti vieną galutinį adresą.
+
+`plan: free` paliktas sąmoningai. Mokamą Render compute planą ir atitinkamą Blueprint reikšmę pakeisti tik savininkui patvirtinus kainą; svetainės nemiegojimas ir Neon bazės automatinis užmigimas yra atskiri dalykai.

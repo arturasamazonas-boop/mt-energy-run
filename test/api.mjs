@@ -1,11 +1,14 @@
-// HTTP API integration test against an in-memory store.
+// HTTP API integration test: PostgreSQL in CI, memory for local development.
 import assert from 'node:assert/strict';
 import { createApp } from '../server/app.mjs';
 import { createMemoryStore } from '../server/store-memory.mjs';
 import { botRun } from '../shared/bot.js';
 
 let now = new Date('2026-10-24T09:00:00Z');
-const store = createMemoryStore();
+const store = process.env.TEST_DATABASE_URL
+  ? (await import('../server/store-pg.mjs')).createPgStore(process.env.TEST_DATABASE_URL)
+  : createMemoryStore();
+await store.init();
 const mailbox = [];
 const sendCode = async (m) => {
   if (m.email.startsWith('fail@')) throw new Error('smtp down');
@@ -72,7 +75,13 @@ assert.ok(fin.data.energy > 0 && fin.data.newBest);
 assert.ok(fin.data.unlocked.includes('birthday') && fin.data.unlocked.includes('km1'));
 assert.equal(fin.data.ranks.all.rank, 1);
 assert.equal(fin.data.ranks.all.above, null, 'nobody above the leader');
-assert.equal((await A('POST', '/api/run/finish', { runId: start.runId, summary: sim.summary() })).status, 409, 'no double submit');
+const replay = await A('POST', '/api/run/finish', { runId: start.runId, summary: { score: 99999999 } });
+assert.equal(replay.status, 200, 'lost response can be retried');
+assert.equal(replay.data.replayed, true);
+assert.equal(replay.data.energy, fin.data.energy, 'original receipt is returned');
+assert.deepEqual(replay.data.profile.stats, fin.data.profile.stats, 'retry does not count another run');
+assert.equal(replay.data.profile.energy, fin.data.profile.energy, 'retry does not award energy again');
+assert.equal((await store.getRun(start.runId)).score, sim.summary().score, 'retry cannot overwrite the saved score');
 assert.equal((await B('POST', '/api/run/finish', { runId: start.runId, summary: sim.summary() })).status, 404, 'not your run');
 
 // cheated run is stored but not counted
@@ -188,5 +197,7 @@ assert.equal((await fetch(base + '/../server/app.mjs')).status, 404, 'server cod
 assert.ok(!(await (await fetch(base + '/%2e%2e/server/app.mjs')).text()).includes('createApp'), 'no traversal');
 assert.equal((await fetch(base + '/healthz')).status, 200);
 
-server.close();
-console.log('ok');
+server.closeAllConnections();
+await new Promise(r => server.close(r));
+await store.close();
+console.log(`ok (${store.kind})`);
