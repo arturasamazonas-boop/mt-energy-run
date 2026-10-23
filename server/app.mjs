@@ -71,7 +71,8 @@ export function createApp({ store, adminToken = '', birthdayMode = 'auto', trust
     // The launch audience shares office Wi-Fi / a public IP (~250 employees).
     register: limiter(300, 60 * 60 * 1000, ms),
     runStart: limiter(240, 60 * 60 * 1000, ms),
-    mailIp: limiter(30, 60 * 60 * 1000, ms),
+    // Coworkers share a public IP; retain the stricter per-email limits below.
+    mailIp: limiter(600, 60 * 60 * 1000, ms),
     mailHour: limiter(6, 60 * 60 * 1000, ms),
     mailMinute: limiter(1, 60 * 1000, ms),
     verify: limiter(60, 10 * 60 * 1000, ms),
