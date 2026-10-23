@@ -23,6 +23,16 @@ async function call(method, path, body, options = {}) {
   return data;
 }
 
+async function finishRun(runId, summary) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15000);
+  try {
+    return await call('POST', '/api/run/finish', { runId, summary }, { signal: controller.signal, keepalive: true });
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 export const api = {
   config: () => call('GET', '/api/config'),
   me: () => call('GET', '/api/me'),
@@ -32,7 +42,7 @@ export const api = {
   logout: () => call('POST', '/api/logout', {}),
   rename: (name) => call('POST', '/api/name', { name }),
   startRun: (mode) => call('POST', '/api/run/start', { mode }),
-  finishRun: (runId, summary) => call('POST', '/api/run/finish', { runId, summary }, { signal: AbortSignal.timeout(15000), keepalive: true }),
+  finishRun,
   buy: (kind, id) => call('POST', '/api/shop/buy', { kind, id }),
   equip: (id) => call('POST', '/api/equip', { id }),
   leaderboard: (board, limit = 100) => call('GET', `/api/leaderboard?board=${board}&limit=${limit}`),
