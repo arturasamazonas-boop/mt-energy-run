@@ -1,6 +1,7 @@
 // App controller: boot, screens, account, shop, leaderboards, runs.
 import { CITIES, UPGRADES, COSMETICS, ACHIEVEMENTS, GAME_VERSION, ACHIEVEMENT_BY_ID } from '/shared/config.js';
 import { api } from './api.js';
+import { createRunOutbox } from './run-outbox.js';
 import { prefs } from './prefs.js';
 import { t, L, getLang, setLang, fmtNum, fmtDist } from './i18n.js';
 import { audio } from './audio.js';
@@ -28,6 +29,27 @@ const state = {
   run: null,
   busy: false,
 };
+
+let resultStorage;
+try { resultStorage = window.localStorage; } catch { /* blocked storage */ }
+const runOutbox = createRunOutbox({ finishRun: api.finishRun, storage: resultStorage });
+let retryingResults = false;
+async function retrySavedRuns() {
+  const playerId = state.profile?.id;
+  if (!playerId || state.profile.guest || retryingResults) return;
+  retryingResults = true;
+  try {
+    const results = await runOutbox.flush(playerId);
+    if (results.length && state.profile?.id === playerId) {
+      const me = await api.me();
+      if (me.profile?.id === playerId) setProfile(me.profile);
+      toast(t('saved'));
+    }
+  } catch { /* next online event or timer retries */ }
+  finally { retryingResults = false; }
+}
+window.addEventListener('online', retrySavedRuns);
+setInterval(retrySavedRuns, 30000);
 
 const params = new URLSearchParams(location.search);
 const DEBUG = params.has('debug');
@@ -247,6 +269,7 @@ function guestProfile() {
 }
 
 function afterLogin() {
+  retrySavedRuns();
   const today = state.config?.today;
   if (game.birthday && prefs.get('bdaySeen') !== today) {
     prefs.set('bdaySeen', today);
@@ -987,8 +1010,9 @@ function showSecondChance(cb) {
 async function submitRun(summary) {
   const run = state.run;
   if (!run?.runId) return null;
+  const result = await runOutbox.submit(state.profile.id, run.runId, summary);
   run.submitted = true;
-  return api.finishRun(run.runId, summary);
+  return result;
 }
 
 async function onRunOver(info) {
@@ -1050,41 +1074,49 @@ async function onRunOver(info) {
     $('[data-notice]', el).textContent = t('notSaved');
     return;
   }
-  try {
-    const r = await submitRun(s);
-    setProfile(r.profile);
-    if (!r.accepted) {
-      $('[data-notice]', el).textContent = t('notCounted');
-      $('[data-record]', el).innerHTML = '';
-      return;
+  const completedRun = state.run;
+  const saveResult = async () => {
+    $('[data-notice]', el).textContent = t('saving');
+    try {
+      const r = await runOutbox.submit(p.id, completedRun.runId, s);
+      completedRun.submitted = true;
+      if (state.profile?.id === p.id) setProfile(r.profile);
+      $('[data-notice]', el).textContent = t('saved');
+      if (!r.accepted) {
+        $('[data-notice]', el).textContent = t('notCounted');
+        $('[data-record]', el).innerHTML = '';
+        return;
+      }
+      $('[data-energy]', el).textContent = `⚡ ${fmtNum(r.energy)}`;
+      if (r.newBest && !localBest) {
+        $('[data-record]', el).innerHTML = `<span class="record">${t('newRecord')}</span>`;
+        audio.sfx('record');
+      }
+      const pills = [];
+      if (r.ranks?.all) pills.push(`<span class="rank-pill">${t('rankAll')}<b>#${r.ranks.all.rank}</b> / ${r.ranks.all.total}</span>`);
+      if (r.ranks?.week) pills.push(`<span class="rank-pill">${t('rankWeek')}<b>#${r.ranks.week.rank}</b></span>`);
+      if (r.ranks?.daily) pills.push(`<span class="rank-pill">${t('rankDaily')}<b>#${r.ranks.daily.rank}</b></span>`);
+      $('[data-ranks]', el).innerHTML = pills.join('');
+      const all = r.ranks?.all;
+      if (all?.above) goals.push(t('goalRank', { rank: all.rank - 1, name: esc(all.above.name), pts: fmtNum(Math.max(1, all.above.score - all.score + 1)) }));
+      else if (all?.rank === 1) goals.push(t('goalTop'));
+      const shop = shopGoal(r.profile);
+      if (shop) goals.push(shop);
+      $('[data-goals]', el).innerHTML = goalsHtml(goals);
+      maybeSuggestProtect(el);
+      r.unlocked?.forEach((id, i) =>
+        setTimeout(() => {
+          const a = ACHIEVEMENT_BY_ID[id];
+          toast(`${L(a)} · ⚡${a.reward}`, t('achievement'));
+          audio.sfx('achievement');
+        }, 600 + i * 900),
+      );
+    } catch {
+      $('[data-notice]', el).innerHTML = `${t('pendingSave')} <button class="btn small" data-retry-save>${t('retry')}</button>`;
+      click($('[data-retry-save]', el), saveResult);
     }
-    $('[data-energy]', el).textContent = `⚡ ${fmtNum(r.energy)}`;
-    if (r.newBest && !localBest) {
-      $('[data-record]', el).innerHTML = `<span class="record">${t('newRecord')}</span>`;
-      audio.sfx('record');
-    }
-    const pills = [];
-    if (r.ranks?.all) pills.push(`<span class="rank-pill">${t('rankAll')}<b>#${r.ranks.all.rank}</b> / ${r.ranks.all.total}</span>`);
-    if (r.ranks?.week) pills.push(`<span class="rank-pill">${t('rankWeek')}<b>#${r.ranks.week.rank}</b></span>`);
-    if (r.ranks?.daily) pills.push(`<span class="rank-pill">${t('rankDaily')}<b>#${r.ranks.daily.rank}</b></span>`);
-    $('[data-ranks]', el).innerHTML = pills.join('');
-    const all = r.ranks?.all;
-    if (all?.above) goals.push(t('goalRank', { rank: all.rank - 1, name: esc(all.above.name), pts: fmtNum(Math.max(1, all.above.score - all.score + 1)) }));
-    else if (all?.rank === 1) goals.push(t('goalTop'));
-    const shop = shopGoal(r.profile);
-    if (shop) goals.push(shop);
-    $('[data-goals]', el).innerHTML = goalsHtml(goals);
-    maybeSuggestProtect(el);
-    r.unlocked?.forEach((id, i) =>
-      setTimeout(() => {
-        const a = ACHIEVEMENT_BY_ID[id];
-        toast(`${L(a)} · ⚡${a.reward}`, t('achievement'));
-        audio.sfx('achievement');
-      }, 600 + i * 900),
-    );
-  } catch {
-    $('[data-notice]', el).textContent = t('notSaved');
-  }
+  };
+  await saveResult();
 }
 
 const HIT_TIP = {

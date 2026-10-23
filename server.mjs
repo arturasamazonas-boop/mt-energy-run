@@ -11,7 +11,7 @@ if (process.env.DATABASE_URL) {
   const { createPgStore } = await import('./server/store-pg.mjs');
   store = createPgStore(process.env.DATABASE_URL);
 } else {
-  if (production) console.warn('[mt-energy-run] WARNING: DATABASE_URL is not set – progress is kept in memory only and is lost on restart.');
+  if (production) throw new Error('DATABASE_URL is required in production; refusing to lose player progress on restart.');
   store = createMemoryStore();
 }
 await store.init();

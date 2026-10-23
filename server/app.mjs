@@ -68,13 +68,14 @@ export function createApp({ store, adminToken = '', birthdayMode = 'auto', trust
   const codeHash = makeHasher(secret);
   const ms = () => clock().getTime();
   const limits = {
-    register: limiter(12, 60 * 60 * 1000, ms),
+    // The launch audience shares office Wi-Fi / a public IP (~250 employees).
+    register: limiter(300, 60 * 60 * 1000, ms),
     runStart: limiter(240, 60 * 60 * 1000, ms),
     mailIp: limiter(30, 60 * 60 * 1000, ms),
     mailHour: limiter(6, 60 * 60 * 1000, ms),
     mailMinute: limiter(1, 60 * 1000, ms),
     verify: limiter(60, 10 * 60 * 1000, ms),
-    api: limiter(600, 60 * 1000, ms),
+    api: limiter(6000, 60 * 1000, ms),
   };
   const boardCache = new Map();
   const BOARD_TTL = 4000;
@@ -175,6 +176,23 @@ export function createApp({ store, adminToken = '', birthdayMode = 'auto', trust
     if (i < 0) return null;
     const above = i > 0 ? { name: rows[i - 1].name, score: rows[i - 1].score } : null;
     return { rank: i + 1, total: rows.length, score: rows[i].score, above };
+  }
+
+  async function finishedRunResponse(run, player, result, replayed = false) {
+    const now = clock();
+    const [all, week] = await Promise.all([board('all', now), board('week', now)]);
+    const ranks = { all: rankIn(all, player.id), week: rankIn(week, player.id) };
+    if (run.mode === 'daily') ranks.daily = rankIn(await board('daily', now), player.id);
+    return {
+      accepted: run.valid,
+      reasons: run.valid ? undefined : (run.flags || '').split(',').filter(Boolean),
+      energy: result?.energy || 0,
+      unlocked: result?.unlocked || [],
+      newBest: result?.newBest || false,
+      replayed,
+      profile: publicProfile(player),
+      ranks,
+    };
   }
 
   // ---------------------------------------------------------------------------
@@ -338,6 +356,8 @@ export function createApp({ store, adminToken = '', birthdayMode = 'auto', trust
       if (!/^[0-9a-f-]{36}$/.test(runId)) return [400, { error: 'bad_run' }];
       const run = await store.getRun(runId);
       if (!run || run.playerId !== p.id) return [404, { error: 'bad_run' }];
+      // A lost response must be safe to retry: the committed result wins.
+      if (run.finishedAt) return finishedRunResponse(run, p, run.summary?.receipt, true);
       const now = clock();
       const elapsed = (now - new Date(run.startedAt)) / 1000;
       // the daily seed is only valid on its own day (+ grace for runs crossing midnight)
@@ -362,7 +382,7 @@ export function createApp({ store, adminToken = '', birthdayMode = 'auto', trust
               cityIndex: summary.cityIndex,
               day: r.mode === 'daily' ? r.seed.slice(6) : vilniusDay(now),
               week: isoWeekKey(now),
-              summary,
+              summary: { ...summary, receipt: result },
               flags: reasons.join(',') || null,
             },
             player,
@@ -370,23 +390,16 @@ export function createApp({ store, adminToken = '', birthdayMode = 'auto', trust
           };
         });
       } catch (e) {
-        if (e.code === 'run_finished') return [409, { error: 'run_finished' }];
+        if (e.code === 'run_finished') {
+          const saved = await store.getRun(runId);
+          const player = await store.getPlayer(p.id);
+          return finishedRunResponse(saved, player, saved.summary?.receipt, true);
+        }
         throw e;
       }
       if (!ok) log.warn?.(`[run] rejected ${p.name} ${runId}: ${reasons.join(',')}`);
       boardCache.clear();
-      const [all, week] = await Promise.all([board('all', now), board('week', now)]);
-      const ranks = { all: rankIn(all, p.id), week: rankIn(week, p.id) };
-      if (run.mode === 'daily') ranks.daily = rankIn(await board('daily', now), p.id);
-      return {
-        accepted: ok,
-        reasons: ok ? undefined : reasons,
-        energy: out.result.energy,
-        unlocked: out.result.unlocked,
-        newBest: out.result.newBest,
-        profile: publicProfile(out.player),
-        ranks,
-      };
+      return finishedRunResponse(out.run, out.player, out.result);
     },
 
     'POST /api/shop/buy': async (req, res, body) => {
