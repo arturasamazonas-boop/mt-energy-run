@@ -144,6 +144,9 @@ export class Sim {
   startTunnel(e) {
     const p = this.tunnelPlan.find((q) => q.i === e.tunnel);
     this.tunnel = enterTunnel(generateTunnel(this.seed, p.i, p.x0, p.len));
+    // vehicles and the jetpack don't fit underground: end them properly
+    for (const k of ['drone', 'excavator']) if (this.power[k] > 0) this.emit('powerEnd', { kind: k });
+    if (this.jetT > 0) this.emit('jetEnd');
     this.power.drone = 0;
     this.power.excavator = 0;
     this.jetT = 0;
@@ -185,7 +188,7 @@ export class Sim {
     const p = this.tunnelPlan.find((q) => q.i === this.tunnel.def.i);
     this.tunnel = null;
     // the regular course comes back a little way ahead
-    p.cut = this.x + 25;
+    p.cut = this.x + Math.max(25, speedAt(this.x) * 1.8); // ~2 s of open road to get your bearings
     for (const e of this.entities) {
       if (e.tunnelCleared === p.i && e.x >= p.cut) {
         e.alive = true;
@@ -255,6 +258,23 @@ export class Sim {
     return false;
   }
 
+  /** Is the hero's body overlapping a solid obstacle right now? (used before protection ends) */
+  insideObstacle() {
+    const half = P.playerWidth / 2 - 0.1;
+    const y0 = this.y + 0.05;
+    const y1 = this.y + this.height - 0.08;
+    for (const e of this.entities) {
+      if (!e.alive || e.oneWay || e.y0 === undefined) continue;
+      if (e.k === 'pit' || e.k === 'bolt' || e.k === 'part' || e.k === 'token' || e.k === 'power' || e.k === 'task' || e.k === 'gate' || e.k === 'checkpoint' || e.k === 'tunnelIn' || e.k === 'tunnelOut') continue;
+      if (e.x > this.x + 2) break;
+      if (this.x + half < e.x || this.x - half > e.x + e.w) continue;
+      if (y1 < e.y0 || y0 > e.y1) continue;
+      if (e.landable && this.y >= e.y1 - 0.08) continue;
+      return true;
+    }
+    return false;
+  }
+
   overheadBlocked() {
     // Is there something above that would hit a standing player?
     const half = P.playerWidth / 2 - 0.1;
@@ -283,6 +303,8 @@ export class Sim {
         this.power[k] = Math.max(0, this.power[k] - dt);
         // never drop the player into a trench when a vehicle power-up expires
         if (this.power[k] === 0 && (k === 'drone' || k === 'excavator') && this.overPit(this.x, 0.5, 14)) this.power[k] = 0.05;
+        // …nor inside a long container it was flying through
+        if (this.power[k] === 0 && k === 'drone' && this.insideObstacle()) this.power[k] = 0.05;
         if (this.power[k] === 0) {
           this.emit('powerEnd', { kind: k });
           if (k === 'drone') {
@@ -297,13 +319,15 @@ export class Sim {
     if (this.invuln > 0) this.invuln = Math.max(0, this.invuln - dt);
     if (this.shieldT > 0) {
       this.shieldT = Math.max(0, this.shieldT - dt);
+      // the shield lasts until the hero is out of whatever it was passing through
+      if (this.shieldT === 0 && this.insideObstacle()) this.shieldT = 0.05;
       if (this.shieldT === 0) this.emit('shieldEnd');
     }
     if (input.shield) this.useAbility('shield');
     if (this.jetT > 0) {
       this.jetT = Math.max(0, this.jetT - dt);
       // like the drone, never let go over a trench
-      if (this.jetT === 0 && !this.flying && this.overPit(this.x, 0.5, 14)) this.jetT = 0.05;
+      if (this.jetT === 0 && !this.flying && (this.overPit(this.x, 0.5, 14) || this.insideObstacle())) this.jetT = 0.05;
       if (this.jetT === 0) {
         this.emit('jetEnd');
         if (!this.flying) {
@@ -333,6 +357,12 @@ export class Sim {
             e.passed = true;
             if (e.k === 'gate') this.passGate(e);
             else this.emit('checkpoint', { wp: e.wp, x: e.x });
+          }
+          // the city's project parts that lay on the cleared road are found underground,
+          // so a leg with a tunnel can still give three stars
+          if (e.k === 'part' && e.tunnelCleared !== undefined) {
+            delete e.tunnelCleared;
+            this.collect(e);
           }
         }
         this.afterStep();
@@ -406,7 +436,8 @@ export class Sim {
         this.y = support;
       }
 
-      if (this.y < -0.35 && !this.overPit(this.x, 0)) {
+      // (not while the helmet is bouncing the hero back out of the trench)
+      if (this.y < -0.35 && !this.overPit(this.x, 0) && !(this.vy > 0 && this.invuln > 0)) {
         // slammed into the far wall of a trench
         this.y = Math.min(this.y, -2.3);
       }
@@ -726,7 +757,7 @@ export class Sim {
     this.dead = false;
     this.revived = true;
     for (const e of this.entities) {
-      if (e.k === 'bolt' || e.k === 'part' || e.k === 'token' || e.k === 'power' || e.k === 'task' || e.k === 'gate' || e.k === 'checkpoint') continue;
+      if (e.k === 'bolt' || e.k === 'part' || e.k === 'token' || e.k === 'power' || e.k === 'task' || e.k === 'gate' || e.k === 'checkpoint' || e.k === 'tunnelIn' || e.k === 'tunnelOut') continue;
       if (e.x + (e.w || 0) > this.x - 3 && e.x < this.x + 28) e.alive = false;
     }
     this.y = 0;

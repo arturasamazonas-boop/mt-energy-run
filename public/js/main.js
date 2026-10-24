@@ -139,7 +139,7 @@ function show(html, { shadeMode = 'on' } = {}) {
   return layer.firstElementChild;
 }
 
-function toast(title, sub, icon = ICON.medal) {
+function toast(title, sub = 'MT GROUP', icon = ICON.medal) {
   const el = document.createElement('div');
   el.className = 'toast';
   el.innerHTML = `<div class="medal">${icon}</div><div><small>${sub}</small><b>${title}</b></div>`;
@@ -220,17 +220,23 @@ async function boot() {
   const fonts = document.fonts?.ready || Promise.resolve();
   let cfg = null;
   let me = null;
-  try {
-    cfg = await api.config();
-    state.config = cfg;
-    game.birthday = !!cfg.birthday || params.has('birthday');
+  // a hiccup (or a server still waking up) must not turn a registered player into a guest
+  for (let attempt = 1; attempt <= 3; attempt++) {
     try {
-      me = (await api.me()).profile;
-    } catch (e) {
-      if (e.status !== 401) throw e;
+      cfg = await api.config();
+      state.config = cfg;
+      game.birthday = !!cfg.birthday || params.has('birthday');
+      try {
+        me = (await api.me()).profile;
+      } catch (e) {
+        if (e.status !== 401) throw e;
+      }
+      state.online = true;
+      break;
+    } catch {
+      state.online = false;
+      if (attempt < 3) await new Promise((r) => setTimeout(r, 1500 * attempt));
     }
-  } catch {
-    state.online = false;
   }
   await Promise.all([imgs, fonts]);
   renderer.scenery.cache.clear();
@@ -813,12 +819,24 @@ async function startRun(mode) {
   let run = { mode, seed: params.get('seed') || `local-${Date.now()}`, upgrades: state.profile.upgrades || {}, runId: null };
   const boardReq = state.online && !state.profile.guest ? fetchBoardQuick(mode === 'daily' ? 'daily' : 'all') : Promise.resolve(null);
   if (state.online && !state.profile.guest && !params.has('practice') && !(DEBUG && params.has('autoplay'))) {
-    try {
-      const r = await api.startRun(mode);
-      run = { mode, seed: r.seed, upgrades: r.upgrades, runId: r.runId };
-    } catch {
-      /* play offline */
+    // a registered player's run only counts if the server started it: never play it "offline" silently
+    const screenAtStart = state.screen;
+    const slow = setTimeout(() => toast(t('connecting'), 'MT GROUP', ICON.globe), 1200);
+    let started = null;
+    for (let attempt = 1; attempt <= 2 && !started; attempt++) {
+      try {
+        started = await api.startRun(mode);
+      } catch (e) {
+        if (e.status === 429 || attempt === 2) break;
+      }
     }
+    clearTimeout(slow);
+    if (!started || state.screen !== screenAtStart) {
+      state.busy = false;
+      if (!started) toast(t('startFailed'), 'MT GROUP', ICON.globe);
+      return;
+    }
+    run = { mode, seed: started.seed, upgrades: started.upgrades, runId: started.runId };
   }
   const markers = runMarkers(await boardReq);
   state.busy = false;
@@ -895,6 +913,8 @@ function cancelCountdown() {
 }
 
 function onGameEvent(type, ev) {
+  // nothing pops up over the tunnel view: it would hide the obstacles
+  if (game.sim?.tunnel && (type === 'checkpoint' || type === 'city' || type === 'abilityReady')) return;
   switch (type) {
     case 'city':
       // cities with checkpoints announce themselves on arrival (see 'checkpoint')
@@ -997,6 +1017,7 @@ function showSecondChance(cb) {
     cb(yes);
   };
   const timer = setInterval(() => {
+    if (document.hidden) return; // switched apps: the offer waits for the player
     left--;
     const n = $('[data-n]', el);
     if (n) n.textContent = String(left);

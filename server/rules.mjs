@@ -30,6 +30,14 @@ export function normalizeData(data) {
   d.stats = { ...base.stats, ...(data?.stats || {}) };
   d.achievements = { ...(data?.achievements || {}) };
   d.cityStars = { ...(data?.cityStars || {}) };
+  // repair records damaged by unknown shop ids (energy NaN/null, junk outfits)
+  if (!Number.isFinite(d.energy) || d.energy < 0) d.energy = 0;
+  d.cosmetics.owned = d.cosmetics.owned.filter((id) => COSMETIC_BY_ID[id]);
+  if (!d.cosmetics.owned.includes(d.cosmetics.equipped)) d.cosmetics.equipped = 'suit';
+  for (const k of Object.keys(d.upgrades)) {
+    const n = d.upgrades[k];
+    if (!UPGRADE_BY_ID[k] || !Number.isInteger(n) || n < 0) delete d.upgrades[k];
+  }
   return d;
 }
 
@@ -68,12 +76,15 @@ export function validateRun(run, raw, elapsedSec) {
   if (s.bolts - s.tunnelBolts > avail.bolts) reasons.push('bolts');
   if (s.parts > avail.parts) reasons.push('parts');
   if (s.tokens > avail.tokens) reasons.push('tokens');
+  if (s.powerups > avail.powers) reasons.push('powerups');
+  if (s.revived && !run.upgrades?.secondChance) reasons.push('revive');
   if (s.tasks + s.tasksFailed > avail.tasks) reasons.push('tasks');
   if (s.gates > avail.gates) reasons.push('gates');
   if (s.stars > Math.min(s.parts, s.gates * 3)) reasons.push('stars');
   if (s.perfectCities > s.gates) reasons.push('perfect');
   if (s.maxMult > Math.min(SCORE.maxMult, base + s.tasks + s.perfectCities) || s.maxMult < 1) reasons.push('mult');
-  if (s.smashed > s.distance / 2 + 5) reasons.push('smashed');
+  // obstacles are only smashed with an excavator: a handful per pickup at most
+  if (s.smashed > s.distance / 2 + 5 || s.smashed > avail.excavators * 20) reasons.push('smashed');
   if (Math.abs(cityAt(s.distance).index - s.cityIndex) > 1) reasons.push('city');
 
   const lastCity = Math.max(0, s.cityIndex);

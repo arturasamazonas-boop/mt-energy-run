@@ -278,7 +278,9 @@ export const UPGRADES = [
   { id: 'secondChance', icon: 'heart', costs: [25000], lt: 'Antras šansas', en: 'Second chance', descLt: 'Kartą per bėgimą tęsi po smūgio', descEn: 'Continue once per run after a crash' },
 ];
 
-export const UPGRADE_BY_ID = Object.fromEntries(UPGRADES.map((u) => [u.id, u]));
+// lookups have no prototype: ids such as 'constructor' or '__proto__' must not resolve to anything
+const byId = (list) => Object.assign(Object.create(null), Object.fromEntries(list.map((x) => [x.id, x])));
+export const UPGRADE_BY_ID = byId(UPGRADES);
 
 export function powerupDuration(kind, upgrades = {}) {
   const p = POWERUPS[kind];
@@ -286,7 +288,7 @@ export function powerupDuration(kind, upgrades = {}) {
 }
 
 export function boltValue(upgrades = {}) {
-  return 1 + 0.1 * (upgrades.energyValue || 0);
+  return (10 + (upgrades.energyValue || 0)) / 10; // not 1 + 0.1·n: 1.4000000000000001 floors 45 bolts to 62
 }
 
 // ---------------------------------------------------------------------------
@@ -301,7 +303,7 @@ export const COSMETICS = [
   { id: 'gold', cost: 0, achievement: 'grandtour', lt: 'Auksinis kostiumas', en: 'Golden suit' },
 ];
 
-export const COSMETIC_BY_ID = Object.fromEntries(COSMETICS.map((c) => [c.id, c]));
+export const COSMETIC_BY_ID = byId(COSMETICS);
 
 // ---------------------------------------------------------------------------
 // Scoring
@@ -377,7 +379,7 @@ export const ACHIEVEMENTS = [
   { id: 'stylist', reward: 150, lt: 'Stiliaus ikona', en: 'Style icon', descLt: 'Turėk 4 aprangas', descEn: 'Own 4 outfits' },
 ];
 
-export const ACHIEVEMENT_BY_ID = Object.fromEntries(ACHIEVEMENTS.map((a) => [a.id, a]));
+export const ACHIEVEMENT_BY_ID = byId(ACHIEVEMENTS);
 
 // ---------------------------------------------------------------------------
 // Names

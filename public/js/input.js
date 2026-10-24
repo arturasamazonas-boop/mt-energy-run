@@ -96,6 +96,10 @@ export class Input {
       if (now - this.lastJump < MIN_JUMP_GAP_MS) return;
       this.lastJump = now;
       this.jumpQueued = true;
+      // a thumb still resting on the slide side must not turn this jump into a
+      // dive: the slide counts again only after a fresh press
+      for (const [id, z] of this.touches) if (z === 'slide') this.touches.set(id, 'held');
+      if (this.mouse === 'slide') this.mouse = null;
     }
     this.onAnyAction?.(kind);
   }

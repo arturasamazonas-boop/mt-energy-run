@@ -71,11 +71,12 @@ export function createApp({ store, adminToken = '', birthdayMode = 'auto', trust
     // The launch audience shares office Wi-Fi / a public IP (~250 employees).
     register: limiter(300, 60 * 60 * 1000, ms),
     runStart: limiter(240, 60 * 60 * 1000, ms),
-    // Coworkers share a public IP; retain the stricter per-email limits below.
-    mailIp: limiter(600, 60 * 60 * 1000, ms),
+    // per IP: the whole office may sit behind one address, so this is generous;
+    // the per-email limits below stop spamming one inbox
+    mailIp: limiter(1000, 60 * 60 * 1000, ms),
     mailHour: limiter(6, 60 * 60 * 1000, ms),
     mailMinute: limiter(1, 60 * 1000, ms),
-    verify: limiter(60, 10 * 60 * 1000, ms),
+    verify: limiter(600, 10 * 60 * 1000, ms),
     api: limiter(6000, 60 * 1000, ms),
   };
   const boardCache = new Map();
@@ -99,7 +100,13 @@ export function createApp({ store, adminToken = '', birthdayMode = 'auto', trust
     const out = {};
     for (const part of String(req.headers.cookie || '').split(';')) {
       const i = part.indexOf('=');
-      if (i > 0) out[part.slice(0, i).trim()] = decodeURIComponent(part.slice(i + 1).trim());
+      if (i <= 0) continue;
+      const raw = part.slice(i + 1).trim();
+      try {
+        out[part.slice(0, i).trim()] = decodeURIComponent(raw);
+      } catch {
+        out[part.slice(0, i).trim()] = raw; // a stray cookie with a bad % escape must not break every request
+      }
     }
     return out;
   }
@@ -136,7 +143,8 @@ export function createApp({ store, adminToken = '', birthdayMode = 'auto', trust
       req.on('end', () => {
         if (!chunks.length) return resolve({});
         try {
-          resolve(JSON.parse(Buffer.concat(chunks).toString('utf8')));
+          const v = JSON.parse(Buffer.concat(chunks).toString('utf8'));
+          resolve(v && typeof v === 'object' ? v : {});
         } catch {
           reject(Object.assign(new Error('bad_json'), { status: 400 }));
         }
@@ -539,7 +547,12 @@ export function createApp({ store, adminToken = '', birthdayMode = 'auto', trust
     if (pathname.endsWith('/')) pathname += 'index.html';
     for (const { prefix, dir } of STATIC_DIRS) {
       if (!pathname.startsWith(prefix)) continue;
-      const rel = decodeURIComponent(pathname.slice(prefix.length));
+      let rel;
+      try {
+        rel = decodeURIComponent(pathname.slice(prefix.length));
+      } catch {
+        return false; // malformed % escape: plain 404
+      }
       const file = path.resolve(dir, rel);
       if (!file.startsWith(dir + path.sep)) continue;
       let st;
@@ -565,7 +578,7 @@ export function createApp({ store, adminToken = '', birthdayMode = 'auto', trust
       }
       res.writeHead(200, { ...headers, 'Content-Length': st.size });
       if (req.method === 'HEAD') res.end();
-      else fs.createReadStream(file).pipe(res);
+      else fs.createReadStream(file).on('error', () => res.destroy()).pipe(res);
       return true;
     }
     return false;
@@ -587,7 +600,13 @@ export function createApp({ store, adminToken = '', birthdayMode = 'auto', trust
         // CSRF guard: JSON requests only, from our own origin
         if (!String(req.headers['content-type'] || '').startsWith('application/json')) return send(res, 415, { error: 'json_only' });
         const origin = req.headers.origin;
-        if (origin && new URL(origin).host !== req.headers.host) return send(res, 403, { error: 'bad_origin' });
+        let originHost = null;
+        try {
+          originHost = origin ? new URL(origin).host : null;
+        } catch {
+          return send(res, 403, { error: 'bad_origin' }); // e.g. "Origin: null"
+        }
+        if (origin && originHost !== req.headers.host) return send(res, 403, { error: 'bad_origin' });
       }
       try {
         const body = req.method === 'POST' ? await readJson(req) : {};

@@ -119,7 +119,8 @@ const PATTERNS = [
     id: 'container', tier: 1, w: 2.4, port: 2.5, f: (c) => {
       const crate = c.ob('crate', 0.55);
       const cont = c.ob('container', 0, { x: crate.x + crate.w });
-      c.jumpArc(0.55 - LEAD, 3);
+      // the trail shows the move that works: a double jump onto the container
+      c.jumpArc(0.55 - LEAD, 3, 0, true);
       c.lineX(cont.x + 0.6, cont.x + cont.w - 0.6, cont.y1 + 0.75, 6);
       return (cont.x + cont.w - c.X(0)) / c.v + 0.45;
     },
@@ -190,7 +191,7 @@ const PATTERNS = [
       const w = clamp(c.v * 0.85, 8, 16);
       const x = c.X(0.6);
       c.ob('scaffold', 0, { x, w, y0: DIM.scaffold.h - DIM.scaffold.t, y1: DIM.scaffold.h, oneWay: true, landable: true });
-      c.jumpArc(0.6 - LEAD - 0.05, 3);
+      c.jumpArc(0.6 - LEAD - 0.05, 3, 0, true); // its top (2.3 m) needs a double jump
       c.lineX(x + 0.8, x + w - 0.6, DIM.scaffold.h + 0.75, Math.round(w / 1.6));
       // cones underneath: either stay on top or hop them
       c.ob('cone', 0, { x: x + w * 0.35 });
@@ -220,7 +221,7 @@ const PATTERNS = [
       const crate = c.ob('crate', 0.5);
       const cont = c.ob('container', 0, { x: crate.x + crate.w, w: off + 6 });
       c.ob('beam', 0, { x: cont.x + off, y0: cont.y1 + 1.08 });
-      c.jumpArc(0.5 - LEAD, 3);
+      c.jumpArc(0.5 - LEAD, 3, 0, true);
       c.lineX(cont.x + 0.7, cont.x + off - 0.8, cont.y1 + 0.75, Math.max(3, Math.round(off / 1.6)));
       c.lineX(cont.x + off + 0.2, cont.x + off + 1.4, cont.y1 + 0.45, 2);
       return (cont.x + cont.w - c.X(0)) / c.v + 0.45;
@@ -392,7 +393,7 @@ export function generateCity(seed, index) {
 
 /** Count what was obtainable up to `distance` (used by server validation). */
 export function countAvailable(seed, distance, slack = 10) {
-  const out = { bolts: 0, parts: 0, tasks: 0, tokens: 0, powers: 0, gates: 0 };
+  const out = { bolts: 0, parts: 0, tasks: 0, tokens: 0, powers: 0, excavators: 0, gates: 0 };
   for (let i = 0; i < 10000; i++) {
     const c = generateCity(seed, i);
     if (c.start > distance + slack) break;
@@ -402,7 +403,10 @@ export function countAvailable(seed, distance, slack = 10) {
       else if (e.k === 'part') out.parts++;
       else if (e.k === 'task') out.tasks++;
       else if (e.k === 'token') out.tokens++;
-      else if (e.k === 'power') out.powers++;
+      else if (e.k === 'power') {
+        out.powers++;
+        if (e.kind === 'excavator') out.excavators++;
+      }
       else if (e.k === 'gate') out.gates++;
     }
   }

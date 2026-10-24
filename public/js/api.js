@@ -23,6 +23,17 @@ async function call(method, path, body, options = {}) {
   return data;
 }
 
+/** A call that gives up after `ms` (a sleeping free server can take ~30 s to wake). */
+async function timed(ms, method, path, body) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), ms);
+  try {
+    return await call(method, path, body, { signal: controller.signal });
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 async function finishRun(runId, summary) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 15000);
@@ -34,14 +45,14 @@ async function finishRun(runId, summary) {
 }
 
 export const api = {
-  config: () => call('GET', '/api/config'),
-  me: () => call('GET', '/api/me'),
+  config: () => timed(40000, 'GET', '/api/config'),
+  me: () => timed(40000, 'GET', '/api/me'),
   register: (name) => call('POST', '/api/register', { name }),
   emailCode: (email, lang) => call('POST', '/api/email/code', { email, lang }),
   emailVerify: (challengeId, code, merge) => call('POST', '/api/email/verify', { challengeId, code, merge }),
   logout: () => call('POST', '/api/logout', {}),
   rename: (name) => call('POST', '/api/name', { name }),
-  startRun: (mode) => call('POST', '/api/run/start', { mode }),
+  startRun: (mode) => timed(40000, 'POST', '/api/run/start', { mode }),
   finishRun,
   buy: (kind, id) => call('POST', '/api/shop/buy', { kind, id }),
   equip: (id) => call('POST', '/api/equip', { id }),

@@ -51,6 +51,7 @@ CREATE TABLE IF NOT EXISTS email_codes (
 );
 CREATE INDEX IF NOT EXISTS runs_player ON runs (player_id, finished_at DESC);
 CREATE INDEX IF NOT EXISTS runs_board ON runs (score DESC) WHERE finished_at IS NOT NULL AND valid;
+CREATE INDEX IF NOT EXISTS runs_best ON runs (player_id, score DESC, finished_at) WHERE finished_at IS NOT NULL AND valid;
 CREATE INDEX IF NOT EXISTS runs_week ON runs (week) WHERE finished_at IS NOT NULL AND valid;
 CREATE INDEX IF NOT EXISTS runs_day ON runs (day, mode) WHERE finished_at IS NOT NULL AND valid;
 `;
@@ -97,11 +98,19 @@ export function createPgStore(connectionString) {
   // TLS follows the connection string (e.g. ?sslmode=require). Render's internal
   // URL needs none; DATABASE_SSL=1 forces verified TLS for external hosts.
   const ssl = process.env.DATABASE_SSL === '1' ? { rejectUnauthorized: process.env.PGSSL_ALLOW_SELF_SIGNED !== '1' } : undefined;
-  const pool = new pg.Pool({ connectionString, ssl, max: 8 });
+  const pool = new pg.Pool({ connectionString, ssl, max: 8, connectionTimeoutMillis: 10000, idleTimeoutMillis: 30000, keepAlive: true });
+  // A dropped connection (Neon suspend/restart, network blip) must not take the
+  // whole server down: without a listener pg's 'error' event kills the process.
+  pool.on('error', (e) => console.warn('[mt-energy-run] db connection lost:', e.message));
   const err = (code) => Object.assign(new Error(code), { code });
 
   async function tx(fn) {
     const c = await pool.connect();
+    let broken = null;
+    const onErr = (e) => {
+      broken = e;
+    };
+    c.on('error', onErr);
     try {
       await c.query('BEGIN');
       const out = await fn(c);
@@ -109,9 +118,11 @@ export function createPgStore(connectionString) {
       return out;
     } catch (e) {
       await c.query('ROLLBACK').catch(() => {});
+      broken = broken || (e && !e.code ? e : null); // network errors have no SQLSTATE: drop that client
       throw e;
     } finally {
-      c.release();
+      c.off('error', onErr);
+      c.release(broken || undefined);
     }
   }
 
