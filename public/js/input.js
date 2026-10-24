@@ -5,6 +5,7 @@
 const MIN_JUMP_GAP_MS = 50; // a fast deliberate double tap (even two fingers) is ~80 ms apart
 const TOUCH_MOUSE_GUARD_MS = 1000;
 const SWIPE_PX = 24;
+const TAP_DECIDE_MS = 60; // in the tunnel: a touch that hasn't moved by then is a tap
 
 export class Input {
   constructor(target) {
@@ -162,8 +163,16 @@ export class Input {
             continue;
           }
           if (this.swipeMode) {
-            // decided on move (swipe) or release (tap)
-            this.swipes.set(touch.identifier, { x: touch.clientX, y: touch.clientY, done: false });
+            // decided on move (swipe); a finger that stays put is a tap right away
+            // (after a short moment, not on release, so a tap is as quick as on the road)
+            const sw = { x: touch.clientX, y: touch.clientY, done: false };
+            this.swipes.set(touch.identifier, sw);
+            setTimeout(() => {
+              // a finger already on the move is a swipe in the making: let it finish
+              if (sw.done || sw.moved > 8 || !this.enabled || !this.swipeMode) return;
+              sw.done = true;
+              this.press(this.zoneFor(sw.x) === 'jump' ? 'jump' : 'slideTap');
+            }, TAP_DECIDE_MS);
             continue;
           }
           const z = this.zoneFor(touch.clientX);
@@ -183,7 +192,8 @@ export class Input {
           if (!sw || sw.done) continue;
           const dx = touch.clientX - sw.x;
           const dy = touch.clientY - sw.y;
-          if (Math.max(Math.abs(dx), Math.abs(dy)) < SWIPE_PX) continue;
+          sw.moved = Math.max(sw.moved || 0, Math.abs(dx), Math.abs(dy));
+          if (sw.moved < SWIPE_PX) continue;
           sw.done = true;
           if (Math.abs(dx) > Math.abs(dy)) this.press(dx < 0 ? 'left' : 'right');
           else this.press(dy < 0 ? 'jump' : 'slideTap');

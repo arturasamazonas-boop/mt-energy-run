@@ -1005,6 +1005,28 @@ h3 {
   transform: rotate(-90deg);
 }
 
+.tunnelTip {
+  position: absolute;
+  left: 50%;
+  bottom: 18%;
+  transform: translateX(-50%);
+  max-width: 70%;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  font-family: var(--cond);
+  font-size: clamp(13px, 2.6vh, 18px);
+  text-align: center;
+  pointer-events: none;
+  animation: tunnelTip 6s ease both;
+}
+
+@keyframes tunnelTip {
+  0%, 100% { opacity: 0; }
+  8%, 85% { opacity: 1; }
+}
+
 .banner {
   position: absolute;
   left: 50%;

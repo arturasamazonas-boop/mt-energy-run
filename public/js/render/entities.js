@@ -303,7 +303,7 @@ function quad(ctx, e, t, lang = 'lt') {
   ctx.translate(0, e.y0);
   const w = e.w;
   // flashing red warning above it while it hovers and dives
-  if ((e.hovering || e.diving) && e.y0 > (e.diveY0 ?? 0) + 0.05 && Math.floor(t * 6) % 2 === 0) {
+  if (e.hovering && !e.diving && Math.floor(t * 6) % 2 === 0) {
     const label = lang === 'en' ? 'RUSSIAN DRONE!!!' : 'RUSŲ DRONAS!!!';
     ctx.save();
     ctx.translate(w / 2, 1.7);
