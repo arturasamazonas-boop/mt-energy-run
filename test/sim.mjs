@@ -275,13 +275,12 @@ console.log('ok');
   assert.ok(!f.dead, 'shield saves a fall');
 }
 {
-  // the Russian drone attacks low, at head height or weaving; a weaving one never charges
+  // the Russian drone attacks low, at head height or weaving
   const { generateCity } = await import('../shared/worldgen.js');
   const modes = {};
   for (let k = 0; k < 40; k++) for (let ci = 1; ci < 6; ci++) {
     for (const q of generateCity(`dr${k}`, ci).entities.filter((e) => e.k === 'quad')) {
       modes[q.mode] = (modes[q.mode] || 0) + 1;
-      if (q.mode === 'wave') assert.ok(!q.rush, 'a weaving drone does not charge');
     }
   }
   assert.ok(modes.low && modes.head && modes.wave, `all attack modes appear (${JSON.stringify(modes)})`);
@@ -304,4 +303,38 @@ console.log('ok');
   assert.ok(s.jetT > 0, 'jetpack holds before a container');
   run(s, 3);
   assert.ok(!s.dead, `passes the container (${s.deathKind})`);
+}
+{
+  // the drone attacks in three equally likely ways and always flies on past the hero
+  const { generateCity } = await import('../shared/worldgen.js');
+  const modes = { low: 0, head: 0, wave: 0 };
+  for (let k = 0; k < 60; k++) for (let ci = 1; ci < 6; ci++) for (const q of generateCity(`dq${k}`, ci).entities.filter((e) => e.k === 'quad')) {
+    modes[q.mode]++;
+    assert.ok(q.rush > 0, 'every drone flies at the hero');
+  }
+  const n = modes.low + modes.head + modes.wave;
+  for (const m of Object.keys(modes)) assert.ok(modes[m] > n * 0.2, `${m} drones are common (${JSON.stringify(modes)})`);
+  const s = new Sim({ seed: 'phys' });
+  s.loadedUntil = 99;
+  s.entities = [{ k: 'quad', x: s.x + 30, w: 1.1, h: 0.55, y0: 1.0, y1: 1.55, diveY0: 1.0, diving: true, rush: 5, diveSpeed: 9, alive: true, id: 'qr', mode: 'head' }];
+  run(s, 2, () => ({ slide: true }));
+  assert.ok(!s.dead && s.entities[0].x < s.x - 3, 'it flies on past the hero');
+}
+{
+  // a tunnel crash never loses a project part lying on the stretch that stays cleared
+  // and flying over a portal on the jetpack skips the tunnel, leaving the road as generated
+  const s = new Sim({ seed: 'tsk', tunnels: true });
+  for (let i = 0; i < 20000 && !s.tunnelPlan.length; i++) s.step(1 / 120, {});
+  const p = s.tunnelPlan[0];
+  if (p) {
+    s.x = p.x0 - 25;
+    s.lastScoredX = s.x;
+    s.charge.jet = ABILITIES.jet.cost;
+    s.useAbility('jet');
+    s.invuln = 99;
+    for (let i = 0; i < 400; i++) s.step(1 / 120, { jumpHeld: true });
+    assert.ok(!s.tunnel, 'flies over the tunnel');
+    assert.equal(s.stats.tunnels, 0);
+    assert.ok(s.entities.some((e) => e.alive && e.x > s.x && e.x < p.x0 + p.len && e.k !== 'tunnelOut' && e.k !== 'tunnelIn'), 'the road under it is there');
+  }
 }

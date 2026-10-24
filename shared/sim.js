@@ -162,6 +162,20 @@ export class Sim {
     this.emit('tunnelIn', { i: p.i });
   }
 
+  /** Flying over the portal (jetpack / drone): the tunnel is skipped and the road stays as generated. */
+  skipTunnel(e) {
+    const p = this.tunnelPlan.find((q) => q.i === e.tunnel);
+    p.cut = this.x;
+    for (const o of this.entities) {
+      if (o.tunnelCleared === p.i && o.x >= this.x) {
+        o.alive = true;
+        delete o.tunnelCleared;
+      }
+      if (o.k === 'tunnelOut' && o.tunnel === p.i) o.alive = false;
+    }
+    this.emit('tunnelSkip', { i: p.i });
+  }
+
   exitTunnel() {
     this.tunnel = null;
     this.y = 0;
@@ -197,6 +211,10 @@ export class Sim {
       if (e.tunnelCleared === p.i && e.x >= p.cut) {
         e.alive = true;
         delete e.tunnelCleared;
+      } else if (e.k === 'part' && e.tunnelCleared === p.i) {
+        // a project part on the stretch that stays cleared would be lost for good: it's found anyway
+        delete e.tunnelCleared;
+        this.collect(e);
       }
       if (e.k === 'tunnelOut' && e.tunnel === p.i) e.alive = false;
     }
@@ -553,6 +571,10 @@ export class Sim {
         case 'tunnelIn':
           if (this.tunnelsOn && !e.passed && this.x >= e.x + 3) {
             e.passed = true;
+            if (this.flying || this.jetT > 0) {
+              this.skipTunnel(e);
+              break;
+            }
             this.startTunnel(e);
             return;
           }
@@ -590,12 +612,14 @@ export class Sim {
             let want = e.diveY0;
             if (e.wave) {
               e.waveT = (e.waveT || 0) + dt;
-              // swings between knee height (jump it) and head height (slide under);
-              // the last moment before it reaches the hero it stops switching (fair to react)
-              if (e.waveY === undefined || e.x - this.x > v * 0.65) e.waveY = Math.cos(e.waveT * e.wave + (e.wavePh || 0)) > 0 ? 1.0 : 0.25;
+              // weaves smoothly between knee height (jump it) and head height (slide under);
+              // the last moment before it reaches the hero it flies straight (fair to react)
+              if (e.waveY === undefined || e.x - this.x > (v + (e.rush || 0)) * 0.65) {
+                e.waveY = 0.25 + 0.4 * (1 - Math.cos(e.waveT * e.wave + (e.wavePh || 0)));
+              }
               want = e.waveY;
             }
-            const step = (e.wave && e.y0 < 1.05 ? 4 : e.diveSpeed || 6) * dt;
+            const step = (e.diveSpeed || 6) * dt;
             e.y0 = e.y0 > want ? Math.max(want, e.y0 - step) : Math.min(want, e.y0 + step);
             e.y1 = e.y0 + e.h;
             if (e.rush) e.x -= e.rush * dt;

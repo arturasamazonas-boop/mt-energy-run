@@ -584,7 +584,8 @@ export class Renderer {
       drawExcavator(ctx, t, outfit, blink);
     } else {
       if (sim.flying) drawDrone(ctx, t, 2.2);
-      else if (sim.jetT > 0) drawJetpack(ctx, t);
+      // the jetpack sputters during its last moments: a warning that the flight is ending
+      else if (sim.jetT > 0 && (sim.jetT > 0.8 || Math.floor(t * 14) % 2 === 0)) drawJetpack(ctx, t);
       drawCharacter(ctx, pose, { outfit, t, blink, expression, shield: sim.helmet });
     }
     ctx.globalAlpha = 1;

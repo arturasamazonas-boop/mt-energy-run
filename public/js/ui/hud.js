@@ -163,11 +163,14 @@ export class Hud {
     if (this.abilities && s.charge) {
       for (const k of ['shield', 'jet']) {
         const a = this.abilities[k];
+        const left = k === 'shield' ? s.shieldT : s.jetT;
+        // while it runs the ring drains with the time left; otherwise it shows the charge
+        const ring = left > 0 ? Math.min(1, left / ABILITIES[k].duration) : Math.min(1, s.charge[k] / ABILITIES[k].cost);
         const frac = Math.min(1, s.charge[k] / ABILITIES[k].cost);
-        const key = Math.round(frac * 100);
+        const key = Math.round(ring * 100) + (left > 0 ? 1000 : 0);
         if (a.key !== key) {
           a.key = key;
-          a.ring.setAttribute('stroke-dashoffset', String(182.2 * (1 - frac)));
+          a.ring.setAttribute('stroke-dashoffset', String(182.2 * (1 - ring)));
         }
         // no room to fly underground: a charged jetpack waits, dimmed, and swipes pass through it
         const blocked = k === 'jet' && !!s.tunnel;
@@ -197,6 +200,21 @@ export class Hud {
     this.root.querySelectorAll('.banner').forEach((x) => x.remove());
     this.root.appendChild(b);
     setTimeout(() => b.remove(), 2700);
+  }
+
+  clearBanners() {
+    this.root.querySelectorAll('.banner').forEach((x) => x.remove());
+  }
+
+  /** One small line at the bottom of the tunnel view (null removes it). */
+  tunnelTip(text) {
+    this.root.querySelectorAll('.tunnelTip').forEach((x) => x.remove());
+    if (!text) return;
+    const el = document.createElement('div');
+    el.className = 'tunnelTip';
+    el.textContent = text;
+    this.root.appendChild(el);
+    setTimeout(() => el.remove(), 6000);
   }
 
   cityBanner(index) {

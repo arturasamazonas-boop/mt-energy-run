@@ -912,9 +912,27 @@ function cancelCountdown() {
   return true;
 }
 
+let pendingReady = null; // an 'ability ready' earned underground, shown back on the road
+const TUNNEL_TIPS_KEY = 'mter.tunnelTips';
+
+/** The swipe controls are explained (small, at the bottom) in a player's first few tunnels. */
+function tunnelTipDue() {
+  let n = 0;
+  try {
+    n = Number(localStorage.getItem(TUNNEL_TIPS_KEY)) || 0;
+    localStorage.setItem(TUNNEL_TIPS_KEY, String(n + 1));
+  } catch {
+    /* private mode: always explain */
+  }
+  return n < 3;
+}
+
 function onGameEvent(type, ev) {
   // nothing pops up over the tunnel view: it would hide the obstacles
-  if (game.sim?.tunnel && (type === 'checkpoint' || type === 'city' || type === 'abilityReady')) return;
+  if (game.sim?.tunnel && (type === 'checkpoint' || type === 'city' || type === 'abilityReady')) {
+    if (type === 'abilityReady' && (!pendingReady || ev.sky)) pendingReady = ev;
+    return;
+  }
   switch (type) {
     case 'city':
       // cities with checkpoints announce themselves on arrival (see 'checkpoint')
@@ -938,13 +956,28 @@ function onGameEvent(type, ev) {
     case 'jet':
       hud.banner('🚀', t('jetTitle'), t(isTouchDevice() ? 'droneHintTouch' : 'droneHintKeys'));
       break;
-    // no banner on the way into a tunnel: it hid the first obstacles
+    // no banner on the way into a tunnel (it hid the first obstacles): any banner still
+    // up is cleared and the controls are explained in one small line at the bottom
+    case 'tunnelIn':
+      hud.clearBanners();
+      if (tunnelTipDue()) hud.tunnelTip(t(isTouchDevice() ? 'tunnelHintTouch' : 'tunnelHintKeys'));
+      break;
     case 'tunnelCrash':
-      hud.banner('💥', t('tunnelCrash'));
+    case 'tunnelOut': {
+      hud.tunnelTip(null);
+      if (type === 'tunnelCrash') {
+        const why = t(`hit_${ev.kind}`);
+        hud.banner('💥', t('tunnelCrash'), why === `hit_${ev.kind}` ? '' : why);
+      } else hud.banner('☀️', t('tunnelOut'));
+      const ready = pendingReady;
+      pendingReady = null;
+      if (ready) {
+        setTimeout(() => {
+          if (game.sim && !game.sim.dead && !game.sim.tunnel && (game.mode === 'run' || game.mode === 'paused')) onGameEvent('abilityReady', ready);
+        }, 2000);
+      }
       break;
-    case 'tunnelOut':
-      hud.banner('☀️', t('tunnelOut'));
-      break;
+    }
     case 'abilityReady':
       hud.banner(t('abTitle'), t(ev.kind === 'shield' ? 'abShieldReady' : 'abJetReady'), ev.sky ? t('skyHint') : '');
       break;

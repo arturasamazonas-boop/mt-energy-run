@@ -245,8 +245,13 @@ export class TunnelView {
     }
     ctx.globalAlpha = 1;
     {
-      const label = `BONUS ⚡×${TUNNEL.bonus}`;
-      const bw = ctx.measureText(label).width + fs * 1.2;
+      // "BONUS ⚡×5" with the bolt drawn dark (a yellow emoji vanished on the yellow badge)
+      const a = 'BONUS ';
+      const b = `×${TUNNEL.bonus}`;
+      const wa = ctx.measureText(a).width;
+      const wb = ctx.measureText(b).width;
+      const wBolt = fs * 0.62;
+      const bw = wa + wBolt + wb + fs * 1.2;
       const bx = W * 0.5 - bw / 2;
       const by = H * 0.87; // on the floor, away from the hero and the HUD
       ctx.fillStyle = 'rgba(255,216,0,0.92)';
@@ -255,7 +260,23 @@ export class TunnelView {
       else ctx.rect(bx, by, bw, fs * 1.3);
       ctx.fill();
       ctx.fillStyle = '#1E1E1E';
-      ctx.fillText(label, W * 0.5, by + fs * 0.68);
+      ctx.textAlign = 'left';
+      const x0 = bx + fs * 0.6;
+      const mid = by + fs * 0.68;
+      ctx.fillText(a, x0, mid);
+      const lx = x0 + wa;
+      const u = fs * 0.5;
+      ctx.beginPath();
+      ctx.moveTo(lx + u * 0.75, mid - u);
+      ctx.lineTo(lx + u * 0.15, mid + u * 0.12);
+      ctx.lineTo(lx + u * 0.6, mid + u * 0.12);
+      ctx.lineTo(lx + u * 0.35, mid + u);
+      ctx.lineTo(lx + u * 1.05, mid - u * 0.22);
+      ctx.lineTo(lx + u * 0.6, mid - u * 0.22);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillText(b, lx + wBolt, mid);
+      ctx.textAlign = 'center';
     }
 
     // ---- turn prompt -----------------------------------------------------------------
