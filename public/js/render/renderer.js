@@ -174,7 +174,7 @@ export class Renderer {
   }
 
   targetPpm(speed) {
-    const viewM = clamp(speed * 1.15 + 6.5, 17.5, 34);
+    const viewM = clamp(speed * 1.15 + 6.5, 17.5, speed > 28 ? 46 : 34); // the super run sees further
     return Math.min(this.W / viewM, this.H / 9.4);
   }
 

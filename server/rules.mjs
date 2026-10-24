@@ -1,13 +1,13 @@
 // Server-side game rules: run validation, progression, shop.
 import {
   SCORE, UPGRADES, UPGRADE_BY_ID, COSMETIC_BY_ID, ACHIEVEMENTS, ACHIEVEMENT_BY_ID,
-  minTimeFor, cityAt, cityStart,
+  ABILITIES, minTimeFor, shieldTimeSaved, cityAt, cityStart,
 } from '../shared/config.js';
 import { countAvailable } from '../shared/worldgen.js';
 import { computeEnergy } from '../shared/sim.js';
 import { TUNNEL, tunnelBoltsAvailable } from '../shared/tunnel.js';
 
-const INT_FIELDS = ['distance', 'score', 'bolts', 'tunnelBolts', 'parts', 'tokens', 'tasks', 'tasksFailed', 'gates', 'stars', 'perfectCities', 'maxMult', 'cityIndex', 'powerups', 'smashed'];
+const INT_FIELDS = ['distance', 'score', 'bolts', 'tunnelBolts', 'parts', 'tokens', 'tasks', 'tasksFailed', 'gates', 'stars', 'perfectCities', 'maxMult', 'cityIndex', 'powerups', 'smashed', 'shields'];
 
 export function emptyPlayerData() {
   return {
@@ -67,7 +67,9 @@ export function validateRun(run, raw, elapsedSec) {
   if (starSum > s.stars) reasons.push('city_stars');
 
   const base = 1 + (run.upgrades?.startMult || 0);
-  if (minTimeFor(s.distance) > elapsedSec + 4) reasons.push('too_fast');
+  // each shield is a few seconds of super run; it costs ABILITIES.shield.cost bolts of charge
+  if (s.shields * ABILITIES.shield.cost > s.bolts) reasons.push('shields');
+  if (minTimeFor(s.distance) > elapsedSec + 4 + s.shields * shieldTimeSaved()) reasons.push('too_fast');
   if (s.distance > 200000) reasons.push('too_far');
 
   const avail = countAvailable(run.seed, s.distance, 12);
