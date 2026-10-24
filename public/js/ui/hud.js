@@ -94,6 +94,8 @@ export class Hud {
   /** Which ability button (with a little slack) is under a screen point. */
   abilityAt(x, y) {
     for (const [k, a] of Object.entries(this.abilities || {})) {
+      // an uncharged button is not a dead zone: the tap falls through to jump / slide
+      if (!a.ready) continue;
       const r = a.el.getBoundingClientRect();
       if (r.width && x >= r.left - 8 && x <= r.right + 8 && y >= r.top - 8 && y <= r.bottom + 8) return k;
     }

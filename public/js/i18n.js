@@ -16,6 +16,8 @@ const STR = {
     energy: 'Energija',
     loading: 'Kraunama…',
     offline: 'Nepavyko prisijungti prie serverio. Gali žaisti, bet rezultatai nebus išsaugoti.',
+    connecting: 'Jungiamasi prie serverio…',
+    startFailed: 'Nepavyko susisiekti su serveriu – rezultatas nebūtų išsaugotas. Pabandyk dar kartą.',
     retry: 'Bandyti dar',
     // onboarding
     welcomeTitle: 'Sveikas atvykęs į MT GROUP komandą!',
@@ -226,6 +228,8 @@ const STR = {
     energy: 'Energy',
     loading: 'Loading…',
     offline: 'Could not reach the server. You can play, but results will not be saved.',
+    connecting: 'Connecting to the server…',
+    startFailed: 'Could not reach the server – your result would not be saved. Please try again.',
     retry: 'Retry',
     welcomeTitle: 'Welcome to the MT GROUP team!',
     welcomeText: 'Pick a player name – everyone will see it on the leaderboard.',

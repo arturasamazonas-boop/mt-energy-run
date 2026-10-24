@@ -14,7 +14,17 @@ if (process.env.DATABASE_URL) {
   if (production) throw new Error('DATABASE_URL is required in production; refusing to lose player progress on restart.');
   store = createMemoryStore();
 }
-await store.init();
+// the database may still be waking up (Neon free tier suspends when idle)
+for (let attempt = 1; ; attempt++) {
+  try {
+    await store.init();
+    break;
+  } catch (e) {
+    if (attempt >= 6) throw e;
+    console.warn(`[mt-energy-run] storage init failed (${e.message}), retrying…`);
+    await new Promise((r) => setTimeout(r, 2000 * attempt));
+  }
+}
 
 const server = createApp({
   store,
