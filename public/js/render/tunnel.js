@@ -516,13 +516,25 @@ export class TunnelView {
     }
     ctx.restore();
     if (sim.shieldT > 0) {
+      // SuperSpeed: a warm glow and short streaks flying past the runner
       const [bx, by] = P(heroX, tn.y + heroHeight(tn) / 2, tn.z);
-      ctx.strokeStyle = 'rgba(120,210,255,0.8)';
-      ctx.fillStyle = 'rgba(120,210,255,0.15)';
-      ctx.lineWidth = Math.max(2, s * 0.05);
+      const g = ctx.createRadialGradient(bx, by, 0, bx, by, s * 1.1);
+      g.addColorStop(0, 'rgba(255,216,0,0.3)');
+      g.addColorStop(1, 'rgba(255,216,0,0)');
+      ctx.fillStyle = g;
+      ctx.fillRect(bx - s * 1.2, by - s * 1.2, s * 2.4, s * 2.4);
+      const tt = performance.now() / 1000;
+      ctx.strokeStyle = 'rgba(255,240,170,0.8)';
+      ctx.lineWidth = Math.max(2, s * 0.04);
+      ctx.lineCap = 'round';
       ctx.beginPath();
-      ctx.ellipse(bx, by, s * 0.65, s * 1.0, 0, 0, Math.PI * 2);
-      ctx.fill();
+      for (let i = 0; i < 6; i++) {
+        const side = i % 2 ? 1 : -1;
+        const ox = bx + side * s * (0.6 + 0.15 * (i >> 1));
+        const oy = by - s * 0.6 + ((tt * 6 + i * 0.37) % 1) * s * 1.4;
+        ctx.moveTo(ox, oy);
+        ctx.lineTo(ox, oy + s * 0.35);
+      }
       ctx.stroke();
     }
   }
