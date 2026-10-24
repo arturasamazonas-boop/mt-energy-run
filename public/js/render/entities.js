@@ -318,30 +318,58 @@ function quad(ctx, e, t, lang = 'lt') {
     ctx.fillText(label, 0, 0);
     ctx.restore();
   }
-  // arms + rotors
+  // height cue: a shadow on the road and a dashed line down to it, so low vs head height reads at a glance
+  if (e.hovering || e.diving) {
+    ctx.fillStyle = 'rgba(0,0,0,0.35)';
+    ctx.beginPath();
+    ctx.ellipse(w / 2, -e.y0 + 0.03, 0.55, 0.08, 0, 0, Math.PI * 2);
+    ctx.fill();
+    if (e.y0 > 0.12) {
+      ctx.strokeStyle = 'rgba(255,60,48,0.7)';
+      ctx.lineWidth = 0.04;
+      ctx.setLineDash([0.1, 0.08]);
+      ctx.beginPath();
+      ctx.moveTo(w / 2, 0.06);
+      ctx.lineTo(w / 2, -e.y0 + 0.05);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+  }
+  // red glow so the small dark drone stands out against roads and buildings
+  const glow = ctx.createRadialGradient(w / 2, 0.28, 0.05, w / 2, 0.28, 0.85);
+  glow.addColorStop(0, `rgba(255,59,48,${0.32 + 0.12 * Math.sin(t * 10)})`);
+  glow.addColorStop(1, 'rgba(255,59,48,0)');
+  ctx.fillStyle = glow;
+  ctx.fillRect(w / 2 - 0.9, -0.6, 1.8, 1.8);
+  // arms + rotors across the whole width it hits with
+  ctx.strokeStyle = '#F2F4F7';
+  ctx.lineWidth = 0.1;
+  ctx.beginPath();
+  ctx.moveTo(0.06, 0.44);
+  ctx.lineTo(w - 0.06, 0.44);
+  ctx.stroke();
   ctx.strokeStyle = '#2A2E35';
   ctx.lineWidth = 0.06;
-  ctx.beginPath();
-  ctx.moveTo(0.12, 0.42);
-  ctx.lineTo(w - 0.12, 0.42);
   ctx.stroke();
-  for (const x of [0.12, w - 0.12]) {
-    ctx.fillStyle = 'rgba(200,210,220,0.55)';
+  for (const x of [0.08, w - 0.08]) {
+    ctx.fillStyle = 'rgba(230,236,242,0.75)';
     ctx.beginPath();
-    ctx.ellipse(x, 0.48, 0.24 * Math.abs(Math.cos(t * 40 + x)) + 0.04, 0.03, 0, 0, Math.PI * 2);
+    ctx.ellipse(x, 0.5, 0.26 * Math.abs(Math.cos(t * 40 + x)) + 0.05, 0.04, 0, 0, Math.PI * 2);
     ctx.fill();
   }
-  // body
+  // body (white rim for contrast)
   ctx.fillStyle = '#3A4149';
-  roundRect(ctx, w / 2 - 0.26, 0.12, 0.52, 0.3, 0.08);
+  roundRect(ctx, 0.1, 0.06, w - 0.2, 0.36, 0.09);
   ctx.fill();
-  outline(ctx, 0.02);
-  ctx.fillStyle = '#FFD800';
-  ctx.fillRect(w / 2 - 0.26, 0.24, 0.52, 0.05);
+  ctx.strokeStyle = '#F2F4F7';
+  ctx.lineWidth = 0.05;
+  ctx.stroke();
+  ctx.fillStyle = '#E2362B';
+  ctx.fillRect(0.14, 0.2, w - 0.28, 0.07);
   // camera
   ctx.fillStyle = '#1A1E29';
   ctx.beginPath();
-  ctx.arc(w / 2 - 0.12, 0.08, 0.07, 0, Math.PI * 2);
+  ctx.arc(w / 2 - 0.2, 0.04, 0.08, 0, Math.PI * 2);
   ctx.fill();
   // warning light: slow while it flies in, fast just before and during the dive
   const alarm = e.diving || (e.hovering && e.hoverLeft < 0.7);
@@ -362,7 +390,7 @@ function quad(ctx, e, t, lang = 'lt') {
   }
   ctx.fillStyle = on ? '#FF3B30' : '#6B1D1A';
   ctx.beginPath();
-  ctx.arc(w / 2 + 0.14, 0.36, 0.05, 0, Math.PI * 2);
+  ctx.arc(w / 2 + 0.24, 0.34, 0.06, 0, Math.PI * 2);
   ctx.fill();
   ctx.restore();
 }

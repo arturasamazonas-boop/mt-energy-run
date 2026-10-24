@@ -791,6 +791,9 @@ h3 {
   text-align: center;
 }
 
+.abilities .ab.blocked {
+  opacity: 0.4;
+}
 .abilities .ab.ready {
   opacity: 1;
   background: rgba(255, 216, 0, 0.28);

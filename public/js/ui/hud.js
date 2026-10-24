@@ -169,10 +169,16 @@ export class Hud {
           a.key = key;
           a.ring.setAttribute('stroke-dashoffset', String(182.2 * (1 - frac)));
         }
-        const ready = frac >= 1;
+        // no room to fly underground: a charged jetpack waits, dimmed, and swipes pass through it
+        const blocked = k === 'jet' && !!s.tunnel;
+        const ready = frac >= 1 && !blocked;
         if (a.ready !== ready) {
           a.ready = ready;
           a.el.classList.toggle('ready', ready);
+        }
+        if (a.blocked !== blocked) {
+          a.blocked = blocked;
+          a.el.classList.toggle('blocked', blocked);
         }
         const active = k === 'shield' ? s.shieldT > 0 : s.jetT > 0;
         if (a.active !== active) {

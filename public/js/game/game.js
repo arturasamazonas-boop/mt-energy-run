@@ -241,6 +241,7 @@ export class Game {
       charge: s.charge,
       shieldT: s.shieldT,
       jetT: s.jetT,
+      tunnel: !!s.tunnel,
       helmet: s.helmet,
       double: s.power.double > 0,
     };
@@ -520,6 +521,7 @@ export class Game {
       energy: sim.energyEarned(),
       cause: sim.deathCause,
       kind: sim.deathKind,
+      mode: sim.deathMode,
       next: next.x > sim.x ? { name: next.name, flag: next.flag, meters: Math.ceil(next.x - sim.x) } : null,
       cityIndex: ca.index,
       city: CITIES[ca.index % CITIES.length],
@@ -564,7 +566,8 @@ export class Game {
       if (!e.alive || e.x < sim.x) continue;
       if (e.x > sim.x + 9) break;
       let kind = null;
-      if (['cone', 'barrier', 'drum', 'cable', 'crate', 'dropLoad', 'quad'].includes(e.k)) kind = 'jump';
+      if (['cone', 'barrier', 'drum', 'cable', 'crate', 'dropLoad'].includes(e.k) || (e.k === 'quad' && e.mode === 'low')) kind = 'jump';
+      else if (e.k === 'quad' && e.mode === 'head') kind = 'slide';
       else if (e.k === 'pit') kind = 'pit';
       else if (['beam', 'rack', 'birds'].includes(e.k)) kind = 'slide';
       else if (e.k === 'stack') kind = 'double';
