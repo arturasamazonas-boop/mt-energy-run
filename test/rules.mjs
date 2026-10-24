@@ -18,6 +18,29 @@ assert.ok(!validateRun(run, { ...s, score: s.score * 3 }, t).ok, 'inflated score
 assert.ok(!validateRun(run, { ...s, bolts: s.bolts + 500 }, t).ok, 'extra bolts');
 assert.ok(!validateRun(run, s, 10).ok, 'too fast');
 assert.ok(!validateRun(run, { ...s, maxMult: 15 }, t).ok, 'impossible multiplier');
+
+// shields: the super run covers ground faster than the nominal curve, the server allows for it
+{
+  const { Sim } = await import('../shared/sim.js');
+  const { Bot } = await import('../shared/bot.js');
+  const { ABILITIES } = await import('../shared/config.js');
+  const sh = new Sim({ seed: 'rules-shield' });
+  sh.charge.shield = ABILITIES.shield.cost; // as if charged on the way
+  const bot = new Bot();
+  while (!sh.dead && sh.x - sh.startX < 1200) {
+    const inp = bot.input(sh);
+    if (sh.charge.shield >= ABILITIES.shield.cost) inp.shield = true;
+    sh.step(1 / 120, inp);
+    if (sh.pendingTask) sh.resolveTask(true);
+    sh.events.length = 0;
+  }
+  const ss = { ...sh.summary(), bolts: sh.summary().bolts + ABILITIES.shield.cost };
+  assert.equal(ss.shields, 1);
+  assert.ok(minTimeFor(ss.distance) > sh.time, 'the super run beats the nominal curve');
+  const r = validateRun({ seed: 'rules-shield', mode: 'normal', upgrades: {} }, ss, sh.time);
+  assert.ok(!r.reasons.includes('too_fast') && !r.reasons.includes('shields'), `shield run rejected: ${r.reasons}`);
+  assert.ok(!validateRun(run, { ...s, shields: 50 }, 10).ok, 'shields without the bolts to charge them');
+}
 assert.ok(!validateRun(run, { ...s, score: -5 }, t).ok, 'negative');
 assert.ok(!validateRun(run, { ...s, cityStars: [[0, 3], [1, 3], [2, 3]], stars: 1 }, t).ok, 'stars');
 assert.ok(!validateRun(run, { ...s, distance: 'abc' }, t).ok, 'garbage');

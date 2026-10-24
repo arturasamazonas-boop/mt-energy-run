@@ -61,6 +61,16 @@ function legIndex(d) {
   return i;
 }
 
+/**
+ * Most time (s) one shield can save against the nominal curve: the super run
+ * (plus the short hold over an obstacle or trench and the ease back) at the
+ * slowest course speed.
+ */
+export function shieldTimeSaved() {
+  const a = ABILITIES.shield;
+  return Math.ceil(((a.speed - SPEED.min) * (a.duration + 1.5)) / SPEED.min);
+}
+
 /** Minimum time (s) needed to cover `distance` at the nominal speed curve. */
 export function minTimeFor(distance) {
   // Numerical integral of 1/v(d); 2 m steps are plenty accurate.
@@ -275,7 +285,7 @@ export function cityStart(index) {
 // Abilities the player triggers (buttons / Q, E). Charged by bolts collected
 // during the run and emptied on use, so they come rarely: about once per 1-2 km.
 export const ABILITIES = {
-  shield: { cost: 160, duration: 3 }, // obstacles pass through the hero
+  shield: { cost: 160, duration: 3, speed: 50 }, // super run: nothing can hurt the hero, speed up to 50 m/s
   jet: { cost: 120, duration: 4 }, // fly: jump = up, slide = down; obstacles can't hit
 };
 

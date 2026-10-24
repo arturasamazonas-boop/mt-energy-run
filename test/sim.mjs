@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { Sim, computeEnergy } from '../shared/sim.js';
-import { PHYSICS, ABILITIES, cityStart } from '../shared/config.js';
+import { PHYSICS, ABILITIES, cityStart, speedAt } from '../shared/config.js';
 
 const DT = 1 / 120;
 const run = (sim, secs, inp = () => ({})) => {
@@ -181,6 +181,7 @@ const run = (sim, secs, inp = () => ({})) => {
   assert.ok(!s.dead, 'shielded hero runs through');
   run(s, ABILITIES.shield.duration);
   assert.equal(s.shieldT, 0);
+  run(s, 1.2); // the short settle-down after the super run
   s.entities = [{ k: 'barrier', x: s.x + 4, w: 1.35, y0: 0, y1: 1.05, alive: true, id: 'o2' }];
   run(s, 0.6);
   assert.ok(s.dead, 'without the shield it is a crash');
@@ -240,4 +241,36 @@ console.log('ok');
   assert.equal(s.skyOpen, true);
   run(s, 1.5, (i) => ({ jet: i === 0, jumpHeld: i > 0 }));
   assert.ok(s.stats.bolts >= 2, `jetpack collects sky energy (${s.stats.bolts})`);
+}
+{
+  // shield = super run: nothing hurts (trenches included), 50 m/s while it lasts, then eases back
+  const s = new Sim({ seed: 'phys' });
+  s.loadedUntil = 99;
+  const base = s.speed;
+  s.charge.shield = ABILITIES.shield.cost;
+  s.entities = [
+    { k: 'pit', x: s.x + 20, w: 6, alive: true, id: 'p' },
+    { k: 'quad', x: s.x + 40, w: 1.2, y0: 0.2, y1: 1.4, alive: true, id: 'q' },
+    { k: 'pit', x: s.x + 70, w: 8, alive: true, id: 'p2' },
+  ];
+  run(s, 2, (i) => ({ shield: i === 0 }));
+  assert.ok(!s.dead, `the shield bridges trenches and stops drones (${s.deathCause})`);
+  assert.ok(Math.abs(s.speed - ABILITIES.shield.speed) < 1, `super speed (${s.speed.toFixed(1)})`);
+  run(s, ABILITIES.shield.duration);
+  assert.equal(s.shieldT, 0);
+  const mid = s.speed;
+  assert.ok(mid > base + 1 && mid < ABILITIES.shield.speed, `eases back (${mid.toFixed(1)})`);
+  run(s, 3);
+  assert.ok(Math.abs(s.speed - speedAt(s.x)) < 0.01, 'back to the course speed');
+  assert.equal(s.summary().shields, 1);
+
+  // switched on while already falling into a trench: lifted out instead of a fall
+  const f = new Sim({ seed: 'phys' });
+  f.loadedUntil = 99;
+  f.entities = [{ k: 'pit', x: f.x + 0.5, w: 30, alive: true, id: 'pf' }];
+  run(f, 0.25);
+  assert.ok(f.y < -0.1 && !f.dead, 'falling');
+  f.charge.shield = ABILITIES.shield.cost;
+  run(f, 1.5, (i) => ({ shield: i === 0 }));
+  assert.ok(!f.dead, 'shield saves a fall');
 }

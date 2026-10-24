@@ -13,6 +13,7 @@ const DRONE_MAX = 6.5;
 const DRONE_CLIMB = 7; // m/s
 const DRONE_PULL_R = 3; // the drone only gathers bolts close by, so steering matters
 const MAGNET_R = 7.5;
+const SUPER_SPEED = ABILITIES.shield.speed; // m/s while the shield is on
 
 export class Sim {
   constructor({ seed, upgrades = {}, startCity = 0, startAt = null, tunnels = false } = {}) {
@@ -52,6 +53,7 @@ export class Sim {
     this.power = { magnet: 0, drone: 0, excavator: 0, double: 0 };
     this.charge = { shield: 0, jet: 0 }; // bolts towards each ability
     this.shieldT = 0;
+    this.boost = 0; // extra speed of the shield's super run, eases back after it
     this.jetT = 0; // jetpack flight left
     this.skyOpen = false; // sky energy shows up once the jetpack has been charged
     this.droneY = 0;
@@ -81,7 +83,7 @@ export class Sim {
   }
 
   get speed() {
-    return speedAt(this.x);
+    return speedAt(this.x) + this.boost;
   }
 
   get flying() {
@@ -241,7 +243,7 @@ export class Sim {
     const half = P.playerWidth / 2 - 0.12;
     let ground = prevY >= -0.06 ? 0 : -Infinity; // once inside a trench you cannot pop back up
     if (ground === 0 && this.overPit(x, half)) ground = -Infinity;
-    if (ground === -Infinity && this.power.excavator > 0 && prevY >= -0.06) ground = 0; // tracks bridge pits
+    if (ground === -Infinity && (this.power.excavator > 0 || this.shieldT > 0) && prevY >= -0.06) ground = 0; // tracks / the shield bridge pits
     let best = ground;
     for (const e of this.entities) {
       if (!e.alive || !e.landable) continue;
@@ -296,7 +298,13 @@ export class Sim {
     if (this.dead || this.pendingTask) return;
     this.time += dt;
     const prevY = this.y;
-    const v = speedAt(this.x);
+    // the shield is a super run: up to SUPER_SPEED while it lasts, then eases back
+    // to the course speed (not underground: the tunnel keeps its own pace)
+    const base = speedAt(this.x);
+    const want = this.shieldT > 0 && !this.tunnel ? Math.max(0, SUPER_SPEED - base) : 0;
+    this.boost += (want - this.boost) * Math.min(1, dt * (want > this.boost ? 5 : 2.5));
+    if (this.boost < 0.05 && want === 0) this.boost = 0;
+    const v = base + this.boost;
     this.x += v * dt;
 
     for (const k of ['magnet', 'drone', 'excavator', 'double']) {
@@ -321,8 +329,12 @@ export class Sim {
     if (this.shieldT > 0) {
       this.shieldT = Math.max(0, this.shieldT - dt);
       // the shield lasts until the hero is out of whatever it was passing through
-      if (this.shieldT === 0 && this.insideObstacle()) this.shieldT = 0.05;
-      if (this.shieldT === 0) this.emit('shieldEnd');
+      // and is not over a trench
+      if (this.shieldT === 0 && (this.insideObstacle() || this.overPit(this.x, 0.5, 14))) this.shieldT = 0.05;
+      if (this.shieldT === 0) {
+        this.invuln = Math.max(this.invuln, 1.0); // a moment to settle while slowing down
+        this.emit('shieldEnd');
+      }
     }
     if (input.shield) this.useAbility('shield');
     if (this.jetT > 0) {
@@ -443,7 +455,14 @@ export class Sim {
         this.y = Math.min(this.y, -2.3);
       }
       if (this.y < -2.2) {
-        if (this.helmet) {
+        if (this.shieldT > 0) {
+          // switched on too late to bridge the trench: the shield lifts the hero out
+          this.y = -1.2;
+          this.vy = P.jumpVelocity * 1.25;
+          this.jumps = 1;
+          this.cut = true;
+          this.emit('shieldSave');
+        } else if (this.helmet) {
           // the helmet saves you once: bounce out of the trench
           this.helmet = false;
           this.stats.helmetsUsed++;
@@ -834,6 +853,7 @@ export class Sim {
       cityIndex: ci,
       powerups: this.stats.powerups,
       smashed: this.stats.smashed,
+      shields: this.stats.shields,
       revived: this.revived,
       cityStars: Object.entries(this.gateStars).map(([k, v]) => [Number(k), v]),
       time: Math.round(this.time * 10) / 10,

@@ -390,6 +390,7 @@ export class Game {
           }
           break;
         case 'shield':
+        case 'shieldSave':
           fx.ring(sim.x, hy, '#9FE3FF', 2.2);
           fx.sparks(sim.x, hy, 18, '#9FE3FF', 6);
           if (real) {
