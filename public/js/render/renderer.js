@@ -295,8 +295,8 @@ export class Renderer {
     }
 
     // ---- hero -----------------------------------------------------------------
+    if (sim.shieldT > 0 && !sim.dead && !view.hideHero) this.drawSuperSpeed(ctx, sim, view, t);
     if (!view.hideHero) this.drawHero(ctx, sim, view, t);
-    if (sim.shieldT > 0 && !sim.dead) this.drawShield(ctx, sim, view, t);
 
     // gameplay tint (lighter than background so the action stays readable)
     this.scenery.tint(ctx, sky, H, 0.35);
@@ -386,25 +386,38 @@ export class Renderer {
     ctx.fillRect(0, 0, this.W, h);
   }
 
-  /** Energy shield bubble around the hero; it flickers during the last moments. */
-  drawShield(ctx, sim, view, t) {
+  /** SuperSpeed: streaks trailing behind the hero and a warm glow; they flicker during the last moments. */
+  drawSuperSpeed(ctx, sim, view, t) {
     if (sim.shieldT < 0.8 && Math.floor(t * 12) % 2) return;
+    const ppm = this.ppm;
     const x = this.sx(view.heroX ?? sim.x);
-    const y = this.sy((view.heroY ?? sim.y) + sim.height * 0.5);
-    const r = this.ppm * 1.15;
+    const y0 = view.heroY ?? sim.y;
+    const h = sim.height;
     ctx.save();
-    const g = ctx.createRadialGradient(x, y, r * 0.55, x, y, r);
-    g.addColorStop(0, 'rgba(159,227,255,0)');
-    g.addColorStop(1, 'rgba(159,227,255,0.38)');
+    // glow around the runner
+    const cy = this.sy(y0 + h * 0.5);
+    const g = ctx.createRadialGradient(x, cy, 0, x, cy, ppm * 1.3);
+    g.addColorStop(0, 'rgba(255,216,0,0.28)');
+    g.addColorStop(1, 'rgba(255,216,0,0)');
     ctx.fillStyle = g;
-    ctx.beginPath();
-    ctx.arc(x, y, r, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.strokeStyle = 'rgba(220,245,255,0.9)';
-    ctx.lineWidth = Math.max(2, this.ppm * 0.06);
-    ctx.setLineDash([this.ppm * 0.35, this.ppm * 0.18]);
-    ctx.lineDashOffset = -t * this.ppm * 2;
-    ctx.stroke();
+    ctx.fillRect(x - ppm * 1.4, cy - ppm * 1.4, ppm * 2.8, ppm * 2.8);
+    // streaks: each one a different height and length, flickering fast
+    ctx.lineCap = 'round';
+    for (let i = 0; i < 7; i++) {
+      const k = (i + 0.5) / 7;
+      const len = ppm * (2.2 + 1.6 * Math.abs(Math.sin(t * 23 + i * 1.7)));
+      const sy = this.sy(y0 + h * (0.12 + 0.8 * k));
+      const sx = x - ppm * (0.35 + 0.25 * Math.sin(t * 17 + i));
+      const lg = ctx.createLinearGradient(sx - len, sy, sx, sy);
+      lg.addColorStop(0, 'rgba(255,255,255,0)');
+      lg.addColorStop(1, i % 2 ? 'rgba(255,216,0,0.9)' : 'rgba(255,255,255,0.85)');
+      ctx.strokeStyle = lg;
+      ctx.lineWidth = Math.max(2, ppm * (i % 2 ? 0.09 : 0.06));
+      ctx.beginPath();
+      ctx.moveTo(sx - len, sy);
+      ctx.lineTo(sx, sy);
+      ctx.stroke();
+    }
     ctx.restore();
   }
 
