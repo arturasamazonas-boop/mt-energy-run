@@ -1892,8 +1892,9 @@ h3 {
   height: min(300px, 50vh);
 }
 
-/* never taller than the screen: the button must always be reachable */
+/* never taller (or wider) than the screen: the button must always be reachable */
 .bday {
+  grid-template-columns: minmax(0, 1fr);
   max-height: calc(100vh - 24px - var(--safe-t) - var(--safe-b));
   max-height: calc(100dvh - 24px - var(--safe-t) - var(--safe-b));
   overflow-y: auto;
@@ -2098,15 +2099,33 @@ h3 {
   }
 }
 
-@media (max-width: 760px) {
+@media (max-width: 760px) and (orientation: portrait) {
   .onboard {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
     align-content: center;
   }
   .onboard canvas.portrait {
-    width: 200px;
-    height: 200px;
+    width: min(200px, 26vh);
+    height: min(200px, 26vh);
   }
+}
+
+/* the first screen must always let a new player reach the Start button */
+.screen.onboard {
+  overflow-y: auto;
+}
+
+@media (max-height: 520px) and (orientation: landscape) {
+  .onboard {
+    gap: 14px;
+  }
+  .onboard canvas.portrait {
+    width: min(240px, 34vw, 60vh);
+    height: min(240px, 34vw, 60vh);
+  }
+}
+
+@media (max-width: 760px) {
   .stats-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -2199,4 +2218,29 @@ h3 {
     padding: 8px 9px;
     font-size: 15px;
   }
+}
+
+.bday .btn.big {
+  max-width: 100%;
+  white-space: normal;
+}
+
+/* leaderboard: a long name is cut with "…", the points always stay in view */
+.board-row {
+  grid-template-columns: 46px minmax(0, 1fr) auto;
+}
+.board-row .who {
+  min-width: 0;
+}
+
+/* touch: the buttons under the game-over result stay finger-sized too */
+@media (pointer: coarse) {
+  .over .btn.small {
+    min-height: 44px;
+  }
+}
+
+/* the MT emblem (yellow) shows dark on the yellow city badge */
+.banner .badge img {
+  filter: brightness(0);
 }

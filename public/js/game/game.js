@@ -592,7 +592,8 @@ export class Game {
       else if (['beam', 'rack', 'birds'].includes(e.k)) kind = 'slide';
       else if (e.k === 'stack') kind = 'double';
       if (!kind || tut.shown.has(kind === 'pit' ? 'jump' : kind)) continue;
-      const lead = kind === 'double' ? 5.2 : kind === 'pit' ? 3.6 : 4.2;
+      // the double jump has to start early (a tall stack): its hint comes well ahead
+      const lead = kind === 'double' ? 8 : kind === 'pit' ? 3.6 : 4.2;
       if (e.x - sim.x > lead) continue;
       const k = kind === 'pit' ? 'jump' : kind;
       tut.shown.add(k);

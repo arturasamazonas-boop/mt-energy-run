@@ -36,7 +36,7 @@ const STR = {
     music: 'Muzika',
     sound: 'Garsai',
     language: 'Kalba',
-    welcomeTo: 'Sveiki atvykę į',
+    welcomeTo: 'Sveiki atvykę',
     checkpoint: 'Kontrolinis punktas',
     projectOnline: 'Projektas paleistas!',
     parts: 'Projekto detalės',

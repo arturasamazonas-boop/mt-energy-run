@@ -13,6 +13,7 @@ const DRONE_MAX = 6.5;
 const DRONE_CLIMB = 7; // m/s
 const DRONE_PULL_R = 3; // the drone only gathers bolts close by, so steering matters
 const MAGNET_R = 7.5;
+const DOUBLE_MIN_PEAK = 3.4; // m: a double jump always clears a permit stack (2.75 m)
 const DRONE_SHOW_T = 0.6; // s of hovering at its attack height before a drone attacks
 const SUPER_SPEED = ABILITIES.shield.speed; // m/s while the shield is on
 
@@ -163,6 +164,16 @@ export class Sim {
     this.emit('tunnelIn', { i: p.i });
   }
 
+  /** Project parts left on a stretch of road cleared for a tunnel are collected (never lost). */
+  collectClearedParts(i) {
+    for (const o of this.entities) {
+      if (o.k === 'part' && o.tunnelCleared === i) {
+        delete o.tunnelCleared;
+        this.collect(o);
+      }
+    }
+  }
+
   /** Flying over the portal (jetpack / drone): the tunnel is skipped and the road stays as generated. */
   skipTunnel(e) {
     const p = this.tunnelPlan.find((q) => q.i === e.tunnel);
@@ -174,11 +185,16 @@ export class Sim {
       }
       if (o.k === 'tunnelOut' && o.tunnel === p.i) o.alive = false;
     }
+    // parts cleared just before the portal (meant to be found underground) are not lost
+    this.collectClearedParts(p.i);
     this.emit('tunnelSkip', { i: p.i });
   }
 
   exitTunnel() {
+    // project parts on the cleared road just past the exit are found on the way out
+    const i = this.tunnel.def.i;
     this.tunnel = null;
+    this.collectClearedParts(i);
     this.y = 0;
     this.vy = 0;
     this.onGround = true;
@@ -298,6 +314,18 @@ export class Sim {
     return false;
   }
 
+  /** Metres to look ahead for a trench when a flight ends: the fall plus time to react after landing. */
+  landingAhead(v) {
+    return Math.max(14, v * (Math.sqrt((2 * Math.max(0, this.y)) / P.gravity) + 0.7));
+  }
+
+  /** Double jump speed: a very quick second tap still lifts the hero over tall obstacles. */
+  doubleJumpSpeed() {
+    // the peak must reach at least DOUBLE_MIN_PEAK however early in the first jump it comes
+    const need = Math.sqrt(2 * P.gravity * Math.max(0, DOUBLE_MIN_PEAK - this.y));
+    return Math.max(P.doubleJumpVelocity, need);
+  }
+
   /** Moves a Russian drone towards its attack height (low, head height or weaving). */
   droneToAttackHeight(e, v, dt) {
     let want = e.diveY0;
@@ -364,7 +392,7 @@ export class Sim {
       if (this.power[k] > 0) {
         this.power[k] = Math.max(0, this.power[k] - dt);
         // never drop the player into a trench when a vehicle power-up expires
-        if (this.power[k] === 0 && (k === 'drone' || k === 'excavator') && this.overPit(this.x, 0.5, 14)) this.power[k] = 0.05;
+        if (this.power[k] === 0 && (k === 'drone' || k === 'excavator') && this.overPit(this.x, 0.5, this.landingAhead(v))) this.power[k] = 0.05;
         // …nor inside a long container it was flying through, nor just before a tall one
         if (this.power[k] === 0 && k === 'drone' && (this.insideObstacle() || this.tallAhead(v))) this.power[k] = 0.05;
         if (this.power[k] === 0) {
@@ -393,7 +421,7 @@ export class Sim {
     if (this.jetT > 0) {
       this.jetT = Math.max(0, this.jetT - dt);
       // like the drone, never let go over a trench
-      if (this.jetT === 0 && !this.flying && (this.overPit(this.x, 0.5, 14) || this.insideObstacle() || this.tallAhead(v))) this.jetT = 0.05;
+      if (this.jetT === 0 && !this.flying && (this.overPit(this.x, 0.5, this.landingAhead(v)) || this.insideObstacle() || this.tallAhead(v))) this.jetT = 0.05;
       if (this.jetT === 0) {
         this.emit('jetEnd');
         if (!this.flying) {
@@ -457,7 +485,7 @@ export class Sim {
       if (this.buffer > 0 && (this.onGround || this.coyote > 0)) {
         this.doJump(P.jumpVelocity, 1);
       } else if (input.jump && !this.onGround && this.jumps < 2) {
-        this.doJump(P.doubleJumpVelocity, 2);
+        this.doJump(this.doubleJumpSpeed(), 2);
       }
 
       // every jump is a full jump: letting go early no longer cuts it short
