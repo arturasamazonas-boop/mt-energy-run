@@ -139,3 +139,9 @@ Render domenai: `energyrun.lt` ir `www.energyrun.lt` (www nukreipiamas į pagrin
 Domeno keitimas neperkelia prisijungimo slapuko ar naršyklės siuntimų eilės. Prieš pradedant viešą žaidimą naudoti vieną galutinį adresą.
 
 `plan: starter` – savininkas 2026-10-24 įjungė mokamą Starter planą Render skydelyje, todėl Blueprint reikšmė suderinta, kad sinchronizacija negrąžintų nemokamo plano. Grąžinant nemokamą planą, keisti ir skydelyje, ir `render.yaml`. Svetainės nemiegojimas ir Neon bazės automatinis užmigimas yra atskiri dalykai.
+
+## Greitis, dangaus energija, „Rusų dronas“
+
+- Greitis eina viena atkarpa į priekį pagal kreivę 10 + 17·(1 − e^(−d/3600)): Vilnius startuoja 12,8 m/s, Klaipėda 15,4, Ryga 17,6, … iki ~27 m/s (`speedAt`, `shared/config.js`).
+- ~60 % atkarpų danguje (6,6–7 m) yra papildomos energijos eilė – dvigubu šuoliu nepasiekiama, tik jetpack (ar dronu). Ji pasirodo tik kai tame bėgime pirmą kartą įkraunamas jetpack.
+- Priešas dronas pasirodo dažniau (nuo Klaipėdos atkarpos), krenta greičiau, o kol kabo ir krenta virš jo mirksi raudonas „RUSŲ DRONAS!!!“.

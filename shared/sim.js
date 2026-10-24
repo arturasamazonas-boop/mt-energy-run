@@ -53,6 +53,7 @@ export class Sim {
     this.charge = { shield: 0, jet: 0 }; // bolts towards each ability
     this.shieldT = 0;
     this.jetT = 0; // jetpack flight left
+    this.skyOpen = false; // sky energy shows up once the jetpack has been charged
     this.droneY = 0;
     this.droneTarget = DRONE_Y;
 
@@ -478,9 +479,12 @@ export class Sim {
         case 'token':
         case 'power':
         case 'task': {
+          // sky energy: hidden until the jetpack has been charged; only fliers reach it
+          if (e.sky && !this.skyOpen) break;
           let dx = e.x - cx;
           let dy = e.y - cy;
-          const pullR = this.power.magnet > 0 ? MAGNET_R : this.flying || this.jetT > 0 ? DRONE_PULL_R : 0;
+          const airborne = this.flying || this.jetT > 0;
+          const pullR = e.sky && !airborne ? 0 : this.power.magnet > 0 ? MAGNET_R : airborne ? DRONE_PULL_R : 0;
           // pulled bolts (magnet or drone) keep flying to the hero
           if (e.k === 'bolt' && (e.pulled || (pullR && dx > -3 && dx < pullR && Math.abs(dy) < pullR))) {
             e.pulled = true;
@@ -545,7 +549,7 @@ export class Sim {
             }
           }
           if (e.diving && e.y0 > e.diveY0) {
-            e.y0 = Math.max(e.diveY0, e.y0 - 6 * dt);
+            e.y0 = Math.max(e.diveY0, e.y0 - (e.diveSpeed || 6) * dt);
             e.y1 = e.y0 + e.h;
           }
           if (px1 < e.x || px0 > e.x + e.w) continue;
@@ -694,7 +698,10 @@ export class Sim {
       const cost = ABILITIES[k].cost;
       if (this.charge[k] >= cost) continue;
       this.charge[k]++;
-      if (this.charge[k] === cost) this.emit('abilityReady', { kind: k });
+      if (this.charge[k] === cost) {
+        this.emit('abilityReady', { kind: k, sky: k === 'jet' && !this.skyOpen });
+        if (k === 'jet') this.skyOpen = true;
+      }
     }
   }
 

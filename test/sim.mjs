@@ -208,3 +208,36 @@ const run = (sim, secs, inp = () => ({})) => {
 assert.equal(new Sim({ seed: 'x', startCity: 3 }).x, cityStart(3));
 assert.equal(new Sim({ seed: 'x', upgrades: { startMult: 2 } }).mult, 3);
 console.log('ok');
+{
+  // sky energy: hidden until the jetpack is charged, out of reach for a double jump, reachable by jetpack
+  const { generateCity } = await import('../shared/worldgen.js');
+  let groups = 0;
+  for (let k = 0; k < 60; k++) for (let ci = 0; ci < 6; ci++) {
+    const sky = generateCity(`sky${k}`, ci).entities.filter((e) => e.sky);
+    if (!sky.length) continue;
+    groups++;
+    assert.ok(sky.every((b) => b.k === 'bolt' && b.y >= 6.6), 'sky bolts sit high');
+  }
+  assert.ok(groups > 150 && groups < 280, `about 60% of legs have sky energy (${groups}/360)`);
+
+  const mk = () => {
+    const s = new Sim({ seed: 'phys' });
+    s.loadedUntil = 99;
+    s.entities = [0, 1, 2].map((i) => ({ k: 'bolt', x: s.x + 6 + i * 1.2, y: 6.7, sky: true, alive: true, id: `s${i}` }));
+    return s;
+  };
+  // locked: a double jump right under it collects nothing
+  let s = mk();
+  s.skyOpen = true;
+  run(s, 1.2, (i) => ({ jump: i === 0 || i === 30, jumpHeld: true }));
+  assert.equal(s.stats.bolts, 0, 'a double jump cannot reach the sky');
+  // jetpack, but not charged before: they stay hidden
+  s = mk();
+  assert.equal(s.skyOpen, false);
+  // charging the jetpack reveals them, the jetpack reaches them
+  s = mk();
+  for (let i = 0; i < ABILITIES.jet.cost; i++) s.addCharge();
+  assert.equal(s.skyOpen, true);
+  run(s, 1.5, (i) => ({ jet: i === 0, jumpHeld: i > 0 }));
+  assert.ok(s.stats.bolts >= 2, `jetpack collects sky energy (${s.stats.bolts})`);
+}

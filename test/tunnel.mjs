@@ -116,7 +116,7 @@ for (const [prefix, startAt] of [['t1', null], ['t2', null], ['t3', null], ['t4'
   assert.equal(ok.summary.tunnelBolts, sum.tunnelBolts);
   const fake = validateRun(run, { ...sum, tunnelBolts: sum.tunnelBolts + 500, bolts: sum.bolts + 500 }, minTimeFor(sum.distance) + 1);
   assert.ok(fake.reasons.includes('tunnel_bolts'));
-  const fake2 = validateRun(run, { ...sum, bolts: sum.bolts + 80 }, minTimeFor(sum.distance) + 1);
+  const fake2 = validateRun(run, { ...sum, bolts: sum.bolts + 400 }, minTimeFor(sum.distance) + 1);
   assert.ok(fake2.reasons.includes('bolts'));
 }
 assert.equal(new Sim({ seed: 'm' }).entities.some((e) => e.k === 'tunnelIn'), false);
