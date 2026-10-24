@@ -67,7 +67,7 @@ Duomenų bazė laikoma [Neon](https://neon.com) nemokamame plane (1 GB projektui
 
 Atsarginė kopija (kompiuteryje su PostgreSQL įrankiais): `pg_dump "<Neon adresas>" --no-owner --no-acl > backup.sql`.
 
-> Nemokamas web servisas po neveiklumo „užmiega“, todėl pirmas atidarymas gali užtrukti ~30 s.
+> Servisas veikia Render **Starter** plane (~7 $/mėn.), todėl neužmiga ir atsidaro iš karto. Nemokamame plane jis po neveiklumo „užmigtų“, ir pirmas atidarymas užtruktų ~30 s.
 
 Aplinkos kintamieji:
 
@@ -138,4 +138,4 @@ Render domenai: `energyrun.lt` ir `www.energyrun.lt` (www nukreipiamas į pagrin
 
 Domeno keitimas neperkelia prisijungimo slapuko ar naršyklės siuntimų eilės. Prieš pradedant viešą žaidimą naudoti vieną galutinį adresą.
 
-`plan: free` paliktas sąmoningai. Mokamą Render compute planą ir atitinkamą Blueprint reikšmę pakeisti tik savininkui patvirtinus kainą; svetainės nemiegojimas ir Neon bazės automatinis užmigimas yra atskiri dalykai.
+`plan: starter` – savininkas 2026-10-24 įjungė mokamą Starter planą Render skydelyje, todėl Blueprint reikšmė suderinta, kad sinchronizacija negrąžintų nemokamo plano. Grąžinant nemokamą planą, keisti ir skydelyje, ir `render.yaml`. Svetainės nemiegojimas ir Neon bazės automatinis užmigimas yra atskiri dalykai.

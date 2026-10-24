@@ -5,7 +5,8 @@ services:
   - type: web
     name: mt-energy-run
     runtime: node
-    plan: free
+    # Starter (paid): the site never sleeps. Chosen by the owner on 2026-10-24.
+    plan: starter
     domains:
       - energyrun.lt
       - www.energyrun.lt
