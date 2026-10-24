@@ -292,3 +292,16 @@ console.log('ok');
   run(s, 1.2, () => ({ slide: true }));
   assert.ok(!s.dead, 'slide under a head-height drone');
 }
+{
+  // a protection never ends right before a tall container (invulnerability would carry the hero inside it)
+  const s = new Sim({ seed: 'phys' });
+  s.loadedUntil = 99;
+  s.charge.jet = ABILITIES.jet.cost;
+  s.useAbility('jet');
+  s.jetT = 0.02;
+  s.entities = [{ k: 'container', x: s.x + 12, w: 20, y0: 0, y1: 2.6, landable: true, alive: true, id: 'ct' }];
+  run(s, 0.3);
+  assert.ok(s.jetT > 0, 'jetpack holds before a container');
+  run(s, 3);
+  assert.ok(!s.dead, `passes the container (${s.deathKind})`);
+}

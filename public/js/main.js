@@ -1155,8 +1155,10 @@ function deathText(info) {
 }
 
 function deathTip(info) {
-  const kind = info.cause === 'fall' ? 'fall' : HIT_TIP[info.kind];
+  let kind = info.cause === 'fall' ? 'fall' : HIT_TIP[info.kind];
   if (!kind) return '';
+  if (kind === 'quad' && info.mode === 'head') kind = 'quadHead';
+  else if (kind === 'quad' && info.mode === 'wave') kind = 'quadWave';
   if (kind === 'fall' || isTouchDevice()) return t(`tip_${kind}`);
   return t(`tip_${kind}Keys`);
 }

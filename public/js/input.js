@@ -2,7 +2,7 @@
 // Touch: right side = jump (hold for higher), left side = slide (hold).
 // In the cable tunnel (swipeMode): swipe ← → to change lane / turn, ↑ jump, ↓ slide; taps still work.
 
-const MIN_JUMP_GAP_MS = 150;
+const MIN_JUMP_GAP_MS = 50; // a fast deliberate double tap (even two fingers) is ~80 ms apart
 const TOUCH_MOUSE_GUARD_MS = 1000;
 const SWIPE_PX = 24;
 

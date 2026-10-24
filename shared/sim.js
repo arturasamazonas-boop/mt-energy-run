@@ -39,6 +39,7 @@ export class Sim {
     this.dead = false;
     this.deathCause = null;
     this.deathKind = null;
+    this.deathMode = null;
     this.invuln = 0;
     this.revived = false;
 
@@ -278,6 +279,22 @@ export class Sim {
     return false;
   }
 
+  /**
+   * A tall obstacle (container, permit stack) in the stretch the hero covers while still
+   * invulnerable after a protection ends: running into it then would put the hero
+   * inside it, so the protection holds until it has been passed.
+   */
+  tallAhead(v) {
+    const ahead = v * 1.3;
+    for (const e of this.entities) {
+      if (!e.alive || e.oneWay || e.y0 === undefined || e.k === 'pit') continue;
+      if (e.x > this.x + ahead) break;
+      if (e.x + (e.w || 0) < this.x - 1) continue;
+      if (e.y0 < 0.5 && e.y1 > 2.2 && e.y1 !== Infinity) return true;
+    }
+    return false;
+  }
+
   overheadBlocked() {
     // Is there something above that would hit a standing player?
     const half = P.playerWidth / 2 - 0.1;
@@ -312,8 +329,8 @@ export class Sim {
         this.power[k] = Math.max(0, this.power[k] - dt);
         // never drop the player into a trench when a vehicle power-up expires
         if (this.power[k] === 0 && (k === 'drone' || k === 'excavator') && this.overPit(this.x, 0.5, 14)) this.power[k] = 0.05;
-        // …nor inside a long container it was flying through
-        if (this.power[k] === 0 && k === 'drone' && this.insideObstacle()) this.power[k] = 0.05;
+        // …nor inside a long container it was flying through, nor just before a tall one
+        if (this.power[k] === 0 && k === 'drone' && (this.insideObstacle() || this.tallAhead(v))) this.power[k] = 0.05;
         if (this.power[k] === 0) {
           this.emit('powerEnd', { kind: k });
           if (k === 'drone') {
@@ -330,7 +347,7 @@ export class Sim {
       this.shieldT = Math.max(0, this.shieldT - dt);
       // the shield lasts until the hero is out of whatever it was passing through
       // and is not over a trench
-      if (this.shieldT === 0 && (this.insideObstacle() || this.overPit(this.x, 0.5, 14))) this.shieldT = 0.05;
+      if (this.shieldT === 0 && (this.insideObstacle() || this.overPit(this.x, 0.5, 14) || this.tallAhead(v))) this.shieldT = 0.05;
       if (this.shieldT === 0) {
         this.invuln = Math.max(this.invuln, 1.0); // a moment to settle while slowing down
         this.emit('shieldEnd');
@@ -340,7 +357,7 @@ export class Sim {
     if (this.jetT > 0) {
       this.jetT = Math.max(0, this.jetT - dt);
       // like the drone, never let go over a trench
-      if (this.jetT === 0 && !this.flying && (this.overPit(this.x, 0.5, 14) || this.insideObstacle())) this.jetT = 0.05;
+      if (this.jetT === 0 && !this.flying && (this.overPit(this.x, 0.5, 14) || this.insideObstacle() || this.tallAhead(v))) this.jetT = 0.05;
       if (this.jetT === 0) {
         this.emit('jetEnd');
         if (!this.flying) {
@@ -575,7 +592,7 @@ export class Sim {
               e.waveT = (e.waveT || 0) + dt;
               // swings between knee height (jump it) and head height (slide under);
               // the last moment before it reaches the hero it stops switching (fair to react)
-              if (e.waveY === undefined || e.x - this.x > v * 0.45) e.waveY = Math.cos(e.waveT * e.wave + (e.wavePh || 0)) > 0 ? 1.0 : 0.25;
+              if (e.waveY === undefined || e.x - this.x > v * 0.65) e.waveY = Math.cos(e.waveT * e.wave + (e.wavePh || 0)) > 0 ? 1.0 : 0.25;
               want = e.waveY;
             }
             const step = (e.wave && e.y0 < 1.05 ? 4 : e.diveSpeed || 6) * dt;
@@ -786,6 +803,7 @@ export class Sim {
     this.dead = true;
     this.deathCause = cause;
     this.deathKind = e?.k || null;
+    this.deathMode = e?.mode || null; // how the drone attacked (death tip)
     this.emit('death', { cause, k: e?.k });
   }
 
