@@ -70,6 +70,8 @@ export class Game {
     this.renderer.fx.clear();
     this.renderer.ppm = 0;
     this.timeScale = 1;
+    this.frameTimes.length = 0;
+    this.slowWindows = 0;
     this.tutorial = opts.tutorial ? { shown: new Set(), active: null, t: 0 } : null;
     // distance flags along the road (own best, the next colleague to beat)
     this.markers = (opts.markers || []).map((m) => ({ ...m, x: this.sim.startX + m.distance, passed: false }));
@@ -113,7 +115,11 @@ export class Game {
     if (this.frameTimes.length < 150) return;
     const sorted = [...this.frameTimes].sort((a, b) => a - b);
     this.frameTimes.length = 0;
-    if (sorted[Math.floor(sorted.length / 2)] > 0.024) {
+    // one slow patch (a notification, first sprite builds) must not cost resolution
+    // for the whole session: only two slow windows in a row lower it
+    this.slowWindows = sorted[Math.floor(sorted.length / 2)] > 0.024 ? (this.slowWindows || 0) + 1 : 0;
+    if (this.slowWindows >= 2) {
+      this.slowWindows = 0;
       this.renderer.quality = this.renderer.quality >= 1 ? 0.75 : 0.5;
       this.renderer.W = 0;
       this.renderer.resize();

@@ -83,7 +83,8 @@ export function validateRun(run, raw, elapsedSec) {
   if (s.stars > Math.min(s.parts, s.gates * 3)) reasons.push('stars');
   if (s.perfectCities > s.gates) reasons.push('perfect');
   if (s.maxMult > Math.min(SCORE.maxMult, base + s.tasks + s.perfectCities) || s.maxMult < 1) reasons.push('mult');
-  if (s.smashed > s.distance / 2 + 5) reasons.push('smashed');
+  // obstacles are only smashed with an excavator: a handful per pickup at most
+  if (s.smashed > s.distance / 2 + 5 || s.smashed > avail.excavators * 20) reasons.push('smashed');
   if (Math.abs(cityAt(s.distance).index - s.cityIndex) > 1) reasons.push('city');
 
   const lastCity = Math.max(0, s.cityIndex);
