@@ -913,6 +913,8 @@ function cancelCountdown() {
 }
 
 function onGameEvent(type, ev) {
+  // nothing pops up over the tunnel view: it would hide the obstacles
+  if (game.sim?.tunnel && (type === 'checkpoint' || type === 'city' || type === 'abilityReady')) return;
   switch (type) {
     case 'city':
       // cities with checkpoints announce themselves on arrival (see 'checkpoint')
