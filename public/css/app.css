@@ -1878,6 +1878,36 @@ h3 {
   height: min(300px, 50vh);
 }
 
+/* never taller than the screen: the button must always be reachable */
+.bday {
+  max-height: calc(100vh - 24px - var(--safe-t) - var(--safe-b));
+  max-height: calc(100dvh - 24px - var(--safe-t) - var(--safe-b));
+  overflow-y: auto;
+}
+
+/* phones held sideways: the hero beside the text, the button in view */
+@media (max-height: 520px) and (min-width: 520px) {
+  .bday {
+    width: min(760px, 100%);
+    grid-template-columns: auto minmax(0, 1fr);
+    column-gap: 18px;
+    row-gap: 8px;
+    padding: 14px 18px;
+    align-items: center;
+  }
+  .bday canvas {
+    grid-row: 1 / span 4;
+    width: min(220px, 55vh);
+    height: min(220px, 55vh);
+  }
+  .bday h1 {
+    font-size: clamp(26px, 8vh, 40px);
+  }
+  .bday p {
+    margin: 0;
+  }
+}
+
 /* ---------------------------------------------------------------- responsive */
 @media (max-height: 520px) and (min-width: 520px) {
   .over {
