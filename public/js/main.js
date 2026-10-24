@@ -299,7 +299,7 @@ function onboardScreen() {
         <div style="display:flex;justify-content:space-between;align-items:center"><img class="logo" src="/assets/mt-logo-light.png" alt="MT GROUP"><button type="button" class="chip" data-lang>${ICON.globe}${getLang() === 'lt' ? 'EN' : 'LT'}</button></div>
         <h1>${t('welcomeTitle')}</h1>
         <div class="muted">${t('welcomeText')}</div>
-        <input class="field" name="v" maxlength="20" placeholder="${t('namePh')}" autocomplete="nickname" enterkeyhint="go" required>
+        <input class="field" name="v" maxlength="21" placeholder="${t('namePh')}" autocomplete="nickname" enterkeyhint="go" required>
         <div class="error"></div>
         <button class="btn primary" type="submit">${ICON.play}${t('start')}</button>
         ${emailOn ? `<button class="link" type="button" data-alt>${t('haveEmail')}</button>` : ''}
@@ -686,7 +686,7 @@ function profileScreen() {
     <div class="prof-grid">
       <div class="prof-sec">
         <h3>${t('yourName')}</h3>
-        <form class="inline" data-name><input class="field" name="n" maxlength="20" value="${esc(p.name)}" ${p.guest ? 'disabled' : ''}><button class="btn" ${p.guest ? 'disabled' : ''}>${t('save')}</button></form>
+        <form class="inline" data-name><input class="field" name="n" maxlength="21" value="${esc(p.name)}" ${p.guest ? 'disabled' : ''}><button class="btn" ${p.guest ? 'disabled' : ''}>${t('save')}</button></form>
         <div class="error" data-name-err></div>
       </div>
       <div class="prof-sec">

@@ -26,7 +26,7 @@ const STR = {
     start: 'Pradėti',
     back: 'Atgal',
     nameTaken: 'Toks vardas jau užimtas. Pasirink kitą.',
-    badName: 'Vardas turi būti 2–20 simbolių (raidės, skaičiai, tarpai).',
+    badName: 'Vardas turi būti 2–21 simbolio (raidės, skaičiai, tarpai).',
     rateLimited: 'Per daug bandymų. Pabandyk po kelių minučių.',
     // hud / run
     pause: 'Pauzė',
@@ -237,7 +237,7 @@ const STR = {
     start: 'Start',
     back: 'Back',
     nameTaken: 'That name is taken. Please pick another.',
-    badName: 'Name must be 2–20 characters (letters, digits, spaces).',
+    badName: 'Name must be 2–21 characters (letters, digits, spaces).',
     rateLimited: 'Too many attempts. Try again in a few minutes.',
     pause: 'Paused',
     resume: 'Resume',
