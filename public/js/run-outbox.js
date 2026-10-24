@@ -33,16 +33,27 @@ export function createRunOutbox({ finishRun, storage }) {
   return {
     submit(playerId, runId, summary) {
       read();
-      const entry = pending.get(runId) || { playerId, runId, summary };
+      // a provisional copy (saved when the page was hidden mid-run) gives way to the final result
+      const old = pending.get(runId);
+      const entry = old && !old.provisional ? old : { playerId, runId, summary };
       pending.set(runId, entry);
       try { storage.setItem(PREFIX + runId, JSON.stringify(entry)); } catch { /* retry while open */ }
       return send(entry);
     },
-    async flush(playerId) {
+    /** Keep a run in progress in case the page never comes back (closed, reloaded, killed in the background). */
+    keep(playerId, runId, summary) {
+      read();
+      const old = pending.get(runId);
+      if (old && !old.provisional) return;
+      const entry = { playerId, runId, summary, provisional: true };
+      pending.set(runId, entry);
+      try { storage.setItem(PREFIX + runId, JSON.stringify(entry)); } catch { /* best effort */ }
+    },
+    async flush(playerId, skipRunId = null) {
       read();
       const results = [];
       for (const entry of pending.values()) {
-        if (entry.playerId !== playerId) continue;
+        if (entry.playerId !== playerId || entry.runId === skipRunId) continue;
         try { results.push(await send(entry)); }
         catch { break; } // retry later, without flooding an unavailable server
       }

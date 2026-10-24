@@ -518,6 +518,7 @@ h3 {
   inset: calc(12px + var(--safe-t)) calc(12px + var(--safe-r)) calc(12px + var(--safe-b)) calc(12px + var(--safe-l));
   display: grid;
   grid-template-rows: auto 1fr;
+  grid-template-columns: minmax(0, 1fr); /* never wider than the screen */
   max-width: 980px;
   margin: 0 auto;
   overflow: hidden;
@@ -526,6 +527,7 @@ h3 {
 
 .sheet-head {
   display: flex;
+  flex-wrap: wrap; /* on narrow phones the tabs go to their own row */
   align-items: center;
   gap: 12px;
   padding: 14px 16px 10px;
@@ -555,6 +557,9 @@ h3 {
 
 .tabs {
   display: flex;
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: auto;
   gap: 6px;
   background: rgba(0, 0, 0, 0.3);
   padding: 4px;
@@ -1296,6 +1301,10 @@ h3 {
   color: #ffc2c9;
 }
 
+.notice.ok {
+  color: #7cf0b0;
+}
+
 .over-head .tip {
   max-width: 34ch;
   color: #cfd5dc;
@@ -1758,6 +1767,11 @@ h3 {
   z-index: 40;
 }
 
+#toasts.top {
+  top: calc(14px + var(--safe-t));
+  bottom: auto;
+}
+
 .toast {
   display: flex;
   gap: 10px;
@@ -2157,4 +2171,32 @@ h3 {
 }
 .protect-tip .inline {
   margin-top: 8px;
+}
+
+/* fingers need bigger targets than mouse pointers */
+@media (pointer: coarse) {
+  .icon-btn {
+    min-width: 44px;
+    min-height: 44px;
+  }
+  button.chip,
+  a.chip {
+    min-height: 44px;
+  }
+  .tab {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+  }
+  .btn.small {
+    min-height: 44px;
+  }
+}
+
+/* the smallest phones: all tabs still fit side by side */
+@media (max-width: 360px) {
+  .tab {
+    padding: 8px 9px;
+    font-size: 15px;
+  }
 }

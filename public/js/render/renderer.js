@@ -197,6 +197,7 @@ export class Renderer {
     this.scenery.lang = this.lang;
     this.scenery.birthday = !!view.birthday;
     if (sim.tunnel) {
+      this.greetingVisible = false;
       this.tunnelView.draw(ctx, W, H, view);
       this.drawVignette(ctx, 0.45);
       if (this.flash > 0.01) {
@@ -218,7 +219,17 @@ export class Renderer {
     this.heroFrac = lerp(this.heroFrac ?? 0.24, view.heroFrac ?? 0.24, Math.min(1, dt * 3));
     this.camX = heroX - viewM * this.heroFrac;
     // follow upward a little when very high (drone, containers)
-    const wantCamY = Math.max(0, (sim.y - 3.2) * 0.55);
+    let wantCamY = Math.max(0, (sim.y - 3.2) * 0.55);
+    // energy up in the sky (jetpack only) is lifted out from under the top HUD panel
+    if (sim.skyOpen && wantCamY < 0.9) {
+      for (const e of sim.entities) {
+        if (e.x > this.camX + viewM + 8) break;
+        if (e.sky && e.alive && e.x > this.camX - 2) {
+          wantCamY = 0.9;
+          break;
+        }
+      }
+    }
     this.camY = lerp(this.camY, wantCamY, Math.min(1, dt * 4));
 
     const sky = this.scenery.skyAt(sim.x + viewM * 0.3);
@@ -361,6 +372,7 @@ export class Renderer {
       this.bannerSim = sim;
       this.bannerIdx = new Map(); // flyover → wish shown in this run
     }
+    this.greetingVisible = false;
     for (const b of bannersNear(sim.seed, heroX, range)) {
       const cx = this.W * 0.55 + (b.x - heroX) * px;
       let idx = this.bannerIdx.get(b.x);
@@ -368,10 +380,12 @@ export class Renderer {
         if (cx > this.W + u * 12) continue; // still off screen: pick its wish when it arrives
         // in a run the wishes come in order and carry on across runs, so the very
         // first one a player ever sees is the birthday wish and none repeat early
-        idx = attract ? b.idx : nextWish();
+        // the home screen's background run shows the birthday wish itself
+        idx = attract ? 0 : nextWish();
         this.bannerIdx.set(b.x, idx);
       }
       drawSkyBanner(ctx, idx, lang, cx, this.H * 0.335, u, t);
+      if (cx > -u * 6 && cx < this.W + u * 6) this.greetingVisible = true; // HUD banners wait for it
     }
   }
 

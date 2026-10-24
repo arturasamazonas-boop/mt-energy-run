@@ -457,10 +457,10 @@ export function drawBillboard(ctx, s, em, text1, text2) {
   ctx.fillStyle = em ? '#FFFFFF' : '#F4F4F4';
   ctx.font = `800 ${0.62 * s}px "Barlow Condensed", sans-serif`;
   ctx.textBaseline = 'alphabetic';
-  ctx.fillText(text1, 0.45 * s, 2.25 * s);
+  ctx.fillText(text1, 0.45 * s, 2.25 * s, W - 0.9 * s); // squeezed to fit the board
   ctx.fillStyle = BRAND_K;
   ctx.font = `700 ${0.3 * s}px "Barlow Condensed", sans-serif`;
-  ctx.fillText(text2, 0.45 * s, bh - 0.25 * s);
+  ctx.fillText(text2, 0.45 * s, bh - 0.25 * s, W - 0.9 * s);
   if (em) {
     ctx.fillStyle = 'rgba(255,240,200,0.12)';
     ctx.fillRect(0, 0, W, bh);

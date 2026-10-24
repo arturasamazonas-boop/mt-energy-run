@@ -7,6 +7,7 @@ import { countAvailable } from '../shared/worldgen.js';
 import { computeEnergy } from '../shared/sim.js';
 import { TUNNEL, tunnelBoltsAvailable } from '../shared/tunnel.js';
 
+const REAL_RUN_M = 100; // shorter runs don't count towards the run-count achievements
 const INT_FIELDS = ['distance', 'score', 'bolts', 'tunnelBolts', 'parts', 'tokens', 'tasks', 'tasksFailed', 'gates', 'stars', 'perfectCities', 'maxMult', 'cityIndex', 'powerups', 'smashed', 'shields'];
 
 export function emptyPlayerData() {
@@ -110,11 +111,20 @@ export function applyRun(data, s, run, { birthday = false } = {}) {
   const d = data;
   const st = d.stats;
   st.runs++;
+  // the run-count achievements only count real runs (a restart after a few metres is not one)
+  if (st.realRuns === undefined) st.realRuns = st.runs - 1;
+  if (s.distance >= REAL_RUN_M) st.realRuns++;
   st.totalDistance += s.distance;
   st.totalBolts += s.bolts;
   st.totalTasks += s.tasks;
   st.totalTokens = (st.totalTokens || 0) + s.tokens;
-  if (run.mode === 'daily') st.dailyRuns++;
+  if (run.mode === 'daily') {
+    st.dailyRuns++;
+    // 'Challenge week' needs the daily challenge on different days, not 7 tries in one day
+    const days = new Set(Array.isArray(st.dailyDays) ? st.dailyDays : []);
+    days.add(String(run.seed).slice(0, 20));
+    st.dailyDays = [...days].slice(-60);
+  }
   const newBest = s.score > st.bestScore;
   if (newBest) st.bestScore = s.score;
   st.bestDistance = Math.max(st.bestDistance, s.distance);
@@ -150,7 +160,7 @@ export function applyRun(data, s, run, { birthday = false } = {}) {
   if (s.score >= 50000) give('score50k');
   if (s.score >= 250000) give('score250k');
   if (st.totalBolts >= 5000) give('bolts5000');
-  if (st.runs >= 25) give('runs25');
+  if (st.realRuns >= 25) give('runs25');
   if (run.mode === 'daily') give('daily');
   if (birthday) give('birthday');
   if (birthday && s.score >= 2410) give('bdaygift');
@@ -184,8 +194,8 @@ export function applyRun(data, s, run, { birthday = false } = {}) {
   const perfect = Object.values(d.cityStars).filter((v) => v >= 3).length;
   if (perfect >= 10) give('stars10');
   if (perfect >= 18) give('starsall');
-  if (st.runs >= 100) give('runs100');
-  if (st.dailyRuns >= 7) give('daily7');
+  if (st.realRuns >= 100) give('runs100');
+  if ((st.dailyDays || []).length >= 7) give('daily7');
   // workshop (also granted at purchase time, see buy())
   for (const id of workshopAchievements(d)) give(id);
   if (has('grandtour') && !d.cosmetics.owned.includes('gold')) d.cosmetics.owned.push('gold');
@@ -225,6 +235,8 @@ export function mergeData(src, dst) {
   for (const [k, v] of Object.entries(a.upgrades)) out.upgrades[k] = Math.max(v, b.upgrades[k] || 0);
   out.cosmetics.owned = [...new Set([...b.cosmetics.owned, ...a.cosmetics.owned])];
   for (const k of ['runs', 'totalDistance', 'totalBolts', 'totalTasks', 'totalTokens', 'dailyRuns']) out.stats[k] = (a.stats[k] || 0) + (b.stats[k] || 0);
+  out.stats.realRuns = (a.stats.realRuns ?? a.stats.runs ?? 0) + (b.stats.realRuns ?? b.stats.runs ?? 0);
+  out.stats.dailyDays = [...new Set([...(a.stats.dailyDays || []), ...(b.stats.dailyDays || [])])].slice(-60);
   for (const k of ['bestScore', 'bestDistance', 'bestCity']) out.stats[k] = Math.max(a.stats[k] || 0, b.stats[k] || 0);
   for (const [k, v] of Object.entries(a.achievements)) if (!out.achievements[k] || v < out.achievements[k]) out.achievements[k] = v;
   for (const [k, v] of Object.entries(a.cityStars)) out.cityStars[k] = Math.max(v, b.cityStars[k] || 0);

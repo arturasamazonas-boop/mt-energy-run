@@ -8,9 +8,21 @@ import { audio } from '../audio.js';
 
 const DT = 1 / 120;
 
+const QUALITY_KEY = 'mter.quality';
+
 export class Game {
   constructor({ renderer, input, ui }) {
     this.renderer = renderer;
+    // a phone that needed lower quality last time starts there (no choppy first seconds)
+    try {
+      const q = Number(localStorage.getItem(QUALITY_KEY));
+      if (q === 0.5 || q === 0.75) {
+        renderer.quality = q;
+        renderer.W = 0;
+      }
+    } catch {
+      /* private mode */
+    }
     this.input = input;
     this.ui = ui; // callbacks: hud(state), event(type, data), over(info), task(cb), secondChance(cb), tutorial(key|null)
     this.mode = 'idle';
@@ -112,17 +124,25 @@ export class Game {
   adaptQuality(dt) {
     if (this.renderer.quality <= 0.5 || this.mode !== 'run') return;
     this.frameTimes.push(dt);
-    if (this.frameTimes.length < 150) return;
+    if (this.frameTimes.length < 90) return;
     const sorted = [...this.frameTimes].sort((a, b) => a - b);
     this.frameTimes.length = 0;
+    const median = sorted[Math.floor(sorted.length / 2)];
     // one slow patch (a notification, first sprite builds) must not cost resolution
-    // for the whole session: only two slow windows in a row lower it
-    this.slowWindows = sorted[Math.floor(sorted.length / 2)] > 0.024 ? (this.slowWindows || 0) + 1 : 0;
-    if (this.slowWindows >= 2) {
+    // for the whole session: only two slow windows in a row lower it, unless the phone
+    // is far too slow (under ~20 fps), then straight to the lowest step
+    this.slowWindows = median > 0.024 ? (this.slowWindows || 0) + 1 : 0;
+    if (median > 0.05 || this.slowWindows >= 2) {
       this.slowWindows = 0;
-      this.renderer.quality = this.renderer.quality >= 1 ? 0.75 : 0.5;
+      this.renderer.quality = median > 0.05 || this.renderer.quality < 1 ? 0.5 : 0.75;
       this.renderer.W = 0;
       this.renderer.resize();
+      // remembered, so the next visit starts smooth right away
+      try {
+        localStorage.setItem(QUALITY_KEY, String(this.renderer.quality));
+      } catch {
+        /* private mode */
+      }
     }
   }
 
