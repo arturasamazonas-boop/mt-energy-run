@@ -80,6 +80,8 @@ async function reconnect() {
       retrySavedRuns();
     } else if (atMenu && state.screen === 'home') {
       onboardScreen();
+    } else {
+      state.needOnboard = true; // shown the next time the home screen opens
     }
   } catch { /* still offline */ }
   finally { reconnecting = false; }
@@ -106,6 +108,17 @@ document.addEventListener('visibilitychange', () => {
 });
 
 function showUnlocked(ids = []) {
+  ids = ids.filter((id) => ACHIEVEMENT_BY_ID[id]);
+  // on the game-over screen several achievements come as one toast, so they don't
+  // cover the energy earned and the ranks for long
+  if (state.screen === 'over' && ids.length > 1) {
+    const list = ids.map((id) => ACHIEVEMENT_BY_ID[id]);
+    setTimeout(() => {
+      toast(list.map((a) => L(a)).join(' · '), `${t('achievement')} · ⚡${list.reduce((n, a) => n + a.reward, 0)}`);
+      audio.sfx('achievement');
+    }, 600);
+    return;
+  }
   ids.forEach((id, i) =>
     setTimeout(() => {
       const a = ACHIEVEMENT_BY_ID[id];
@@ -118,7 +131,8 @@ function showUnlocked(ids = []) {
 
 /** Re-draw a menu screen after the profile changed in the background (never during a run or game over). */
 function refreshScreen() {
-  if (RUNNING.includes(game.mode) || game.mode === 'over' || state.busy) return;
+  // (the game-over screen itself is state.screen 'over' and updates on its own)
+  if (RUNNING.includes(game.mode) || state.busy) return;
   if (state.screen === 'home') homeScreen();
   else if (state.screen === 'shop') shopScreen();
   else if (state.screen === 'profile') profileScreen();
@@ -438,6 +452,11 @@ function protectAccount(after) {
 // Home
 // ---------------------------------------------------------------------------
 function homeScreen() {
+  // a newcomer whose first load failed registers once the connection is back
+  if (state.needOnboard && state.online && state.profile?.guest) {
+    state.needOnboard = false;
+    return onboardScreen();
+  }
   state.screen = 'home';
   clearPortraits();
   hud.unmount();
@@ -1184,6 +1203,7 @@ async function submitRun(summary) {
 
 async function onRunOver(info) {
   if (state.run) state.run.live = false;
+  state.screen = 'over';
   prefs.set('tutDone', true);
   hud.hint(null);
   const s = info.summary;
@@ -1243,13 +1263,17 @@ async function onRunOver(info) {
     return;
   }
   const completedRun = state.run;
-  const saveResult = async () => {
+  const saveResult = async ({ quiet = false } = {}) => {
     $('[data-notice]', el).textContent = t('saving');
     try {
       const r = await runOutbox.submit(p.id, completedRun.runId, s);
       completedRun.submitted = true;
       pendingOverSave = null;
-      if (state.profile?.id === p.id) setProfile(r.profile);
+      if (state.profile?.id === p.id) {
+        setProfile(r.profile);
+        // the player may have left for Home or the Workshop while it was saving
+        if (!el.isConnected) refreshScreen();
+      }
       $('[data-notice]', el).textContent = t('saved');
       $('[data-notice]', el).classList.toggle('ok', !!r.accepted); // success in green, not the error pink
       if (!r.accepted) {
@@ -1274,14 +1298,14 @@ async function onRunOver(info) {
       if (shop) goals.push(shop);
       $('[data-goals]', el).innerHTML = goalsHtml(goals);
       maybeSuggestProtect(el);
-      showUnlocked(r.unlocked);
+      if (!quiet) showUnlocked(r.unlocked);
     } catch {
       $('[data-notice]', el).innerHTML = `${t('pendingSave')} <button class="btn small" data-retry-save>${t('retry')}</button>`;
-      click($('[data-retry-save]', el), saveResult);
+      click($('[data-retry-save]', el), () => saveResult());
       // when the background retry gets through, this screen updates itself
       pendingOverSave = () => {
         pendingOverSave = null;
-        if (el.isConnected) saveResult();
+        if (el.isConnected) saveResult({ quiet: true }); // the background retry already showed its achievements
       };
     }
   };
