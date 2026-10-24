@@ -76,3 +76,17 @@ assert.throws(() => equip(shop, 'tux'), /not_owned/);
 const maxed = normalizeData({ energy: 99999, upgrades: { startHelmet: 1 } });
 assert.throws(() => buy(maxed, 'upgrade', 'startHelmet'), /maxed/);
 console.log('ok');
+{
+  // run-count achievements need real runs; 'Challenge week' needs 7 different days
+  const d = emptyPlayerData();
+  const short = { ...s, distance: 5, score: 5 };
+  for (let i = 0; i < 30; i++) applyRun(d, short, { seed: 'x', mode: 'normal', upgrades: {} });
+  assert.ok(!d.achievements.runs25, '0 m restarts do not count');
+  for (let i = 0; i < 25; i++) applyRun(d, s, { seed: 'x', mode: 'normal', upgrades: {} });
+  assert.ok(d.achievements.runs25, 'real runs count');
+  const e = emptyPlayerData();
+  for (let i = 0; i < 8; i++) applyRun(e, s, { seed: 'daily-2026-10-24', mode: 'daily', upgrades: {} });
+  assert.ok(!e.achievements.daily7, 'one day, many tries');
+  for (let i = 1; i <= 7; i++) applyRun(e, s, { seed: `daily-2026-11-0${i}`, mode: 'daily', upgrades: {} });
+  assert.ok(e.achievements.daily7, '7 different days');
+}

@@ -264,8 +264,17 @@ class AudioEngine {
     if (!this.ctx || !this.mode) return;
     const bpm = this.mode === 'run' ? 122 + this.intensity * 18 : 96;
     const st = 60 / bpm / 4; // 16th note
-    while (this.nextTime < this.ctx.currentTime + 0.12) {
-      this.playStep(this.step, this.nextTime, st);
+    const now = this.ctx.currentTime;
+    // after a stall (slow phone, long frame) skip the missed notes instead of
+    // playing them all at once, which sounds like a stumble
+    if (this.nextTime < now - st) {
+      const missed = Math.ceil((now - this.nextTime) / st);
+      this.step += missed;
+      this.nextTime += missed * st;
+    }
+    while (this.nextTime < now + 0.2) {
+      // music switched off: keep the beat moving but build no sound (saves battery)
+      if (this.musicOn) this.playStep(this.step, this.nextTime, st);
       this.nextTime += st;
       this.step++;
     }

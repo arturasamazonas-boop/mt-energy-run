@@ -114,20 +114,20 @@ const STR = {
     tunnelTitle: 'Bonus tunelis',
     tunnelSub: 'Energija ×5! Atsitrenksi – grįši į trasą.',
     tunnelCrash: 'Atgal į trasą!',
-    tunnelHintTouch: 'Braukite ← → – juosta ir posūkis, ↑ šuolis, ↓ čiuožti',
+    tunnelHintTouch: 'Brauk ← → – juosta ir posūkis, ↑ šuolis, ↓ čiuožti',
     tunnelHintKeys: '← → – juosta ir posūkis, ↑ šuolis, ↓ čiuožti',
     tunnelOut: 'Vėl lauke!',
     hit_tunnel: 'Atsitrenkei tunelyje',
     hit_tunnelWall: 'Nepasukai posūkyje',
     hit_tunnelGap: 'Įkritai į plyšį',
-    tip_turn: 'Patarimas: prie posūkio braukite rodyklės kryptimi.',
+    tip_turn: 'Patarimas: prie posūkio brauk rodyklės kryptimi.',
     tip_turnKeys: 'Patarimas: prie posūkio spausk ← arba → pagal rodyklę.',
     abShieldReady: 'Super greitis paruoštas!',
     abJetReady: 'Jetpack paruoštas!',
     skyHint: 'Danguje pasirodė energija – pakilk su jetpack!',
     tutJumpKey: 'TARPAS arba ↑ – šuolis',
-    tutSlideTouch: 'Laikyk KAIRĘ ekrano pusę – nusileisk',
-    tutSlideKey: 'Laikyk ↓ – nusileisk',
+    tutSlideTouch: 'Laikyk KAIRĘ ekrano pusę – pračiuožk',
+    tutSlideKey: 'Laikyk ↓ – pračiuožk',
     tutDoubleTouch: 'Bakstelk dar kartą ore – dvigubas šuolis',
     tutDoubleKey: 'Spausk dar kartą ore – dvigubas šuolis',
     tutPitTouch: 'Peršok tranšėją!',
@@ -150,6 +150,8 @@ const STR = {
     you: 'Tu',
     noScores: 'Dar niekas nebėgo. Būk pirmas!',
     players: 'žaidėjų',
+    players_one: 'žaidėjas',
+    players_few: 'žaidėjai',
     // map
     mapTitle: 'Maršrutas per Europą',
     mapHint: 'Kiekviename mieste surink 3 projekto detales ir paleisk projektą.',
@@ -207,8 +209,8 @@ const STR = {
     bdayGo: 'Bėgam švęsti!',
     bdayGift: 'Dovana: gimtadienio kostiumas jau tavo spintoje!',
     // controls
-    controlsTouch: 'Dešinė pusė – šuolis · Kairė pusė – nusileisti',
-    controlsKeys: 'Tarpas / ↑ – šuolis · ↓ – nusileisti · P – pauzė',
+    controlsTouch: 'Dešinė pusė – šuolis · Kairė pusė – čiuožti',
+    controlsKeys: 'Tarpas / ↑ – šuolis · ↓ – čiuožti · P – pauzė',
     rotate: 'Pasuk telefoną horizontaliai',
     // tasks
     taskWires: 'Sujunk laidus pagal spalvas',
@@ -363,6 +365,7 @@ const STR = {
     you: 'You',
     noScores: 'Nobody has run yet. Be the first!',
     players: 'players',
+    players_one: 'player',
     mapTitle: 'Route across Europe',
     mapHint: 'Collect 3 project parts in each city and bring the project online.',
     mtSite: 'MT GROUP project',
@@ -447,6 +450,18 @@ export function setLang(l) {
   lang = l === 'en' ? 'en' : 'lt';
   prefs.set('lang', lang);
   document.documentElement.lang = lang;
+}
+
+/** Count with the right plural form: "1 žaidėjas", "3 žaidėjai", "10 žaidėjų" / "1 player". */
+export function tn(n, key) {
+  let form = 'other';
+  try {
+    form = new Intl.PluralRules(lang === 'lt' ? 'lt-LT' : 'en').select(n);
+  } catch {
+    /* very old browser: the plain form */
+  }
+  const s = STR[lang][`${key}_${form}`] ?? STR[lang][key] ?? key;
+  return `${n} ${s}`;
 }
 
 export function t(key, vars) {

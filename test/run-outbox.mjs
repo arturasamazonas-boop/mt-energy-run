@@ -50,4 +50,17 @@ assert.deepEqual(await outbox.flush('player'), [receipt]);
 outbox = createRunOutbox({ storage, finishRun: async () => null });
 await assert.rejects(outbox.submit('player', 'run', { score: 123 }), /invalid_response/);
 assert.equal(disk.size, 1, 'empty success response cannot discard a result');
-console.log('ok (offline, reload, account isolation, concurrent requests, blocked storage)');
+
+// a run in progress is kept when the page is hidden: the final result replaces it, a lost page still sends it
+disk.clear();
+const sent = [];
+outbox = createRunOutbox({ storage, finishRun: async (id, summary) => { sent.push([id, summary.score]); return receipt; } });
+outbox.keep('player', 'live', { score: 50 });
+assert.deepEqual(await outbox.flush('player', 'live'), [], 'the run being played is not sent');
+await outbox.submit('player', 'live', { score: 80 });
+assert.deepEqual(sent, [['live', 80]], 'the final result replaces the kept copy');
+outbox.keep('player', 'lost', { score: 40 });
+outbox = createRunOutbox({ storage, finishRun: async (id, summary) => { sent.push([id, summary.score]); return receipt; } }); // page reload
+await outbox.flush('player');
+assert.deepEqual(sent.at(-1), ['lost', 40], 'a run whose page was closed is still sent');
+console.log('ok (offline, reload, account isolation, concurrent requests, blocked storage, kept runs)');

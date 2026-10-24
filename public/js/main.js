@@ -3,7 +3,7 @@ import { CITIES, UPGRADES, COSMETICS, ACHIEVEMENTS, GAME_VERSION, ACHIEVEMENT_BY
 import { api } from './api.js';
 import { createRunOutbox } from './run-outbox.js';
 import { prefs } from './prefs.js';
-import { t, L, getLang, setLang, fmtNum, fmtDist } from './i18n.js';
+import { t, tn, L, getLang, setLang, fmtNum, fmtDist } from './i18n.js';
 import { audio } from './audio.js';
 import { Input, isTouchDevice } from './input.js';
 import { Renderer } from './render/renderer.js';
@@ -34,22 +34,94 @@ let resultStorage;
 try { resultStorage = window.localStorage; } catch { /* blocked storage */ }
 const runOutbox = createRunOutbox({ finishRun: api.finishRun, storage: resultStorage });
 let retryingResults = false;
+let pendingOverSave = null; // the open game-over screen's save, re-run once the connection is back
+const RUNNING = ['run', 'paused', 'task', 'dying'];
 async function retrySavedRuns() {
   const playerId = state.profile?.id;
   if (!playerId || state.profile.guest || retryingResults) return;
   retryingResults = true;
   try {
-    const results = await runOutbox.flush(playerId);
+    // the run being played right now is not sent (only its safety copy is kept)
+    const active = RUNNING.includes(game.mode) ? state.run?.runId : null;
+    const results = await runOutbox.flush(playerId, active);
     if (results.length && state.profile?.id === playerId) {
       const me = await api.me();
       if (me.profile?.id === playerId) setProfile(me.profile);
+      refreshScreen();
       toast(t('saved'));
+      results.forEach((r) => showUnlocked(r.unlocked));
+      if (pendingOverSave) pendingOverSave();
     }
   } catch { /* next online event or timer retries */ }
   finally { retryingResults = false; }
 }
-window.addEventListener('online', retrySavedRuns);
-setInterval(retrySavedRuns, 30000);
+
+/** Started without a connection: try again, and bring the real profile back when it works. */
+let reconnecting = false;
+async function reconnect() {
+  if (state.online || reconnecting) return;
+  reconnecting = true;
+  try {
+    const cfg = await api.config();
+    let me = null;
+    try {
+      me = (await api.me()).profile;
+    } catch (e) {
+      if (e.status !== 401) throw e;
+    }
+    state.config = cfg;
+    state.online = true;
+    game.birthday = !!cfg.birthday || params.has('birthday');
+    const atMenu = !RUNNING.includes(game.mode) && game.mode !== 'over';
+    if (me) {
+      setProfile(me);
+      if (atMenu) refreshScreen();
+      retrySavedRuns();
+    } else if (atMenu && state.screen === 'home') {
+      onboardScreen();
+    }
+  } catch { /* still offline */ }
+  finally { reconnecting = false; }
+}
+
+function syncNow() {
+  if (!state.online) reconnect();
+  else retrySavedRuns();
+}
+window.addEventListener('online', syncNow);
+setInterval(syncNow, 30000);
+
+// a run in progress is kept on the device when the page is hidden or closed, so a reload,
+// a closed tab or a phone killing the browser in the background does not lose it
+function keepRunInProgress() {
+  const run = state.run;
+  if (!run?.runId || run.submitted || !game.sim || !RUNNING.includes(game.mode) || state.profile?.guest) return;
+  runOutbox.keep(state.profile.id, run.runId, game.sim.summary());
+}
+window.addEventListener('pagehide', keepRunInProgress);
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') keepRunInProgress();
+  else syncNow();
+});
+
+function showUnlocked(ids = []) {
+  ids.forEach((id, i) =>
+    setTimeout(() => {
+      const a = ACHIEVEMENT_BY_ID[id];
+      if (!a) return;
+      toast(`${L(a)} · ⚡${a.reward}`, t('achievement'));
+      audio.sfx('achievement');
+    }, 600 + i * 900),
+  );
+}
+
+/** Re-draw a menu screen after the profile changed in the background (never during a run or game over). */
+function refreshScreen() {
+  if (RUNNING.includes(game.mode) || game.mode === 'over' || state.busy) return;
+  if (state.screen === 'home') homeScreen();
+  else if (state.screen === 'shop') shopScreen();
+  else if (state.screen === 'profile') profileScreen();
+}
 
 const params = new URLSearchParams(location.search);
 const DEBUG = params.has('debug');
@@ -143,6 +215,8 @@ function toast(title, sub = 'MT GROUP', icon = ICON.medal) {
   const el = document.createElement('div');
   el.className = 'toast';
   el.innerHTML = `<div class="medal">${icon}</div><div><small>${sub}</small><b>${title}</b></div>`;
+  // on the game-over screen they go to the top, clear of its buttons
+  $('#toasts').classList.toggle('top', game.mode === 'over');
   $('#toasts').appendChild(el);
   setTimeout(() => el.remove(), 4100);
 }
@@ -592,7 +666,7 @@ async function boardScreen(kind = 'all') {
         <div class="who"><b>${esc(e.name)}${e.me ? ` · ${t('you')}` : ''}</b><small>${cityLabel(e.cityIndex || 0)} · ${fmtDist(e.distance || 0)}</small></div>
         <div class="pts">${fmtNum(e.score)}</div>
       </div>`;
-    let html = r.entries.length ? `<div class="muted" style="margin-bottom:8px">${r.total} ${t('players')}</div><div class="board-list">${r.entries.map(row).join('')}</div>` : `<div class="empty">${t('noScores')}</div>`;
+    let html = r.entries.length ? `<div class="muted" style="margin-bottom:8px">${tn(r.total, 'players')}</div><div class="board-list">${r.entries.map(row).join('')}</div>` : `<div class="empty">${t('noScores')}</div>`;
     if (r.me && !r.entries.some((e) => e.me)) html += `<div class="board-me">${row({ ...r.me, me: true })}</div>`;
     $('.sheet-body', el).innerHTML = html;
   } catch {
@@ -816,7 +890,9 @@ async function startRun(mode) {
   }
   state.busy = true;
   clearPortraits();
-  let run = { mode, seed: params.get('seed') || `local-${Date.now()}`, upgrades: state.profile.upgrades || {}, runId: null };
+  // without the server a daily run still uses today's shared course
+  const localSeed = mode === 'daily' ? `daily-${state.config?.today || vilniusToday()}` : `local-${Date.now()}`;
+  let run = { mode, seed: params.get('seed') || localSeed, upgrades: state.profile.upgrades || {}, runId: null };
   const boardReq = state.online && !state.profile.guest ? fetchBoardQuick(mode === 'daily' ? 'daily' : 'all') : Promise.resolve(null);
   if (state.online && !state.profile.guest && !params.has('practice') && !(DEBUG && params.has('autoplay'))) {
     // a registered player's run only counts if the server started it: never play it "offline" silently
@@ -951,9 +1027,12 @@ function onGameEvent(type, ev) {
     case 'taskDone':
       break;
     case 'power':
+      // a greeting plane on screen is not covered: these hints are skipped, 'ready' waits
+      if (renderer.greetingVisible) break;
       if (ev.kind === 'drone') hud.banner('🚁', t('droneTitle'), t(isTouchDevice() ? 'droneHintTouch' : 'droneHintKeys'));
       break;
     case 'jet':
+      if (renderer.greetingVisible) break;
       hud.banner('🚀', t('jetTitle'), t(isTouchDevice() ? 'droneHintTouch' : 'droneHintKeys'));
       break;
     // no banner on the way into a tunnel (it hid the first obstacles): any banner still
@@ -979,6 +1058,12 @@ function onGameEvent(type, ev) {
       break;
     }
     case 'abilityReady':
+      if (renderer.greetingVisible) {
+        setTimeout(() => {
+          if (game.sim && !game.sim.dead && RUNNING.includes(game.mode)) onGameEvent('abilityReady', ev);
+        }, 1500);
+        break;
+      }
       hud.banner(t('abTitle'), t(ev.kind === 'shield' ? 'abShieldReady' : 'abJetReady'), ev.sky ? t('skyHint') : '');
       break;
     default:
@@ -1026,7 +1111,16 @@ function abandonRun() {
   cancelCountdown();
   if (!game.sim || game.mode === 'over') return;
   const s = game.sim.summary();
-  submitRun(s).catch(() => {});
+  const playerId = state.profile?.id;
+  // the run counts: when the server confirms it, show the new energy and any achievements
+  submitRun(s)
+    .then((r) => {
+      if (!r || state.profile?.id !== playerId) return;
+      setProfile(r.profile);
+      refreshScreen();
+      showUnlocked(r.unlocked);
+    })
+    .catch(() => {});
   game.quit();
   hud.unmount();
 }
@@ -1059,6 +1153,14 @@ function showSecondChance(cb) {
   }, 1000);
   click($('[data-yes]', el), () => finish(true));
   click($('[data-no]', el), () => finish(false));
+}
+
+function vilniusToday() {
+  try {
+    return new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Vilnius' }).format(new Date());
+  } catch {
+    return new Date().toISOString().slice(0, 10);
+  }
 }
 
 async function submitRun(summary) {
@@ -1134,8 +1236,10 @@ async function onRunOver(info) {
     try {
       const r = await runOutbox.submit(p.id, completedRun.runId, s);
       completedRun.submitted = true;
+      pendingOverSave = null;
       if (state.profile?.id === p.id) setProfile(r.profile);
       $('[data-notice]', el).textContent = t('saved');
+      $('[data-notice]', el).classList.toggle('ok', !!r.accepted); // success in green, not the error pink
       if (!r.accepted) {
         $('[data-notice]', el).textContent = t('notCounted');
         $('[data-record]', el).innerHTML = '';
@@ -1158,16 +1262,15 @@ async function onRunOver(info) {
       if (shop) goals.push(shop);
       $('[data-goals]', el).innerHTML = goalsHtml(goals);
       maybeSuggestProtect(el);
-      r.unlocked?.forEach((id, i) =>
-        setTimeout(() => {
-          const a = ACHIEVEMENT_BY_ID[id];
-          toast(`${L(a)} · ⚡${a.reward}`, t('achievement'));
-          audio.sfx('achievement');
-        }, 600 + i * 900),
-      );
+      showUnlocked(r.unlocked);
     } catch {
       $('[data-notice]', el).innerHTML = `${t('pendingSave')} <button class="btn small" data-retry-save>${t('retry')}</button>`;
       click($('[data-retry-save]', el), saveResult);
+      // when the background retry gets through, this screen updates itself
+      pendingOverSave = () => {
+        pendingOverSave = null;
+        if (el.isConnected) saveResult();
+      };
     }
   };
   await saveResult();
@@ -1223,6 +1326,7 @@ function maybeSuggestProtect(el) {
   if ((p.stats.runs || 0) < 3) return;
   if (Date.now() < prefs.get('protectSnooze', 0)) return;
   const box = $('[data-notice]', el);
+  box.classList.remove('ok');
   box.innerHTML = `<div class="protect-tip"><b>${t('protectTitle')}</b> ${t('protectText')}
     <div class="inline"><button class="btn small primary" data-protect>${t('emailProtectBtn')}</button><button class="btn small ghost" data-later>${t('later')}</button></div></div>`;
   click($('[data-protect]', box), () => protectAccount(() => (box.innerHTML = '')));

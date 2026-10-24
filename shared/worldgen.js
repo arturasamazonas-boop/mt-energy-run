@@ -183,7 +183,10 @@ const PATTERNS = [
       //  head – at head height: slide under it
       //  wave – weaving up and down: watch it and jump or slide at the right moment
       const hoverT = 1.2;
-      const hover = Math.min(0.8 * c.v + 3, 23);
+      // it hovers in the middle of the view, clear of the ability buttons on the right
+      // (the camera shows about clamp(v·1.15 + 6.5, 17.5, 34) m with the hero at 24 %)
+      const viewM = clamp(c.v * 1.15 + 6.5, 17.5, 34);
+      const hover = Math.min(0.8 * c.v + 3, 0.46 * viewM);
       const mode = c.rng.pick(['low', 'head', 'wave']);
       const rush = c.rng.range(4, 7);
       const extra = { y0: 2.1, baseY0: 2.1, h: DIM.quad.h, hover, hoverT, diveY0: mode === 'head' ? 1.0 : 0.25, diveSpeed: 9, rush };

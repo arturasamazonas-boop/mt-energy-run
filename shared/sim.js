@@ -13,6 +13,7 @@ const DRONE_MAX = 6.5;
 const DRONE_CLIMB = 7; // m/s
 const DRONE_PULL_R = 3; // the drone only gathers bolts close by, so steering matters
 const MAGNET_R = 7.5;
+const DRONE_SHOW_T = 0.6; // s of hovering at its attack height before a drone attacks
 const SUPER_SPEED = ABILITIES.shield.speed; // m/s while the shield is on
 
 export class Sim {
@@ -295,6 +296,23 @@ export class Sim {
       return true;
     }
     return false;
+  }
+
+  /** Moves a Russian drone towards its attack height (low, head height or weaving). */
+  droneToAttackHeight(e, v, dt) {
+    let want = e.diveY0;
+    if (e.wave) {
+      e.waveT = (e.waveT || 0) + dt;
+      // weaves smoothly between knee height (jump it) and head height (slide under);
+      // the last moment before it reaches the hero it flies straight (fair to react)
+      if (e.waveY === undefined || !e.diving || e.x - this.x > (v + (e.rush || 0)) * 0.65) {
+        e.waveY = 0.25 + 0.4 * (1 - Math.cos(e.waveT * e.wave + (e.wavePh || 0)));
+      }
+      want = e.waveY;
+    }
+    const step = (e.diveSpeed || 6) * dt;
+    e.y0 = e.y0 > want ? Math.max(want, e.y0 - step) : Math.min(want, e.y0 + step);
+    e.y1 = e.y0 + e.h;
   }
 
   /**
@@ -601,27 +619,18 @@ export class Sim {
             if (e.hovering) {
               e.x += v * dt;
               e.hoverLeft -= dt;
-              e.y0 = e.baseY0 + 0.2 * Math.sin(e.hoverLeft * 7);
+              // it first bobs high, then drops to its attack height while still hovering,
+              // so the player sees how it will come before it does
+              if (e.hoverLeft > DRONE_SHOW_T) e.y0 = e.baseY0 + 0.2 * Math.sin(e.hoverLeft * 7);
+              else this.droneToAttackHeight(e, v, dt);
               e.y1 = e.y0 + e.h;
               if (e.hoverLeft <= 0) e.diving = true;
             }
           }
           if (e.diving) {
-            // heads for its attack height (a weaving one keeps changing it) and,
-            // when it charges, flies at the hero
-            let want = e.diveY0;
-            if (e.wave) {
-              e.waveT = (e.waveT || 0) + dt;
-              // weaves smoothly between knee height (jump it) and head height (slide under);
-              // the last moment before it reaches the hero it flies straight (fair to react)
-              if (e.waveY === undefined || e.x - this.x > (v + (e.rush || 0)) * 0.65) {
-                e.waveY = 0.25 + 0.4 * (1 - Math.cos(e.waveT * e.wave + (e.wavePh || 0)));
-              }
-              want = e.waveY;
-            }
-            const step = (e.diveSpeed || 6) * dt;
-            e.y0 = e.y0 > want ? Math.max(want, e.y0 - step) : Math.min(want, e.y0 + step);
-            e.y1 = e.y0 + e.h;
+            // keeps its attack height (a weaving one keeps changing it) and flies at the hero,
+            // past them and off the screen
+            this.droneToAttackHeight(e, v, dt);
             if (e.rush) e.x -= e.rush * dt;
           }
           if (px1 < e.x || px0 > e.x + e.w) continue;
