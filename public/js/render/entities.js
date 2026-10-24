@@ -71,7 +71,7 @@ export function drawObstacle(ctx, e, t, env) {
     case 'dropLoad':
       return dropLoad(ctx, e, env);
     case 'quad':
-      return quad(ctx, e, t);
+      return quad(ctx, e, t, env?.lang);
     default:
   }
 }
@@ -298,10 +298,26 @@ function dropLoad(ctx, e, env) {
 }
 
 /** Small inspection drone; its light blinks fast once it dives. */
-function quad(ctx, e, t) {
+function quad(ctx, e, t, lang = 'lt') {
   ctx.save();
   ctx.translate(0, e.y0);
   const w = e.w;
+  // flashing red warning above it while it hovers and dives
+  if ((e.hovering || e.diving) && e.y0 > (e.diveY0 ?? 0) + 0.05 && Math.floor(t * 6) % 2 === 0) {
+    const label = lang === 'en' ? 'RUSSIAN DRONE!!!' : 'RUSŲ DRONAS!!!';
+    ctx.save();
+    ctx.translate(w / 2, 1.7);
+    ctx.scale(1 / 100, -1 / 100);
+    ctx.font = '800 58px "Barlow Condensed", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.lineWidth = 9;
+    ctx.strokeStyle = 'rgba(20,0,0,0.85)';
+    ctx.strokeText(label, 0, 0);
+    ctx.fillStyle = '#FF2D2D';
+    ctx.fillText(label, 0, 0);
+    ctx.restore();
+  }
   // arms + rotors
   ctx.strokeStyle = '#2A2E35';
   ctx.lineWidth = 0.06;

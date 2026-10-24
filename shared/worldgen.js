@@ -175,14 +175,15 @@ const PATTERNS = [
     },
   },
   {
-    id: 'quad', tier: 2, w: 2.8, f: (c) => {
-      // flies in, hovers where you can see it (keeping pace with the hero) for 1.4 s,
-      // blinks, then dives to knee height and waits: jump it
+    id: 'quad', tier: 1, w: 4.5, f: (c) => {
+      // the "Russian drone": flies in, hovers where you can see it (keeping pace with
+      // the hero), blinks, then dives fast to knee height and waits: jump it
+      const hoverT = 1.2;
       const hover = Math.min(0.8 * c.v + 3, 23);
-      c.ob('quad', 1.0, { y0: 2.1, baseY0: 2.1, h: DIM.quad.h, hover, hoverT: 1.4, diveY0: 0.25 });
-      // the dive happens about 1.4 s later than its starting place suggests
-      c.jumpArc(1.0 + 1.4 - LEAD, 4);
-      return 1.0 + 1.4 + 0.9;
+      c.ob('quad', 1.0, { y0: 2.1, baseY0: 2.1, h: DIM.quad.h, hover, hoverT, diveY0: 0.25, diveSpeed: 9 });
+      // the dive happens hoverT later than its starting place suggests
+      c.jumpArc(1.0 + hoverT - LEAD, 4);
+      return 1.0 + hoverT + 0.9;
     },
   },
   { id: 'birds', tier: 2, w: 2, f: (c) => { c.ob('birds', 1.0, { move: -2.6 }); c.line(0.55, 1.05, 0.45, 3); return 1.45; } },
@@ -384,6 +385,20 @@ export function generateCity(seed, index) {
   if (rng.chance(0.65)) {
     const b = takeNear(start + len * rng.range(0.3, 0.8), 'high');
     if (b) b.k = 'token';
+  }
+
+  // Extra energy high in the sky (6.6–7 m): out of reach for a double jump, made for
+  // the jetpack. The sim shows it once the jetpack has been charged in that run.
+  if (rng.chance(0.6)) {
+    for (let tries = 0; tries < 5; tries++) {
+      const sx = start + len * rng.range(0.15, 0.7);
+      const ex = sx + 7 * 2.4;
+      // nothing to climb on underneath (a crate top + double jump could reach it)
+      if (list.some((e) => e.landable && e.x < ex + 10 && e.x + (e.w || 0) > sx - 14)) continue;
+      if (ex > end - GATE_ZONE) continue;
+      for (let i = 0; i < 8; i++) list.push({ k: 'bolt', x: sx + i * 2.4, y: 6.6 + 0.4 * Math.sin((Math.PI * i) / 7), sky: true });
+      break;
+    }
   }
 
   list.sort((a, b) => a.x - b.x);

@@ -307,6 +307,7 @@ export class Renderer {
       if (e.x < x0 || e.x > x1) continue;
       switch (e.k) {
         case 'bolt':
+          if (e.sky && !sim.skyOpen) break; // appears once the jetpack is charged
           this.drawBoltSprite(ctx, e, t);
           break;
         case 'part':

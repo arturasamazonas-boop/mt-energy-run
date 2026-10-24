@@ -946,7 +946,7 @@ function onGameEvent(type, ev) {
       hud.banner('☀️', t('tunnelOut'));
       break;
     case 'abilityReady':
-      hud.banner(t('abTitle'), t(ev.kind === 'shield' ? 'abShieldReady' : 'abJetReady'));
+      hud.banner(t('abTitle'), t(ev.kind === 'shield' ? 'abShieldReady' : 'abJetReady'), ev.sky ? t('skyHint') : '');
       break;
     default:
   }

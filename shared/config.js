@@ -31,10 +31,34 @@ export const SPEED = {
   ramp: 3600, // meters; larger = slower ramp
 };
 
-/** Nominal run speed (m/s) at a given distance. Deterministic, never depends on player actions. */
+function baseSpeed(d) {
+  return SPEED.min + (SPEED.max - SPEED.min) * (1 - Math.exp(-d / SPEED.ramp));
+}
+
+/**
+ * Nominal run speed (m/s) at a given distance. Deterministic, never depends on player actions.
+ * The pace runs one leg ahead of the base curve: Vilnius starts at 12.8 m/s (the
+ * curve's value at Klaipėda), Klaipėda starts at 15.4 (its value at Ryga), and so on,
+ * rising smoothly within each leg.
+ */
 export function speedAt(distance) {
   const d = Math.max(0, distance);
-  return SPEED.min + (SPEED.max - SPEED.min) * (1 - Math.exp(-d / SPEED.ramp));
+  const i = legIndex(d);
+  const s = legStart(i);
+  const u = legStart(i + 1) + ((d - s) / cityLength(i)) * cityLength(i + 1);
+  return baseSpeed(u);
+}
+
+// cumulative leg starts, cached (speedAt runs every step and in long integrals)
+const LEG_STARTS = [0];
+function legStart(i) {
+  while (LEG_STARTS.length <= i) LEG_STARTS.push(LEG_STARTS[LEG_STARTS.length - 1] + cityLength(LEG_STARTS.length - 1));
+  return LEG_STARTS[i];
+}
+function legIndex(d) {
+  let i = 0;
+  while (legStart(i + 1) <= d) i++;
+  return i;
 }
 
 /** Minimum time (s) needed to cover `distance` at the nominal speed curve. */
