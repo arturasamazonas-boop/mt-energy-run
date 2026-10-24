@@ -567,9 +567,21 @@ export class Sim {
               if (e.hoverLeft <= 0) e.diving = true;
             }
           }
-          if (e.diving && e.y0 > e.diveY0) {
-            e.y0 = Math.max(e.diveY0, e.y0 - (e.diveSpeed || 6) * dt);
+          if (e.diving) {
+            // heads for its attack height (a weaving one keeps changing it) and,
+            // when it charges, flies at the hero
+            let want = e.diveY0;
+            if (e.wave) {
+              e.waveT = (e.waveT || 0) + dt;
+              // swings between knee height (jump it) and head height (slide under);
+              // the last moment before it reaches the hero it stops switching (fair to react)
+              if (e.waveY === undefined || e.x - this.x > v * 0.45) e.waveY = Math.cos(e.waveT * e.wave + (e.wavePh || 0)) > 0 ? 1.0 : 0.25;
+              want = e.waveY;
+            }
+            const step = (e.wave && e.y0 < 1.05 ? 4 : e.diveSpeed || 6) * dt;
+            e.y0 = e.y0 > want ? Math.max(want, e.y0 - step) : Math.min(want, e.y0 + step);
             e.y1 = e.y0 + e.h;
+            if (e.rush) e.x -= e.rush * dt;
           }
           if (px1 < e.x || px0 > e.x + e.w) continue;
           if (py1 < e.y0 || py0 > e.y1) continue;

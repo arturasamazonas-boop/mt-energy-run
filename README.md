@@ -11,7 +11,7 @@ Naršyklėje veikiantis bėgimo žaidimas (runner) MT GROUP komandai. Pagrindini
 | Šuolis | bakstelėk **dešinę** ekrano pusę | Tarpas / ↑ / W |
 | Dvigubas šuolis | bakstelėk dar kartą ore | dar kartą Tarpas |
 | Nusileisti / čiuožti (ore – greitas kritimas) | laikyk **kairę** ekrano pusę | ↓ / S |
-| 🛡️ Skydas (3 s kliūtys nekenkia) | mygtukas virš „Čiuožti“ | Q |
+| ⚡ Super greitis (3 s bėgi 30 m/s, niekas nekenkia – nei kliūtys, nei dronai, nei duobės) | mygtukas virš „Čiuožti“ | Q |
 | 🚀 Jetpack (4 s skrydis: dešinė / ↑ – aukštyn, kairė / ↓ – žemyn; kliūtys nekenkia) | mygtukas virš „Šuolis“ | E |
 | Pauzė | ⏸ mygtukas | P / Esc |
 
@@ -19,7 +19,7 @@ Naršyklėje veikiantis bėgimo žaidimas (runner) MT GROUP komandai. Pagrindini
 - **3 projekto detalės** kiekviename mieste. Surinkęs visas, miesto gale paleidi projektą ★★★ ir gauni daugiklį +1.
 - **Bėgimas be sustojimų:** darbų užduočių (mini žaidimų) nebėra. Daugiklis auga tik už ★★★ projektus.
 - **Netikėtumai:** nuo krano vėlai nukrentantys kroviniai (po vieną, poromis arba dvigubo aukščio – tada reikia dvigubo šuolio) ir dronas, kuris atskrenda, pakimba matomoje vietoje, mirksi ir tada nusileidžia iki kelių aukščio – jį reikia peršokti. Vėlesnė bėgimo dalis greitesnė.
-- **Gebėjimai:** skydą ir jetpack įkrauna bėgimo metu surinkti žaibai (skydui reikia 160, jetpack 120; panaudojus krūvis prasideda iš naujo). Kol veikia gebėjimas, krūvis nekaupiamas.
+- **Gebėjimai:** super greitį (kode `shield`) ir jetpack įkrauna bėgimo metu surinkti žaibai (super greičiui reikia 160, jetpack 120; panaudojus krūvis prasideda iš naujo). Kol veikia gebėjimas, krūvis nekaupiamas.
 - **Galios priedai:** auksinis šalmas (apsaugo nuo vieno smūgio), transformatorius-magnetas, dronas (skrydis: dešinė pusė / ↑ – aukštyn, kairė / ↓ – žemyn), ekskavatorius (griauna kliūtis), sutartis x2.
 - **Dienos iššūkis:** visi tą dieną gauna tą pačią trasą.
 - Rekordų lentelės: visų laikų, šios savaitės ir dienos iššūkio.
@@ -145,3 +145,5 @@ Domeno keitimas neperkelia prisijungimo slapuko ar naršyklės siuntimų eilės.
 - Greitis eina viena atkarpa į priekį pagal kreivę 10 + 17·(1 − e^(−d/3600)): Vilnius startuoja 12,8 m/s, Klaipėda 15,4, Ryga 17,6, … iki ~27 m/s (`speedAt`, `shared/config.js`).
 - ~60 % atkarpų danguje (6,6–7 m) yra papildomos energijos eilė – dvigubu šuoliu nepasiekiama, tik jetpack (ar dronu). Ji pasirodo tik kai tame bėgime pirmą kartą įkraunamas jetpack.
 - Priešas dronas pasirodo dažniau (nuo Klaipėdos atkarpos), krenta greičiau, o kol kabo ir krenta virš jo mirksi raudonas „RUSŲ DRONAS!!!“.
+- Dronas puola vienu iš trijų būdų: žemai (peršokti), galvos aukštyje (pračiuožti arba aukštai peršokti) arba banguotai – šokinėja tarp abiejų aukščių, paskutinę ~0,45 s prieš herojų nebesikeičia. Kartais (40 %, ne banguotas) dar ir skrenda herojui priešais.
+- Super greitis (buvęs skydas): 3 s greitis iki 30 m/s, apsaugo nuo visko (ir duobių), po to per ~1–1,5 s grįžta į trasos greitį, dar 1 s apsauga nuo kliūčių. Tunelyje saugo, bet nepagreitina. Serveris leidžia kiekvienam panaudojimui sutaupyti laiko (`shieldTimeSaved`).
