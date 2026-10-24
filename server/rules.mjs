@@ -196,9 +196,10 @@ export function applyRun(data, s, run, { birthday = false } = {}) {
   if (perfect >= 18) give('starsall');
   if (st.realRuns >= 100) give('runs100');
   if ((st.dailyDays || []).length >= 7) give('daily7');
+  // the golden suit (Grand tour) is in the wardrobe before the outfit achievements are counted
+  if (has('grandtour') && !d.cosmetics.owned.includes('gold')) d.cosmetics.owned.push('gold');
   // workshop (also granted at purchase time, see buy())
   for (const id of workshopAchievements(d)) give(id);
-  if (has('grandtour') && !d.cosmetics.owned.includes('gold')) d.cosmetics.owned.push('gold');
 
   d.energy += energy;
   return { energy, unlocked, newBest };

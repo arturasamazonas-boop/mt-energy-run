@@ -8,6 +8,7 @@ import { audio } from '../audio.js';
 
 const DT = 1 / 120;
 
+const ATTRACT_START = 150; // m: the first greeting flyover in Vilnius is at about 290 m
 const QUALITY_KEY = 'mter.quality';
 
 export class Game {
@@ -68,7 +69,9 @@ export class Game {
   // ---------------------------------------------------------------------------
   attract() {
     this.mode = 'attract';
-    this.sim = new Sim({ seed: `attract-${Math.floor(Date.now() / 3.6e6)}`, upgrades: { magnet: 3 }, tunnels: true });
+    // no tunnel on the home screen, and it starts shortly before the first greeting plane
+    // ('Mindaugai – su gimtadieniu!') so the wish shows within a few seconds
+    this.sim = new Sim({ seed: `attract-${Math.floor(Date.now() / 3.6e6)}`, upgrades: { magnet: 3 }, startAt: ATTRACT_START });
     this.bot = new Bot();
     this.input.enabled = false;
     this.resetHero();

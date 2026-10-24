@@ -1770,6 +1770,7 @@ h3 {
 #toasts.top {
   top: calc(14px + var(--safe-t));
   bottom: auto;
+  max-width: min(42vw, 360px);
 }
 
 .toast {

@@ -382,6 +382,20 @@ export class Renderer {
       this.bannerIdx = new Map(); // flyover → wish shown in this run
     }
     this.greetingVisible = false;
+    // sky energy on screen sits at the banner's usual height: the plane then flies lower
+    let skyRow = false;
+    if (sim.skyOpen) {
+      const viewM = this.W / this.ppm;
+      for (const e of sim.entities) {
+        if (e.x > this.camX + viewM + 4) break;
+        if (e.sky && e.alive && e.x > this.camX - 4) {
+          skyRow = true;
+          break;
+        }
+      }
+    }
+    const wantY = this.H * (skyRow ? 0.45 : 0.335);
+    this.bannerY = this.bannerY ? this.bannerY + (wantY - this.bannerY) * 0.08 : wantY;
     for (const b of bannersNear(sim.seed, heroX, range)) {
       const cx = this.W * 0.55 + (b.x - heroX) * px;
       let idx = this.bannerIdx.get(b.x);
@@ -393,7 +407,7 @@ export class Renderer {
         idx = attract ? 0 : nextWish();
         this.bannerIdx.set(b.x, idx);
       }
-      drawSkyBanner(ctx, idx, lang, cx, this.H * 0.335, u, t);
+      drawSkyBanner(ctx, idx, lang, cx, this.bannerY, u, t);
       if (cx > -u * 6 && cx < this.W + u * 6) this.greetingVisible = true; // HUD banners wait for it
     }
   }
