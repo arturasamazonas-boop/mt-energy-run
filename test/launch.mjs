@@ -4,7 +4,8 @@ import { createApp } from '../server/app.mjs';
 import { createMemoryStore } from '../server/store-memory.mjs';
 
 const store = createMemoryStore();
-const server = createApp({ store, log: { warn() {}, error: console.error } });
+let codesSent = 0;
+const server = createApp({ store, sendCode: async () => { codesSent++; }, log: { warn() {}, error: console.error } });
 await new Promise(r => server.listen(0, '127.0.0.1', r));
 const base = `http://127.0.0.1:${server.address().port}`;
 try {
@@ -17,7 +18,19 @@ try {
       body: JSON.stringify({ name: `Employee ${n}` }),
     });
     assert.equal(response.status, 200, `employee ${n} can register from shared IP`);
+    const codeResponse = await fetch(base + '/api/email/code', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ email: `employee-${n}@example.com` }),
+    });
+    assert.equal(codeResponse.status, 200, `employee ${n} can request a code from shared IP`);
   }
+  assert.equal(codesSent, 250);
+  const repeatCode = await fetch(base + '/api/email/code', {
+    method: 'POST', headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ email: 'employee-0@example.com' }),
+  });
+  assert.equal(repeatCode.status, 429, 'per-email cooldown still protects against repeated codes');
+  assert.equal(codesSent, 250, 'rate-limited request does not send an email');
   // Concurrent delivery of the same result applies progression exactly once.
   const reg = await fetch(base + '/api/register', {
     method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name: 'Retry Test' }),
@@ -44,4 +57,4 @@ const processResult = spawnSync(process.execPath, ['server.mjs'], {
 });
 assert.notEqual(processResult.status, 0);
 assert.match(processResult.stderr, /DATABASE_URL is required in production/);
-console.log('ok (250 shared-IP registrations, concurrent retry, production persistence guard)');
+console.log('ok (250 shared-IP registrations and email codes, per-email cooldown, concurrent retry, production persistence guard)');
