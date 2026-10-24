@@ -285,7 +285,7 @@ export function cityStart(index) {
 // Abilities the player triggers (buttons / Q, E). Charged by bolts collected
 // during the run and emptied on use, so they come rarely: about once per 1-2 km.
 export const ABILITIES = {
-  shield: { cost: 160, duration: 3, speed: 50 }, // super run: nothing can hurt the hero, speed up to 50 m/s
+  shield: { cost: 160, duration: 3, speed: 30 }, // super run: nothing can hurt the hero, speed up to 30 m/s
   jet: { cost: 120, duration: 4 }, // fly: jump = up, slide = down; obstacles can't hit
 };
 

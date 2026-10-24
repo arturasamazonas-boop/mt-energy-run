@@ -177,12 +177,24 @@ const PATTERNS = [
   {
     id: 'quad', tier: 1, w: 4.5, f: (c) => {
       // the "Russian drone": flies in, hovers where you can see it (keeping pace with
-      // the hero), blinks, then dives fast to knee height and waits: jump it
+      // the hero), blinks, then attacks in one of three ways you only see once it moves:
+      //  low  – dives to knee height: jump it
+      //  head – drops to head height: slide under (or jump high)
+      //  wave – weaves up and down: watch it and jump or slide at the right moment
+      // and sometimes it also charges at the hero instead of waiting
       const hoverT = 1.2;
       const hover = Math.min(0.8 * c.v + 3, 23);
-      c.ob('quad', 1.0, { y0: 2.1, baseY0: 2.1, h: DIM.quad.h, hover, hoverT, diveY0: 0.25, diveSpeed: 9 });
+      const mode = c.rng.pick(['low', 'low', 'head', 'wave', 'wave']);
+      const rush = c.rng.chance(0.4) ? c.rng.range(3, 6) : 0; // (a weaving one never charges: too much at once)
+      const extra = { y0: 2.1, baseY0: 2.1, h: DIM.quad.h, hover, hoverT, diveY0: mode === 'head' ? 1.0 : 0.25, diveSpeed: 9 };
+      if (mode === 'wave') Object.assign(extra, { wave: c.rng.range(3.5, 4.5), wavePh: c.rng.range(0, Math.PI * 2) });
+      if (rush && mode !== 'wave') extra.rush = rush;
+      const o = c.ob('quad', 1.0, extra);
       // the dive happens hoverT later than its starting place suggests
-      c.jumpArc(1.0 + hoverT - LEAD, 4);
+      const t = 1.0 + hoverT - (extra.rush ? (rush * 0.6) / c.v : 0);
+      if (mode === 'low') c.jumpArc(t - LEAD, 4);
+      else if (mode === 'head') c.line(t - 0.15, t + 0.15, 0.45, 3);
+      o.mode = mode;
       return 1.0 + hoverT + 0.9;
     },
   },

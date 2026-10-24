@@ -256,7 +256,7 @@ console.log('ok');
   run(s, 2, (i) => ({ shield: i === 0 }));
   assert.ok(!s.dead, `the shield bridges trenches and stops drones (${s.deathCause})`);
   assert.ok(Math.abs(s.speed - ABILITIES.shield.speed) < 1, `super speed (${s.speed.toFixed(1)})`);
-  run(s, ABILITIES.shield.duration);
+  run(s, ABILITIES.shield.duration - 2 + 0.2);
   assert.equal(s.shieldT, 0);
   const mid = s.speed;
   assert.ok(mid > base + 1 && mid < ABILITIES.shield.speed, `eases back (${mid.toFixed(1)})`);
@@ -273,4 +273,22 @@ console.log('ok');
   f.charge.shield = ABILITIES.shield.cost;
   run(f, 1.5, (i) => ({ shield: i === 0 }));
   assert.ok(!f.dead, 'shield saves a fall');
+}
+{
+  // the Russian drone attacks low, at head height or weaving; a weaving one never charges
+  const { generateCity } = await import('../shared/worldgen.js');
+  const modes = {};
+  for (let k = 0; k < 40; k++) for (let ci = 1; ci < 6; ci++) {
+    for (const q of generateCity(`dr${k}`, ci).entities.filter((e) => e.k === 'quad')) {
+      modes[q.mode] = (modes[q.mode] || 0) + 1;
+      if (q.mode === 'wave') assert.ok(!q.rush, 'a weaving drone does not charge');
+    }
+  }
+  assert.ok(modes.low && modes.head && modes.wave, `all attack modes appear (${JSON.stringify(modes)})`);
+  // a head-height drone is passed by sliding under it
+  const s = new Sim({ seed: 'phys' });
+  s.loadedUntil = 99;
+  s.entities = [{ k: 'quad', x: s.x + 8, w: 1.1, y0: 1.0, y1: 1.55, h: 0.55, diving: true, diveY0: 1.0, alive: true, id: 'qh' }];
+  run(s, 1.2, () => ({ slide: true }));
+  assert.ok(!s.dead, 'slide under a head-height drone');
 }
