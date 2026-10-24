@@ -385,7 +385,7 @@ export const ACHIEVEMENT_BY_ID = byId(ACHIEVEMENTS);
 // Names
 // ---------------------------------------------------------------------------
 export const NAME_MIN = 2;
-export const NAME_MAX = 20;
+export const NAME_MAX = 21;
 const NAME_RE = /^[\p{L}\p{N}][\p{L}\p{N} ._'-]*$/u;
 
 export function normalizeName(raw) {
