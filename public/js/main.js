@@ -41,8 +41,9 @@ async function retrySavedRuns() {
   if (!playerId || state.profile.guest || retryingResults) return;
   retryingResults = true;
   try {
-    // the run being played right now is not sent (only its safety copy is kept)
-    const active = RUNNING.includes(game.mode) ? state.run?.runId : null;
+    // the run being played right now (the Second-chance offer included) is not sent:
+    // only its safety copy is kept, until the final result replaces it
+    const active = state.run?.live ? state.run.runId : null;
     const results = await runOutbox.flush(playerId, active);
     if (results.length && state.profile?.id === playerId) {
       const me = await api.me();
@@ -95,7 +96,7 @@ setInterval(syncNow, 30000);
 // a closed tab or a phone killing the browser in the background does not lose it
 function keepRunInProgress() {
   const run = state.run;
-  if (!run?.runId || run.submitted || !game.sim || !RUNNING.includes(game.mode) || state.profile?.guest) return;
+  if (!run?.runId || run.submitted || !run.live || !game.sim || state.profile?.guest) return;
   runOutbox.keep(state.profile.id, run.runId, game.sim.summary());
 }
 window.addEventListener('pagehide', keepRunInProgress);
@@ -690,10 +691,12 @@ function mapScreen() {
   const pts = CITIES.map((c) => ({ x: POS[c.id][0], y: POS[c.id][1] }));
   const minX = 20;
   const maxX = 1000;
-  const minY = 20;
-  const maxY = 850;
   const best = p.stats.bestCity || 0;
   const reached = (i) => i <= best;
+  // a phone held upright shows the map small: bigger labels and dots there
+  const k = innerHeight > innerWidth && innerWidth < 600 ? 1.7 : 1;
+  const minY = k > 1 ? -10 : 20; // room for the bigger top label
+  const maxY = 850;
   let svg = `<svg viewBox="${minX} ${minY} ${maxX - minX} ${maxY - minY}" role="img" aria-label="${t('mapTitle')}">
     <defs><pattern id="grid" width="26" height="26" patternUnits="userSpaceOnUse"><path d="M26 0H0V26" fill="none" stroke="rgba(255,255,255,.05)"/></pattern></defs>
     <rect x="${minX}" y="${minY}" width="${maxX - minX}" height="${maxY - minY}" fill="url(#grid)"/>`;
@@ -713,8 +716,8 @@ function mapScreen() {
       const f = (k + 1) / (arr.length + 1);
       const x = a.x + (b.x - a.x) * f;
       const y = a.y + (b.y - a.y) * f;
-      svg += `<circle cx="${x}" cy="${y}" r="6" fill="${best > i || (best === i && p.stats.bestDistance >= w.from) ? '#FFD800' : '#3A3E46'}" stroke="#15171b" stroke-width="2"/>
-        <text x="${x + 9}" y="${y + 20}" fill="#c9ced6" font-family="Barlow Condensed" font-weight="700" font-size="15">${esc(L(w.name))}</text>`;
+      svg += `<circle cx="${x}" cy="${y}" r="${6 * k}" fill="${best > i || (best === i && p.stats.bestDistance >= w.from) ? '#FFD800' : '#3A3E46'}" stroke="#15171b" stroke-width="2"/>
+        <text x="${x + 9 * k}" y="${y + 20 * k}" fill="#c9ced6" font-family="Barlow Condensed" font-weight="700" font-size="${15 * k}">${esc(L(w.name))}</text>`;
     });
   });
   CITIES.forEach((c, i) => {
@@ -722,10 +725,10 @@ function mapScreen() {
     const on = reached(i);
     const stars = p.cityStars?.[i] || 0;
     svg += `<g data-city="${i}" style="cursor:pointer">
-      ${c.mt ? `<circle cx="${q.x}" cy="${q.y}" r="17" fill="none" stroke="#FFD800" stroke-width="3" stroke-dasharray="4 3"/>` : ''}
-      <circle cx="${q.x}" cy="${q.y}" r="11" fill="${on ? '#FFD800' : '#3A3E46'}" stroke="#15171b" stroke-width="3"/>
-      <text x="${q.x}" y="${q.y - 22}" text-anchor="middle" fill="${on ? '#fff' : '#9aa3ad'}" font-family="Barlow Condensed" font-weight="700" font-size="24">${esc(L(c.name))}</text>
-      <text x="${q.x}" y="${q.y + 34}" text-anchor="middle" fill="#FFD800" font-size="18">${'★'.repeat(stars)}<tspan fill="rgba(255,255,255,.2)">${'★'.repeat(3 - stars)}</tspan></text>
+      ${c.mt ? `<circle cx="${q.x}" cy="${q.y}" r="${17 * k}" fill="none" stroke="#FFD800" stroke-width="3" stroke-dasharray="4 3"/>` : ''}
+      <circle cx="${q.x}" cy="${q.y}" r="${11 * k}" fill="${on ? '#FFD800' : '#3A3E46'}" stroke="#15171b" stroke-width="3"/>
+      <text x="${q.x}" y="${q.y - 22 * k}" text-anchor="middle" fill="${on ? '#fff' : '#9aa3ad'}" font-family="Barlow Condensed" font-weight="700" font-size="${24 * k}">${esc(L(c.name))}</text>
+      <text x="${q.x}" y="${q.y + 34 * k}" text-anchor="middle" fill="#FFD800" font-size="${18 * k}">${'★'.repeat(stars)}<tspan fill="rgba(255,255,255,.2)">${'★'.repeat(3 - stars)}</tspan></text>
     </g>`;
   });
   svg += '</svg>';
@@ -916,6 +919,7 @@ async function startRun(mode) {
   }
   const markers = runMarkers(await boardReq);
   state.busy = false;
+  run.live = true; // until its game-over screen or until it is left
   state.run = run;
   show('', { shadeMode: 'none' });
   // the touch icons step back once a player knows the controls
@@ -1044,10 +1048,16 @@ function onGameEvent(type, ev) {
     case 'tunnelCrash':
     case 'tunnelOut': {
       hud.tunnelTip(null);
-      if (type === 'tunnelCrash') {
-        const why = t(`hit_${ev.kind}`);
-        hud.banner('💥', t('tunnelCrash'), why === `hit_${ev.kind}` ? '' : why);
-      } else hud.banner('☀️', t('tunnelOut'));
+      // a greeting plane on screen is not covered: the crash reason goes to a small toast
+      // instead (checked once the road is drawn again, a moment after leaving the tunnel)
+      const why = t(`hit_${ev.kind}`);
+      const reason = why === `hit_${ev.kind}` ? '' : why;
+      setTimeout(() => {
+        if (type === 'tunnelCrash') {
+          if (renderer.greetingVisible) toast(t('tunnelCrash'), reason || 'MT GROUP', '💥');
+          else hud.banner('💥', t('tunnelCrash'), reason);
+        } else if (!renderer.greetingVisible) hud.banner('☀️', t('tunnelOut'));
+      }, 120);
       const ready = pendingReady;
       pendingReady = null;
       if (ready) {
@@ -1112,6 +1122,7 @@ function abandonRun() {
   if (!game.sim || game.mode === 'over') return;
   const s = game.sim.summary();
   const playerId = state.profile?.id;
+  if (state.run) state.run.live = false;
   // the run counts: when the server confirms it, show the new energy and any achievements
   submitRun(s)
     .then((r) => {
@@ -1172,6 +1183,7 @@ async function submitRun(summary) {
 }
 
 async function onRunOver(info) {
+  if (state.run) state.run.live = false;
   prefs.set('tutDone', true);
   hud.hint(null);
   const s = info.summary;

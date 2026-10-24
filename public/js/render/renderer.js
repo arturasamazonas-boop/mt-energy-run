@@ -255,6 +255,11 @@ export class Renderer {
       ctx.globalAlpha = 1;
     };
     this.scenery.drawSky(ctx, sky, t, this.camX);
+    // when the camera lifts (flying, sky energy) the city backdrop moves down with the
+    // road, so the street stays under the hero and no gap opens below it
+    const lift = Math.round(this.camY * this.ppm);
+    ctx.save();
+    ctx.translate(0, lift);
     this.scenery.drawFar(ctx, this.camX, sky);
     this.scenery.tint(ctx, sky, this.groundY, 0.6);
     emit(() => this.scenery.drawFar(ctx, this.camX, sky, true));
@@ -262,11 +267,15 @@ export class Renderer {
     this.scenery.tint(ctx, sky, this.groundY, 0.6);
     emit(() => this.scenery.drawMid(ctx, this.camX, true));
     this.scenery.drawNear(ctx, this.camX);
-    this.drawWorldBackdrop(ctx, sim, t, view.lang || this.lang);
+    ctx.restore();
+    this.drawWorldBackdrop(ctx, sim, t, view.lang || this.lang); // world coordinates: already lifted
+    ctx.save();
+    ctx.translate(0, lift);
     this.scenery.tint(ctx, sky, this.groundY, 0.6);
     emit(() => this.scenery.drawNear(ctx, this.camX, true, sky.night));
     // during a run the scenery steps back so obstacles and pickups read at a glance
     if (!view.attract && this.calm) this.calmBackdrop(ctx, sky);
+    ctx.restore();
     // birthday wishes towed across the sky (after the haze, so they stay crisp)
     this.drawSkyBanners(ctx, sim, heroX, t, view.lang || this.lang, view.attract);
 
