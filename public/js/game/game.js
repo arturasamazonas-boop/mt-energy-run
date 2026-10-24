@@ -19,6 +19,7 @@ export class Game {
       if (q === 0.5 || q === 0.75) {
         renderer.quality = q;
         renderer.W = 0;
+        renderer.resize();
       }
     } catch {
       /* private mode */
@@ -47,10 +48,16 @@ export class Game {
     this.running = true;
     const loop = (now) => {
       if (!this.running) return;
-      const dt = Math.min(0.05, (now - this.last) / 1000);
+      const raw = (now - this.last) / 1000;
+      const dt = Math.min(0.05, raw);
       this.last = now;
-      this.frame(dt);
+      // one bad frame must never stop the game for good: the next one is always asked for
       requestAnimationFrame(loop);
+      try {
+        this.frame(dt, raw);
+      } catch (e) {
+        console.error(e);
+      }
     };
     requestAnimationFrame((n) => {
       this.last = n;
@@ -146,9 +153,9 @@ export class Game {
     }
   }
 
-  frame(dt) {
+  frame(dt, raw = dt) {
     this.t += dt;
-    this.adaptQuality(dt);
+    this.adaptQuality(Math.min(raw, 0.5)); // the real frame time (dt itself is capped at 50 ms)
     const sim = this.sim;
     if (!sim) return;
 
