@@ -29,6 +29,14 @@ Naršyklėje veikiantis bėgimo žaidimas (runner) MT GROUP komandai. Pagrindini
 
 Maršrutas: Vilnius → Klaipėda → Ryga → Talinas → Helsinkis → Stokholmas → Kopenhaga → Hamburgas → Amsterdamas → Briuselis → Londonas → Paryžius → Madridas → Roma → Viena → Praha → Berlynas → Varšuva → vėl Vilnius (2-as ratas sunkesnis). MT GROUP projektų vietos (Vilnius, Klaipėdos SGD terminalas, Paldiskis, Kalundborgas, Brunsbüttel) pažymėtos atskirai.
 
+## Įdiegimas telefone
+
+Pradžios ir registracijos ekranų viršuje yra „Įdiegti“ mygtukas su bėgančio Mindaugo ikona.
+„Chrome“ / „Edge“, kai naršyklė leidžia įdiegti, jis atveria įprastą įdiegimo langą.
+„iPhone“ / „iPad“ rodomi „Safari“ veiksmai: „Bendrinti“ → „Į pradžios ekraną“ → „Pridėti“.
+Kitose naršyklėse pateikiami atitinkami meniu veiksmai. Paleidus įdiegtą programėlę mygtukas paslepiamas.
+Ikonos: `public/assets/icon-mindaugas-{180,192,512}.png` ir atskira `maskable` versija „Android“ formoms.
+
 ## Paskyros
 
 - Pirmą kartą žaidėjas įveda tik **vardą**. Paskyra išsaugoma naršyklės slapuke (HttpOnly, 2 metams).

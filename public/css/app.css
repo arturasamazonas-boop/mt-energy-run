@@ -365,6 +365,54 @@ h3 {
   align-items: center;
   justify-content: space-between;
   gap: 10px;
+  flex-wrap: wrap;
+}
+
+.topbar .brand,
+.onboard-head,
+.onboard-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.topbar .brand,
+.onboard-head {
+  flex-wrap: wrap;
+}
+
+.onboard-head {
+  justify-content: space-between;
+}
+
+.onboard-actions {
+  margin-left: auto;
+  gap: 8px;
+}
+
+.install-chip {
+  height: 44px;
+  padding: 0 12px 0 7px;
+  gap: 8px;
+  color: var(--y);
+  border-color: rgba(255, 216, 0, 0.4);
+  background: rgba(18, 25, 40, 0.88);
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.install-chip:hover {
+  border-color: var(--y);
+  background: rgba(34, 42, 56, 0.95);
+}
+
+.install-chip img {
+  flex: none;
+  border-radius: 7px;
+}
+
+.install-chip svg {
+  width: 17px;
+  height: 17px;
 }
 
 .topbar .right {
@@ -1198,6 +1246,75 @@ h3 {
   gap: 10px;
   justify-content: center;
   flex-wrap: wrap;
+}
+
+/* Native modal keeps focus inside the installation instructions. */
+.install-dialog {
+  margin: auto;
+  width: min(440px, calc(100% - 32px));
+  color: var(--ink);
+  text-align: left;
+  background: #171d2a;
+}
+
+.install-dialog:not([open]) {
+  display: none;
+}
+
+.install-dialog::backdrop {
+  background: rgba(5, 10, 20, 0.75);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+.install-heading {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+}
+
+.install-heading > img {
+  flex: none;
+  border-radius: 18px;
+}
+
+.install-heading small {
+  color: var(--y);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+}
+
+.install-heading .icon-btn {
+  margin-left: auto;
+  flex: none;
+}
+
+.install-dialog p {
+  margin: 0;
+  line-height: 1.5;
+}
+
+.install-steps {
+  display: grid;
+  gap: 14px;
+  margin: 4px 0 10px;
+  padding-left: 24px;
+  line-height: 1.5;
+}
+
+.install-steps li {
+  padding-left: 5px;
+}
+
+.install-steps li::marker {
+  color: var(--y);
+  font-weight: 700;
+}
+
+.install-dialog .icon-btn:focus-visible {
+  outline: 3px solid var(--y);
+  outline-offset: 2px;
 }
 
 .over {
