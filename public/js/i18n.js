@@ -3,6 +3,15 @@ import { prefs } from './prefs.js';
 
 const STR = {
   lt: {
+    install: 'Įdiegti',
+    installIntro: 'Bėk vienu paspaudimu iš savo pradžios ekrano.',
+    installIOS1: '„Safari“ naršyklėje atverk šį puslapį ir pasirink „Bendrinti“ (Share).',
+    installIOS2: 'Pasirink „Į pradžios ekraną“ (Add to Home Screen).',
+    installIOS3: 'Jei rodomas „Open as Web App“, palik jį įjungtą. Paspausk „Pridėti“ (Add).',
+    installMac1: '„Safari“ meniu „File“ pasirink „Add to Dock“.',
+    installMac2: 'Patvirtink „Add“ – žaidimą rasi savo „Dock“.',
+    installMenu1: 'Naršyklės meniu ieškok „Įdiegti programėlę“ (Install app) arba „Pridėti prie pagrindinio ekrano“.',
+    installMenu2: 'Patvirtink įdiegimą. Jei tokio pasirinkimo nėra, atverk šį puslapį „Chrome“, „Edge“ arba „Safari“.',
     tagline: 'Bėk per Europą. Statyk ateities energetiką.',
     play: 'BĖGTI',
     daily: 'Dienos iššūkis',
@@ -223,6 +232,15 @@ const STR = {
     km: 'km',
   },
   en: {
+    install: 'Install',
+    installIntro: 'Start running straight from your home screen.',
+    installIOS1: 'Open this page in Safari and choose Share.',
+    installIOS2: 'Choose Add to Home Screen.',
+    installIOS3: 'If Open as Web App is shown, leave it on. Tap Add.',
+    installMac1: 'In Safari, choose File → Add to Dock.',
+    installMac2: 'Confirm Add – find the game in your Dock.',
+    installMenu1: 'In your browser menu, look for Install app or Add to Home screen.',
+    installMenu2: 'Confirm installation. If the option is missing, open this page in Chrome, Edge or Safari.',
     tagline: 'Run across Europe. Build the energy of tomorrow.',
     play: 'RUN',
     daily: 'Daily challenge',

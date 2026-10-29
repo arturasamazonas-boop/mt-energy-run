@@ -15,6 +15,7 @@ import { Hud } from './ui/hud.js';
 import { runTask } from './ui/tasks.js';
 import { ICON } from './ui/icons.js';
 import { emailDialog } from './ui/email.js';
+import { installButton, bindInstallButton } from './ui/install.js';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const layer = $('#layer');
@@ -385,7 +386,7 @@ function onboardScreen() {
     <div class="screen onboard">
       <div class="hero-wrap"><canvas class="portrait"></canvas></div>
       <form class="panel" autocomplete="off">
-        <div style="display:flex;justify-content:space-between;align-items:center"><img class="logo" src="/assets/mt-logo-light.png" alt="MT GROUP"><button type="button" class="chip" data-lang>${ICON.globe}${getLang() === 'lt' ? 'EN' : 'LT'}</button></div>
+        <div class="onboard-head"><img class="logo" src="/assets/mt-logo-light.png" alt="MT GROUP"><div class="onboard-actions">${installButton()}<button type="button" class="chip" data-lang>${ICON.globe}${getLang() === 'lt' ? 'EN' : 'LT'}</button></div></div>
         <h1>${t('welcomeTitle')}</h1>
         <div class="muted">${t('welcomeText')}</div>
         <input class="field" name="v" maxlength="21" placeholder="${t('namePh')}" autocomplete="nickname" enterkeyhint="go" required>
@@ -395,6 +396,7 @@ function onboardScreen() {
       </form>
     </div>`, { shadeMode: 'full' });
   stopPortraits.push(portrait($('canvas.portrait', el), 'suit', { wave: true }));
+  bindInstallButton(el);
   const form = $('form', el);
   const inputEl = $('input', form);
   const err = $('.error', form);
@@ -468,7 +470,7 @@ function homeScreen() {
   const el = show(`
     <div class="screen home">
       <div class="topbar">
-        <img class="logo" src="/assets/mt-logo-light.png" alt="MT GROUP">
+        <div class="brand"><img class="logo" src="/assets/mt-logo-light.png" alt="MT GROUP">${installButton()}</div>
         <div class="right">
           <span class="chip" title="${t('energy')}"><span class="bolt">${ICON.bolt}</span>${fmtNum(p.energy)}</span>
           <button class="chip" data-go="profile">${ICON.user}${esc(p.name)}</button>
@@ -495,6 +497,7 @@ function homeScreen() {
         <span class="ver">v${GAME_VERSION}${state.online ? '' : ' · offline'}</span>
       </div>
     </div>`);
+  bindInstallButton(el);
   click($('[data-play]', el), () => startRun('normal'));
   click($('[data-daily]', el), () => startRun('daily'));
   el.querySelectorAll('[data-go]').forEach((b) =>

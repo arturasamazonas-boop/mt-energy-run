@@ -3,6 +3,7 @@ const S = (p, extra = '') => `<svg viewBox="0 0 24 24" fill="none" stroke="curre
 const F = (p) => `<svg viewBox="0 0 24 24" fill="currentColor">${p}</svg>`;
 
 export const ICON = {
+  download: S('<path d="M12 3v12M7 10l5 5 5-5M4 16v5h16v-5"/>'),
   bolt: F('<path d="M13.5 2 4 13.5h6.5L9 22l10-12.5h-6.6L13.5 2z"/>'),
   play: F('<path d="M7 4.5v15a1 1 0 0 0 1.5.86l12-7.5a1 1 0 0 0 0-1.72l-12-7.5A1 1 0 0 0 7 4.5z"/>'),
   trophy: S('<path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0V4z"/><path d="M17 5h3v2a4 4 0 0 1-4 4M7 5H4v2a4 4 0 0 0 4 4"/>'),
