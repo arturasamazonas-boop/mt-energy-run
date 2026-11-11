@@ -190,16 +190,28 @@ const PATTERNS = [
       // (the camera shows about clamp(v·1.15 + 6.5, 17.5, 34) m with the hero at 24 %)
       const viewM = clamp(c.v * 1.15 + 6.5, 17.5, 34);
       const hover = Math.min(0.8 * c.v + 3, 0.46 * viewM);
-      const mode = c.rng.pick(['low', 'head', 'wave']);
-      const rush = c.rng.range(4, 7);
+      //  feint – comes in low, lifts to head height ~0.55 s before the hero: slide
+      // every one of them climbs after a hero who jumps too early (see sim)
+      const mode = c.rng.weighted([['low', 3], ['head', 3], ['wave', 2], ['feint', 2]]);
+      const rush = c.rng.range(4, 9);
       const extra = { y0: 2.1, baseY0: 2.1, h: DIM.quad.h, hover, hoverT, diveY0: mode === 'head' ? 1.0 : 0.25, diveSpeed: 9, rush };
       if (mode === 'wave') Object.assign(extra, { wave: c.rng.range(4, 5.5), wavePh: c.rng.range(0, Math.PI * 2) });
+      if (mode === 'feint') extra.feint = true;
       const o = c.ob('quad', 1.0, extra);
       // the attack starts hoverT later than its starting place suggests, and it closes in
       const t = 1.0 + hoverT - (rush * 0.6) / c.v;
       if (mode === 'low') c.jumpArc(t - LEAD, 4);
       else if (mode === 'head') c.line(t - 0.15, t + 0.15, 0.45, 3);
       o.mode = mode;
+      // sometimes a second one right behind it, at the other height: jump, then slide (or back)
+      if ((mode === 'low' || mode === 'head') && c.rng.chance(0.3)) {
+        const mode2 = mode === 'low' ? 'head' : 'low';
+        const r2 = c.rng.range(3, 5);
+        const meet = c.X(t + 0.8);
+        const y = mode2 === 'head' ? 1.0 : 0.25;
+        c.ob('quad', 0, { x: meet + (r2 * 60) / (c.v + r2), y0: y, diveY0: y, h: DIM.quad.h, diving: true, diveSpeed: 9, rush: r2, mode: mode2 });
+        return 1.0 + hoverT + 1.6;
+      }
       return 1.0 + hoverT + 0.9;
     },
   },
@@ -371,7 +383,7 @@ export function generateCity(seed, index) {
   if (boss) {
     // six drones one after another, each needing its own move (jump / slide / timing);
     // they fly in at their attack height and come at the hero
-    const modes = ['low', 'head', 'wave', 'low', 'head', 'low'];
+    const modes = ['low', 'head', 'feint', 'wave', 'head', 'low'];
     const x0 = end - GATE_ZONE - bossLen + 1.5 * bossV;
     for (let k = 0; k < BOSS.drones; k++) {
       const mode = modes[k % modes.length];
@@ -383,6 +395,7 @@ export function generateCity(seed, index) {
         diving: true, rush, mode, boss: index, landable: false,
       };
       if (mode === 'wave') Object.assign(drone, { wave: rng.range(4, 5.5), wavePh: rng.range(0, Math.PI * 2) });
+      if (mode === 'feint') drone.feint = true;
       drone.y1 = drone.y0 + drone.h;
       list.push(drone);
     }

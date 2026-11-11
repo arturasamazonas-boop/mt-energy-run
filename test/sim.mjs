@@ -307,13 +307,13 @@ console.log('ok');
 {
   // the drone attacks in three equally likely ways and always flies on past the hero
   const { generateCity } = await import('../shared/worldgen.js');
-  const modes = { low: 0, head: 0, wave: 0 };
+  const modes = { low: 0, head: 0, wave: 0, feint: 0 };
   for (let k = 0; k < 60; k++) for (let ci = 1; ci < 6; ci++) for (const q of generateCity(`dq${k}`, ci).entities.filter((e) => e.k === 'quad' && e.boss === undefined)) {
     modes[q.mode]++;
     assert.ok(q.rush > 0, 'every drone flies at the hero');
   }
-  const n = modes.low + modes.head + modes.wave;
-  for (const m of Object.keys(modes)) assert.ok(modes[m] > n * 0.2, `${m} drones are common (${JSON.stringify(modes)})`);
+  const n = modes.low + modes.head + modes.wave + modes.feint;
+  for (const m of Object.keys(modes)) assert.ok(modes[m] > n * 0.1, `${m} drones are common (${JSON.stringify(modes)})`);
   const s = new Sim({ seed: 'phys' });
   s.loadedUntil = 99;
   s.entities = [{ k: 'quad', x: s.x + 30, w: 1.1, h: 0.55, y0: 1.0, y1: 1.55, diveY0: 1.0, diving: true, rush: 5, diveSpeed: 9, alive: true, id: 'qr', mode: 'head' }];
@@ -358,4 +358,32 @@ console.log('ok');
   const swarm = generateCity('bossT', 2).entities.filter((e) => e.boss !== undefined);
   assert.equal(swarm.length, BOSS.drones);
   assert.equal(generateCity('bossT', 1).entities.filter((e) => e.boss !== undefined).length, 0);
+}
+
+{
+  // v2: drones hunt a hero who jumps too early; a head-height one can't be single-jumped
+  const mk = (mode) => {
+    const s = new Sim({ seed: 'phys' });
+    s.loadedUntil = 99;
+    const y = mode === 'head' ? 1.0 : 0.25;
+    s.entities = [{ k: 'quad', x: s.x + 14, w: 1.1, h: 0.55, y0: y, y1: y + 0.55, diveY0: y, diving: true, rush: 4, diveSpeed: 9, alive: true, id: 'h', mode }];
+    return s;
+  };
+  let jumpedOver = 0;
+  for (let f = 0; f < 60; f++) {
+    const s = mk('head');
+    for (let i = 0; i < 160 && !s.dead; i++) s.step(1 / 120, { jump: i === f, jumpHeld: true });
+    if (!s.dead) jumpedOver++;
+  }
+  assert.equal(jumpedOver, 0, 'no single jump clears a head-height hunter');
+  const sl = mk('head');
+  for (let i = 0; i < 160 && !sl.dead; i++) sl.step(1 / 120, { slide: true });
+  assert.ok(!sl.dead, 'sliding under it works');
+  let lowOk = 0;
+  for (let f = 0; f < 60; f++) {
+    const s = mk('low');
+    for (let i = 0; i < 160 && !s.dead; i++) s.step(1 / 120, { jump: i === f, jumpHeld: true });
+    if (!s.dead) lowOk++;
+  }
+  assert.ok(lowOk > 0 && lowOk < 40, `a low hunter needs a well-timed jump (${lowOk}/60 timings work)`);
 }

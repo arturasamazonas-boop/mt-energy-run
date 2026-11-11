@@ -14,7 +14,10 @@ const DRONE_CLIMB = 7; // m/s
 const DRONE_PULL_R = 3; // the drone only gathers bolts close by, so steering matters
 const MAGNET_R = 7.5;
 const DOUBLE_MIN_PEAK = 3.4; // m: a double jump always clears a permit stack (2.75 m)
-const DRONE_SHOW_T = 0.6; // s of hovering at its attack height before a drone attacks
+const DRONE_SHOW_T = 0.6;
+const DRONE_FEINT_T = 0.55; // s before the hero when a feinting drone lifts to head height
+const DRONE_HUNT_M = 14; // m ahead within which a drone climbs after a jumping hero
+const DRONE_HUNT_SPEED = 7; // m/s it climbs at // s of hovering at its attack height before a drone attacks
 const SUPER_SPEED = ABILITIES.shield.speed; // m/s while the shield is on
 
 export class Sim {
@@ -351,6 +354,9 @@ export class Sim {
   /** Moves a Russian drone towards its attack height (low, head height or weaving). */
   droneToAttackHeight(e, v, dt) {
     let want = e.diveY0;
+    const d = e.x - this.x;
+    // a feint: it comes in low, then lifts to head height at the last moment
+    if (e.feint && e.diving && d < (v + (e.rush || 0)) * DRONE_FEINT_T) want = 1.0;
     if (e.wave) {
       e.waveT = (e.waveT || 0) + dt;
       // weaves smoothly between knee height (jump it) and head height (slide under);
@@ -360,7 +366,19 @@ export class Sim {
       }
       want = e.waveY;
     }
-    const step = (e.diveSpeed || 6) * dt;
+    // a hunter: while the hero is in the air close ahead of it, it climbs to meet them
+    // (a head-height one up to 2.6 m: only a well-timed double jump clears it, sliding is
+    // the safe answer; a low one only up to 1.2 m: jump it at the top of the jump)
+    let climb = 0;
+    if (e.diving && d > -0.5 && d < DRONE_HUNT_M && !this.onGround && !this.flying && this.jetT === 0 && !this.tunnel) {
+      const cap = e.mode === 'low' ? 1.2 : 2.6;
+      const hunt = Math.min(cap, this.y + 0.35);
+      if (hunt > want) {
+        want = hunt;
+        climb = DRONE_HUNT_SPEED;
+      }
+    }
+    const step = (climb && want > e.y0 ? climb : e.diveSpeed || 6) * dt;
     e.y0 = e.y0 > want ? Math.max(want, e.y0 - step) : Math.min(want, e.y0 + step);
     e.y1 = e.y0 + e.h;
   }
