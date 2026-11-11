@@ -308,7 +308,7 @@ console.log('ok');
   // the drone attacks in three equally likely ways and always flies on past the hero
   const { generateCity } = await import('../shared/worldgen.js');
   const modes = { low: 0, head: 0, wave: 0 };
-  for (let k = 0; k < 60; k++) for (let ci = 1; ci < 6; ci++) for (const q of generateCity(`dq${k}`, ci).entities.filter((e) => e.k === 'quad')) {
+  for (let k = 0; k < 60; k++) for (let ci = 1; ci < 6; ci++) for (const q of generateCity(`dq${k}`, ci).entities.filter((e) => e.k === 'quad' && e.boss === undefined)) {
     modes[q.mode]++;
     assert.ok(q.rush > 0, 'every drone flies at the hero');
   }
@@ -337,4 +337,25 @@ console.log('ok');
     assert.equal(s.stats.tunnels, 0);
     assert.ok(s.entities.some((e) => e.alive && e.x > s.x && e.x < p.x0 + p.len && e.k !== 'tunnelOut' && e.k !== 'tunnelIn'), 'the road under it is there');
   }
+}
+{
+  // v2: bolt combo multiplies points, a missed bolt resets it; speed never stops rising
+  const { speedAt, comboMult } = await import('../shared/config.js');
+  assert.ok(speedAt(60000) > speedAt(30000) + 2 && speedAt(30000) > speedAt(15000), 'endless speed');
+  const s = new Sim({ seed: 'phys' });
+  s.loadedUntil = 99;
+  s.entities = [];
+  for (let i = 0; i < 45; i++) s.entities.push({ k: 'bolt', x: s.x + 2 + i * 0.6, y: 0.8, alive: true, id: `c${i}` });
+  s.entities.push({ k: 'bolt', x: s.x + 40, y: 5, alive: true, id: 'high' }); // out of reach on foot
+  s.entities.push({ k: 'bolt', x: s.x + 46, y: 0.8, alive: true, id: 'after' });
+  run(s, 2.4);
+  assert.ok(s.combo >= 40 && comboMult(s.combo) >= 2, `combo builds (${s.combo})`);
+  run(s, 2);
+  assert.ok(s.combo <= 2 && s.maxCombo >= 45, `a missed bolt resets it (${s.combo}, max ${s.maxCombo})`);
+  // boss: a drone swarm before every third gate, a clean run through gives the bonus
+  const { generateCity } = await import('../shared/worldgen.js');
+  const { BOSS } = await import('../shared/config.js');
+  const swarm = generateCity('bossT', 2).entities.filter((e) => e.boss !== undefined);
+  assert.equal(swarm.length, BOSS.drones);
+  assert.equal(generateCity('bossT', 1).entities.filter((e) => e.boss !== undefined).length, 0);
 }

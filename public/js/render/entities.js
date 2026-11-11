@@ -357,8 +357,8 @@ function quad(ctx, e, t, lang = 'lt') {
     ctx.ellipse(x, 0.5, 0.26 * Math.abs(Math.cos(t * 40 + x)) + 0.05, 0.04, 0, 0, Math.PI * 2);
     ctx.fill();
   }
-  // body (white rim for contrast)
-  ctx.fillStyle = '#3A4149';
+  // body (white rim for contrast); the swarm (boss) drones are dark red
+  ctx.fillStyle = e.boss !== undefined ? '#6B1414' : '#3A4149';
   roundRect(ctx, 0.1, 0.06, w - 0.2, 0.36, 0.09);
   ctx.fill();
   ctx.strokeStyle = '#F2F4F7';

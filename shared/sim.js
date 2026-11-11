@@ -2,7 +2,7 @@
 // Used by the browser game, by the test bot and (for counting) by the server.
 // Units: meters and seconds. `x` is the distance run (player feet centre).
 
-import { PHYSICS, SCORE, ABILITIES, speedAt, cityAt, cityStart, powerupDuration, boltValue, CITIES } from './config.js';
+import { PHYSICS, SCORE, ABILITIES, speedAt, cityAt, cityStart, powerupDuration, boltValue, CITIES, comboMult, BOSS } from './config.js';
 import { generateCity } from './worldgen.js';
 import { TUNNEL, generateTunnel, tunnelInLeg, enterTunnel, stepTunnel } from './tunnel.js';
 
@@ -65,8 +65,11 @@ export class Sim {
     this.stats = {
       bolts: 0, parts: 0, tokens: 0, tasks: 0, tasksFailed: 0, powerups: 0,
       smashed: 0, helmetsUsed: 0, gates: 0, stars: 0, perfectCities: 0, jumps: 0, slides: 0,
-      shields: 0, jets: 0, tunnels: 0, tunnelBolts: 0, tunnelCrashes: 0,
+      shields: 0, jets: 0, tunnels: 0, tunnelBolts: 0, tunnelCrashes: 0, bosses: 0,
     };
+    this.combo = 0; // bolts collected in a row (a missed one resets it)
+    this.maxCombo = 0;
+    this.bossGroups = {}; // swarm id -> { passed, hit, announced }
     this.partsByCity = {};
     this.gateStars = {};
     this.cityIndex = startCity;
@@ -252,6 +255,7 @@ export class Sim {
     // bonus stage: each bolt is worth TUNNEL.bonus bolts of energy and points
     this.stats.bolts++;
     this.stats.tunnelBolts++;
+    this.comboUp();
     const p = this.addScore(SCORE.bolt * TUNNEL.bonus);
     this.emit('bolt', { x: this.x + 1, y: 1, points: p, tunnel: true });
     if (this.shieldT === 0 && this.jetT === 0) this.addCharge();
@@ -261,8 +265,26 @@ export class Sim {
     this.events.push({ type, t: this.time, ...data });
   }
 
+  get comboMult() {
+    return comboMult(this.combo);
+  }
+
+  /** One more bolt in the combo (road or tunnel). */
+  comboUp() {
+    const before = comboMult(this.combo);
+    this.combo++;
+    if (this.combo > this.maxCombo) this.maxCombo = this.combo;
+    const after = comboMult(this.combo);
+    if (after > before) this.emit('combo', { mult: after, n: this.combo });
+  }
+
+  comboBreak() {
+    if (this.combo >= 10) this.emit('comboLost', { n: this.combo });
+    this.combo = 0;
+  }
+
   addScore(points) {
-    const p = points * (this.power.double > 0 ? 2 : 1);
+    const p = Math.round(points * (this.power.double > 0 ? 2 : 1) * comboMult(this.combo));
     this.score += p;
     return p;
   }
@@ -382,7 +404,8 @@ export class Sim {
     // the shield is a super run: up to SUPER_SPEED while it lasts, then eases back
     // to the course speed (not underground: the tunnel keeps its own pace)
     const base = speedAt(this.x);
-    const want = this.shieldT > 0 && !this.tunnel ? Math.max(0, SUPER_SPEED - base) : 0;
+    // (at the endless high speeds it still gives a clear push)
+    const want = this.shieldT > 0 && !this.tunnel ? Math.max(3, SUPER_SPEED - base) : 0;
     this.boost += (want - this.boost) * Math.min(1, dt * (want > this.boost ? 5 : 2.5));
     if (this.boost < 0.05 && want === 0) this.boost = 0;
     const v = base + this.boost;
@@ -581,6 +604,14 @@ export class Sim {
         case 'task': {
           // sky energy: hidden until the jetpack has been charged; only fliers reach it
           if (e.sky && !this.skyOpen) break;
+          // a road bolt left behind breaks the combo
+          if (e.k === 'bolt' && !e.sky && !e.pulled && e.x < this.x - 3) {
+            if (!e.missed) {
+              e.missed = true;
+              this.comboBreak();
+            }
+            break;
+          }
           let dx = e.x - cx;
           let dy = e.y - cy;
           const airborne = this.flying || this.jetT > 0;
@@ -627,6 +658,7 @@ export class Sim {
           break;
         default: {
           // obstacles
+          if (e.boss !== undefined) this.trackBoss(e);
           if (e.move && e.x - this.x < 32) e.x += e.move * dt;
           if (e.drop !== undefined && e.y0 > 0) {
             // a hanging load lets go when the hero comes close and falls to the road
@@ -679,7 +711,7 @@ export class Sim {
     // ---- score ---------------------------------------------------------------
     const gained = (this.x - this.lastScoredX) * this.mult;
     this.lastScoredX = this.x;
-    this.scoreFrac += gained * (this.power.double > 0 ? 2 : 1);
+    this.scoreFrac += gained * (this.power.double > 0 ? 2 : 1) * comboMult(this.combo);
     if (this.scoreFrac >= 1) {
       const w = Math.floor(this.scoreFrac);
       this.score += w;
@@ -729,6 +761,7 @@ export class Sim {
     switch (e.k) {
       case 'bolt': {
         this.stats.bolts++;
+        if (!e.sky) this.comboUp(); // sky energy is a bonus: it neither builds nor breaks the combo
         const p = this.addScore(SCORE.bolt);
         this.emit('bolt', { x: e.x, y: e.y, points: p });
         // nothing charges while an ability is running
@@ -837,6 +870,24 @@ export class Sim {
     return true;
   }
 
+  /** Russian drone swarm (boss): announce it, count the drones got past, reward a clean run through. */
+  trackBoss(e) {
+    const g = (this.bossGroups[e.boss] ||= { passed: 0, hit: false, announced: false });
+    if (!g.announced) {
+      g.announced = true;
+      this.emit('bossIn', { x: e.x });
+    }
+    if (!e.dodged && e.x + e.w < this.x - 0.5) {
+      e.dodged = true;
+      g.passed++;
+      if (g.passed === BOSS.drones && !g.hit) {
+        this.stats.bosses++;
+        const p = this.addScore(BOSS.bonus);
+        this.emit('bossDown', { x: this.x, y: 2.5, points: p });
+      }
+    }
+  }
+
   hit(e) {
     if (this.flying || this.jetT > 0) return; // drone power-up and jetpack fly through obstacles
     if (this.shieldT > 0) return; // obstacles pass through the energy shield
@@ -852,6 +903,7 @@ export class Sim {
       this.helmet = false;
       this.stats.helmetsUsed++;
       e.alive = false;
+      if (e.boss !== undefined && this.bossGroups[e.boss]) this.bossGroups[e.boss].hit = true;
       this.invuln = 1.2;
       this.setMult(this.mult - 1);
       this.emit('helmetSave', { k: e.k, x: e.x + (e.w || 1) / 2, y: (e.y0 || 0) + 0.5 });
@@ -906,6 +958,7 @@ export class Sim {
     c.power = { ...this.power };
     c.charge = { ...this.charge };
     c.stats = { ...this.stats };
+    c.bossGroups = Object.fromEntries(Object.entries(this.bossGroups).map(([k, g]) => [k, { ...g }]));
     c.partsByCity = { ...this.partsByCity };
     c.gateStars = { ...this.gateStars };
     c.pendingTask = null;
@@ -945,6 +998,8 @@ export class Sim {
       powerups: this.stats.powerups,
       smashed: this.stats.smashed,
       shields: this.stats.shields,
+      maxCombo: this.maxCombo,
+      bosses: this.stats.bosses,
       revived: this.revived,
       cityStars: Object.entries(this.gateStars).map(([k, v]) => [Number(k), v]),
       time: Math.round(this.time * 10) / 10,

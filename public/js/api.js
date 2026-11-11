@@ -52,7 +52,7 @@ export const api = {
   emailVerify: (challengeId, code, merge) => call('POST', '/api/email/verify', { challengeId, code, merge }),
   logout: () => call('POST', '/api/logout', {}),
   rename: (name) => call('POST', '/api/name', { name }),
-  startRun: (mode) => timed(40000, 'POST', '/api/run/start', { mode }),
+  startRun: (mode, startCity = 0) => timed(40000, 'POST', '/api/run/start', { mode, startCity }),
   finishRun,
   buy: (kind, id) => call('POST', '/api/shop/buy', { kind, id }),
   equip: (id) => call('POST', '/api/equip', { id }),

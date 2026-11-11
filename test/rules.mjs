@@ -14,7 +14,7 @@ const ok = validateRun(run, s, t);
 assert.ok(ok.ok, `honest run rejected: ${ok.reasons}`);
 
 // cheating attempts are rejected
-assert.ok(!validateRun(run, { ...s, score: s.score * 3 }, t).ok, 'inflated score');
+assert.ok(!validateRun(run, { ...s, score: s.score * 10 }, t).ok, 'inflated score');
 assert.ok(!validateRun(run, { ...s, bolts: s.bolts + 500 }, t).ok, 'extra bolts');
 assert.ok(!validateRun(run, s, 10).ok, 'too fast');
 assert.ok(!validateRun(run, { ...s, maxMult: 15 }, t).ok, 'impossible multiplier');
@@ -89,4 +89,29 @@ console.log('ok');
   assert.ok(!e.achievements.daily7, 'one day, many tries');
   for (let i = 1; i <= 7; i++) applyRun(e, s, { seed: `daily-2026-11-0${i}`, mode: 'daily', upgrades: {} });
   assert.ok(e.achievements.daily7, '7 different days');
+}
+{
+  // v2: a start-city run is validated from its city; levels and experience grow
+  const { Sim } = await import('../shared/sim.js');
+  const { Bot } = await import('../shared/bot.js');
+  const { cityStart, levelForXp } = await import('../shared/config.js');
+  const seed = 'v2rules~c3';
+  const sim = new Sim({ seed, startCity: 3 });
+  const bot = new Bot();
+  while (!sim.dead && sim.x - sim.startX < 3000) {
+    sim.step(1 / 120, bot.input(sim));
+    if (sim.pendingTask) sim.resolveTask(true);
+    sim.events.length = 0;
+  }
+  assert.equal(sim.startX, cityStart(3));
+  const sum = sim.summary();
+  const r = validateRun({ seed, mode: 'normal', upgrades: {} }, sum, sim.time);
+  assert.ok(r.ok, `start-city run accepted: ${r.reasons}`);
+  assert.ok(!validateRun({ seed, mode: 'normal', upgrades: {} }, { ...sum, maxCombo: sum.bolts + 1 }, sim.time).ok, 'combo above bolts');
+  assert.ok(!validateRun({ seed, mode: 'normal', upgrades: {} }, { ...sum, bosses: 9 }, sim.time).ok, 'bosses that were not there');
+  const d = emptyPlayerData();
+  const res = applyRun(d, r.summary, { seed, mode: 'normal', upgrades: {} });
+  assert.ok(res.xp.gained > 0 && d.xp === res.xp.gained, 'experience');
+  assert.equal(res.xp.level, levelForXp(d.xp));
+  if (res.xp.level > 1) assert.ok(res.xp.levelEnergy > 0, 'energy for a new level');
 }

@@ -293,6 +293,7 @@ export function createPgStore(connectionString) {
       const { rows } = await pool.query(
         `SELECT * FROM (
            SELECT DISTINCT ON (r.player_id) r.player_id, p.name, p.data->'cosmetics'->>'equipped' AS outfit,
+             COALESCE((p.data->>'xp')::bigint, 0) AS xp,
              r.score, r.distance, r.city_index, r.finished_at
            FROM runs r JOIN players p ON p.id=r.player_id
            WHERE ${where.join(' AND ')}
@@ -304,6 +305,7 @@ export function createPgStore(connectionString) {
         playerId: r.player_id,
         name: r.name,
         outfit: r.outfit || 'suit',
+        xp: Number(r.xp) || 0,
         score: r.score,
         distance: r.distance,
         cityIndex: r.city_index,

@@ -109,8 +109,8 @@ export class Bot {
 }
 
 /** Run a full headless game with the bot; returns the sim when it dies or reaches maxDistance. */
-export function botRun(seed, { maxDistance = 5000, upgrades = {}, startCity = 0, taskSuccess = true } = {}) {
-  const sim = new Sim({ seed, upgrades, startCity });
+export function botRun(seed, { maxDistance = 5000, upgrades = {}, startCity = 0, startAt = null, taskSuccess = true } = {}) {
+  const sim = new Sim({ seed, upgrades, startCity, startAt });
   const bot = new Bot();
   let guard = 0;
   while (!sim.dead && sim.x - sim.startX < maxDistance && guard++ < 2e6) {
