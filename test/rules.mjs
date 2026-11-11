@@ -49,7 +49,7 @@ assert.ok(!validateRun(run, { ...s, distance: 'abc' }, t).ok, 'garbage');
 const d = emptyPlayerData();
 const r1 = applyRun(d, ok.summary, run, { birthday: true });
 assert.ok(r1.energy > 0 && r1.newBest);
-assert.ok(d.achievements.firstrun && d.achievements.km1 && d.achievements.birthday);
+assert.ok(d.achievements.firstrun && d.achievements.km1 && !d.achievements.birthday);
 assert.equal(d.stats.runs, 1);
 const r2 = applyRun(d, { ...ok.summary, score: 1 }, run);
 assert.ok(!r2.newBest && !r2.unlocked.includes('firstrun'));

@@ -72,7 +72,7 @@ const fin = await A('POST', '/api/run/finish', { runId: start.runId, summary: si
 assert.equal(fin.status, 200);
 assert.equal(fin.data.accepted, true, JSON.stringify(fin.data.reasons));
 assert.ok(fin.data.energy > 0 && fin.data.newBest);
-assert.ok(fin.data.unlocked.includes('birthday') && fin.data.unlocked.includes('km1'));
+assert.ok(!fin.data.unlocked.includes('birthday') && fin.data.unlocked.includes('km1'));
 assert.equal(fin.data.ranks.all.rank, 1);
 assert.equal(fin.data.ranks.all.above, null, 'nobody above the leader');
 const replay = await A('POST', '/api/run/finish', { runId: start.runId, summary: { score: 99999999 } });
@@ -95,7 +95,13 @@ assert.equal(board.total, 1);
 assert.equal(board.entries[0].name, 'Mindaugas Z');
 assert.equal(board.me, null);
 
-// shop
+// shop (the energy for a first purchase is given here: the birthday achievements that
+// used to pay for it are gone)
+const meA = (await A('GET', '/api/me')).data.profile;
+await store.mutatePlayer(meA.id, (p) => {
+  p.data = { ...p.data, energy: (p.data.energy || 0) + 1300 };
+  return p;
+});
 const before = (await A('GET', '/api/me')).data.profile.energy;
 const bought = await A('POST', '/api/shop/buy', { kind: 'upgrade', id: 'magnet' });
 assert.equal(bought.status, 200);

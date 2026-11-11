@@ -806,7 +806,7 @@ function profileScreen() {
         </div>
       </div>
       <div class="prof-sec">
-        <h3>${t('achievements')} · ${Object.keys(p.achievements).length}/${ACHIEVEMENTS.length}</h3>
+        <h3>${t('achievements')} · ${ACHIEVEMENTS.filter((a) => p.achievements[a.id]).length}/${ACHIEVEMENTS.length}</h3>
         <div class="ach-grid">${ach}</div>
       </div>
       <div class="prof-sec">

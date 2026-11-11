@@ -450,8 +450,6 @@ export const ACHIEVEMENTS = [
   { id: 'bolts5000', reward: 400, lt: 'Elektrinė', en: 'Power plant', descLt: 'Iš viso surink 5 000 žaibų', descEn: 'Collect 5,000 bolts in total' },
   { id: 'runs25', reward: 300, lt: 'Atkaklumas', en: 'Persistence', descLt: 'Sužaisk 25 bėgimus (nuo 100 m)', descEn: 'Play 25 runs (100 m or more)' },
   { id: 'daily', reward: 100, lt: 'Dienos iššūkis', en: 'Daily challenger', descLt: 'Sužaisk dienos iššūkį', descEn: 'Play a daily challenge' },
-  { id: 'birthday', reward: 240, lt: 'Su gimtadieniu!', en: 'Happy birthday!', descLt: 'Bėk spalio 24-ąją', descEn: 'Run on October 24th' },
-  { id: 'bdaygift', reward: 1024, lt: 'Dovana Mindaugui', en: 'A gift for Mindaugas', descLt: 'Spalio 24-ąją surink bent 2 410 taškų', descEn: 'Score at least 2,410 on October 24th' },
   // route
   { id: 'raseiniai', reward: 40, lt: 'Žemaičių vartai', en: 'Gateway to Samogitia', descLt: 'Pasiek Raseinius', descEn: 'Reach Raseiniai' },
   { id: 'rietavas', reward: 60, lt: 'Turgaus diena', en: 'Market day', descLt: 'Pasiek Rietavo automobilių turgų', descEn: 'Reach the Rietavas car market' },

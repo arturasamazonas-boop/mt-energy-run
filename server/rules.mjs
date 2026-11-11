@@ -169,8 +169,6 @@ export function applyRun(data, s, run, { birthday = false } = {}) {
   if (st.totalBolts >= 5000) give('bolts5000');
   if (st.realRuns >= 25) give('runs25');
   if (run.mode === 'daily') give('daily');
-  if (birthday) give('birthday');
-  if (birthday && s.score >= 2410) give('bdaygift');
   // route (distances are from the start in Vilnius)
   if (s.distance >= 200) give('raseiniai');
   if (s.distance >= 400) give('rietavas');
