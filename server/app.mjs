@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
-import { normalizeName, nameKey, GAME_VERSION, CITIES, levelForXp } from '../shared/config.js';
+import { normalizeName, nameKey, GAME_VERSION, CITIES, levelForXp, SEASON } from '../shared/config.js';
 import { normalizeData, emptyPlayerData, validateRun, applyRun, buy, equip, grantWorkshop, mergeData } from './rules.mjs';
 import { vilniusDay, isoWeekKey, isBirthday } from './time.mjs';
 import { normalizeEmail, maskEmail, newCode, makeHasher, sameHash, CODE_TTL_MS, MAX_ATTEMPTS, RESEND_AFTER_S } from './email.mjs';
@@ -66,7 +66,7 @@ function limiter(max, windowMs, nowMs = Date.now) {
   };
 }
 
-export function createApp({ store, adminToken = '', birthdayMode = 'auto', trustProxy = true, log = console, clock = () => new Date(), sendCode = null, secret = '' } = {}) {
+export function createApp({ store, adminToken = '', birthdayMode = 'auto', trustProxy = true, log = console, clock = () => new Date(), sendCode = null, secret = '', seasonStart = SEASON.start } = {}) {
   const codeHash = makeHasher(secret);
   const ms = () => clock().getTime();
   const limits = {
@@ -171,9 +171,11 @@ export function createApp({ store, adminToken = '', birthdayMode = 'auto', trust
 
   async function board(kind, now = clock()) {
     let opts;
-    if (kind === 'week') opts = { week: isoWeekKey(now) };
-    else if (kind === 'daily') opts = { day: vilniusDay(now), mode: 'daily' };
-    else opts = {};
+    // the current season counts runs started from SEASON.start; the Hall of Fame keeps the earlier ones
+    if (kind === 'hof') opts = { before: seasonStart };
+    else if (kind === 'week') opts = { week: isoWeekKey(now), since: seasonStart };
+    else if (kind === 'daily') opts = { day: vilniusDay(now), mode: 'daily', since: seasonStart };
+    else opts = { since: seasonStart };
     const key = JSON.stringify([kind, opts]);
     const hit = boardCache.get(key);
     if (hit && Date.now() - hit.t < BOARD_TTL) return hit.rows;
@@ -454,7 +456,7 @@ export function createApp({ store, adminToken = '', birthdayMode = 'auto', trust
     },
 
     'GET /api/leaderboard': async (req, res, body, url) => {
-      const kind = ['all', 'week', 'daily'].includes(url.searchParams.get('board')) ? url.searchParams.get('board') : 'all';
+      const kind = ['all', 'week', 'daily', 'hof'].includes(url.searchParams.get('board')) ? url.searchParams.get('board') : 'all';
       const limit = Math.min(500, Math.max(1, Number(url.searchParams.get('limit')) || 100));
       const p = await currentPlayer(req);
       const rows = await board(kind);

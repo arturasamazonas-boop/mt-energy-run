@@ -132,10 +132,12 @@ export function createMemoryStore() {
       return { run: clone(run), player: clone(players.get(run.playerId)), result: out.result };
     },
 
-    async boardRows({ week, day, mode } = {}) {
+    async boardRows({ week, day, mode, since, before } = {}) {
       const best = new Map();
       for (const r of runs.values()) {
         if (!r.finishedAt || !r.valid) continue;
+        if (since && new Date(r.startedAt) < new Date(since)) continue;
+        if (before && new Date(r.startedAt) >= new Date(before)) continue;
         if (week && r.week !== week) continue;
         if (day && r.day !== day) continue;
         if (mode && r.mode !== mode) continue;

@@ -275,9 +275,17 @@ export function createPgStore(connectionString) {
       });
     },
 
-    async boardRows({ week, day, mode } = {}) {
+    async boardRows({ week, day, mode, since, before } = {}) {
       const where = ['r.finished_at IS NOT NULL', 'r.valid', 'NOT p.banned'];
       const args = [];
+      if (since) {
+        args.push(since);
+        where.push(`r.started_at>=$${args.length}`);
+      }
+      if (before) {
+        args.push(before);
+        where.push(`r.started_at<$${args.length}`);
+      }
       if (week) {
         args.push(week);
         where.push(`r.week=$${args.length}`);
