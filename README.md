@@ -155,3 +155,14 @@ Domeno keitimas neperkelia prisijungimo slapuko ar naršyklės siuntimų eilės.
 - Priešas dronas pasirodo dažniau (nuo Klaipėdos atkarpos), krenta greičiau, o kol kabo ir krenta virš jo mirksi raudonas „RUSŲ DRONAS!!!“.
 - Dronas puola vienu iš trijų būdų: žemai (peršokti), galvos aukštyje (pračiuožti arba aukštai peršokti) arba banguotai – šokinėja tarp abiejų aukščių, paskutinę ~0,45 s prieš herojų nebesikeičia. Kartais (40 %, ne banguotas) dar ir skrenda herojui priešais.
 - Super greitis (buvęs skydas): 3 s greitis iki 30 m/s, apsaugo nuo visko (ir duobių), po to per ~1–1,5 s grįžta į trasos greitį, dar 1 s apsauga nuo kliūčių. Tunelyje saugo, bet nepagreitina. Serveris leidžia kiekvienam panaudojimui sutaupyti laiko (`shieldTimeSaved`).
+
+## Antroji versija (v2): combo, bosas, lygiai, begalinis greitis
+
+- **Begalinis greitis:** nuo 15 km greitis toliau kyla po 0,12 m/s kiekvienam km (~30 m/s ties 40 km, ~37 m/s ties 100 km); kiekvieną ratą kliūtys tankėja (poilsio tarpai −10 % per ratą, ne mažiau 70 %).
+- **Combo:** kiekvienas žaibas iš eilės didina combo; kas 20 žaibų taškų daugiklis +×0,5 (iki ×10), taikomas visiems taškams. Praleistas kelio žaibas combo nuneša, atsitrenkimas – ne. Dangaus energija combo nekeičia. Dalis šuolio lankų virš pavienių kliūčių reikalauja dvigubo šuolio.
+- **Rusų dronai:** puola žemai, galvos aukštyje, banguotai arba apgaulingai (atskrenda žemai, ~0,55 s prieš herojų pakyla); kiekvienas pakyla paskui per anksti pašokusį herojų (galvos aukščio – iki 2,6 m, žemas – iki 1,2 m); kartais skrenda poromis.
+- **Bosas:** prieš kas trečius projekto vartus – šešių dronų spiečius; įveikus be smūgio +5000 taškų.
+- **Lygiai 1–50:** patirtis už kiekvieną bėgimą (`xpForRun`), energija už kiekvieną lygį (`levelReward`), titulai (`LEVEL_TITLES`).
+- **Startas nuo miesto:** įprastą bėgimą galima pradėti nuo bet kurio jau pasiekto pirmo rato miesto; miestas keliauja sėkloje (`<seed>~c<n>`), serveris tikrina nuo to miesto (`minTimeBetween`, `countAvailable(..., from)`).
+- Gimtadienio pasiekimai („Su gimtadieniu!“, „Dovana Mindaugui“) išimti.
+- Testinė versija buvo išbandyta atskirame Render servise `mt-energy-run-test` (atmintis be DB, `NODE_ENV=development`).
