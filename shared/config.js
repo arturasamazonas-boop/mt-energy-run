@@ -122,13 +122,20 @@ export const SEASON = {
   hof: { lt: '1 sezonas · 2026 ruduo', en: 'Season 1 · autumn 2026' },
 };
 
-export function speedAt(distance) {
+// The daily challenge is flat out from the first meter: the pace never drops below this.
+export const DAILY_SPEED = 30;
+/** Lowest pace of a run (m/s): 30 for the daily challenge, none otherwise. */
+export function speedFloorFor(seed) {
+  return /^daily-/.test(String(seed || '')) ? DAILY_SPEED : 0;
+}
+
+export function speedAt(distance, floor = 0) {
   const d = Math.max(0, distance);
   const i = legIndex(d);
   const s = legStart(i);
   const u = legStart(i + 1) + ((d - s) / cityLength(i)) * cityLength(i + 1);
   // the pace never stops rising: after the first lap of Europe it keeps climbing slowly
-  return baseSpeed(u) + Math.max(0, d - SPEED.endlessFrom) * SPEED.endlessPerM;
+  return Math.max(floor, baseSpeed(u) + Math.max(0, d - SPEED.endlessFrom) * SPEED.endlessPerM);
 }
 
 // cumulative leg starts, cached (speedAt runs every step and in long integrals)
@@ -154,12 +161,12 @@ export function shieldTimeSaved(upgrades = {}) {
 }
 
 /** Minimum time (s) to run from `from` to `from + distance` at the nominal speed curve. */
-export function minTimeBetween(from, distance) {
+export function minTimeBetween(from, distance, floor = 0) {
   let t = 0;
   const step = 2;
   for (let d = 0; d < distance; d += step) {
     const s = Math.min(step, distance - d);
-    t += s / speedAt(from + d + s / 2);
+    t += s / speedAt(from + d + s / 2, floor);
   }
   return t;
 }

@@ -182,3 +182,4 @@ Serveris atsižvelgia į juos tikrindamas bėgimą (pigesnis įkrovimas, ilgesni
 - **Greičio bonusas:** kuo greitesnis bėgimas, tuo daugiau verti visi taškai (`speedBonus`: ×1,5 prie 27 m/s, ×2,5 prie 31 m/s, ×4 prie 37 m/s). Skaičiuojamas pagal kelio greitį, ne pagal super greitį. Greitis neribojamas.
 - **Combo** kyla greičiau: +0,5 kas 15 žaibų (buvo kas 20).
 - **Sezonai:** lyderių lentelės skaičiuoja bėgimus nuo `SEASON.start`; ankstesni rekordai lieka „Šlovės galerijoje“ (`/api/leaderboard?board=hof`).
+- **Dienos iššūkis** bėga iš karto 30 m/s (`DAILY_SPEED`, `speedFloorFor(seed)`); trasa, tuneliai ir serverio tikrinimas skaičiuojami su tuo pačiu greičiu.

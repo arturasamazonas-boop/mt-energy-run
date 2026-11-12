@@ -52,7 +52,7 @@ export class TunnelView {
     const tn = sim.tunnel;
     const t = view.t;
     const dt = view.dt || 0;
-    const v = speedAt(sim.x);
+    const v = speedAt(sim.x, sim.speedFloor);
     const heroX = tn.lx * TUNNEL.lane;
     // the camera follows the hero sideways, but lazily
     this.camX += (heroX * 0.7 - this.camX) * Math.min(1, dt * 8);

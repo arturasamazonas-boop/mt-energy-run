@@ -1,7 +1,7 @@
 // Server-side game rules: run validation, progression, shop.
 import {
   SCORE, UPGRADES, UPGRADE_BY_ID, COSMETIC_BY_ID, ACHIEVEMENTS, ACHIEVEMENT_BY_ID,
-  ABILITIES, minTimeBetween, shieldTimeSaved, cityAt, cityStart, comboMult, BOSS, seedStartCity, speedBonus, speedAt,
+  ABILITIES, minTimeBetween, shieldTimeSaved, cityAt, cityStart, comboMult, BOSS, seedStartCity, speedBonus, speedAt, speedFloorFor,
   levelForXp, levelReward, xpForRun, abilityCost,
 } from '../shared/config.js';
 import { countAvailable } from '../shared/worldgen.js';
@@ -74,7 +74,8 @@ export function validateRun(run, raw, elapsedSec) {
   const from = cityStart(seedStartCity(run.seed));
   // each shield is a few seconds of super run; it costs ABILITIES.shield.cost bolts of charge
   if (s.shields * abilityCost('shield', run.upgrades || {}) > s.bolts) reasons.push('shields');
-  if (minTimeBetween(from, s.distance) > elapsedSec + 4 + s.shields * shieldTimeSaved(run.upgrades || {})) reasons.push('too_fast');
+  const floor = speedFloorFor(run.seed);
+  if (minTimeBetween(from, s.distance, floor) > elapsedSec + 4 + s.shields * shieldTimeSaved(run.upgrades || {})) reasons.push('too_fast');
   if (s.distance > 200000) reasons.push('too_far');
 
   const avail = countAvailable(run.seed, s.distance, 12, from);
@@ -107,7 +108,7 @@ export function validateRun(run, raw, elapsedSec) {
       s.tasks * SCORE.taskSuccess +
       s.gates * (SCORE.gateBase + SCORE.gatePerCity * lastCity + SCORE.gatePerStar * 3) +
       s.smashed * 25 +
-      s.bosses * BOSS.bonus) * comboMult(s.maxCombo) * speedBonus(speedAt(from + s.distance + 50)) + 50;
+      s.bosses * BOSS.bonus) * comboMult(s.maxCombo) * speedBonus(speedAt(from + s.distance + 50, floor)) + 50;
   if (s.score > bound) reasons.push('score');
 
   return { ok: reasons.length === 0, reasons, summary: s };

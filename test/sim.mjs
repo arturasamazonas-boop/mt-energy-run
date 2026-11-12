@@ -416,3 +416,15 @@ console.log('ok');
   run(g, 1.8);
   assert.ok(g.combo <= 1, `the next miss breaks it (${g.combo})`);
 }
+{
+  // the daily challenge is flat out from the first meter, a normal run still ramps up
+  const { speedAt, speedFloorFor, minTimeBetween } = await import('../shared/config.js');
+  const d = new Sim({ seed: 'daily-2026-11-13' });
+  const n = new Sim({ seed: 'normal-run' });
+  assert.equal(d.speed, 30, 'daily starts at 30 m/s');
+  assert.ok(n.speed < 15, `a normal run starts slow (${n.speed})`);
+  assert.equal(speedFloorFor('daily-2026-11-13'), 30);
+  assert.equal(speedFloorFor('abc~c3'), 0);
+  assert.ok(speedAt(60000, 30) === speedAt(60000), 'later on the curve is already faster');
+  assert.ok(minTimeBetween(0, 3000, 30) < minTimeBetween(0, 3000) - 30, 'the server expects a faster daily');
+}
