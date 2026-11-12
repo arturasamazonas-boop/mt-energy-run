@@ -29,7 +29,71 @@ export const SPEED = {
   min: 10,
   max: 27, // the later, harder part of a run is faster
   ramp: 3600, // meters; larger = slower ramp
+  endlessFrom: 15000, // m: from here the speed keeps rising for ever…
+  endlessPerM: 0.00012, // …by 0.12 m/s per km (about 30 m/s at 40 km, 37 m/s at 100 km)
 };
+
+// Bolt combo: every bolt in a row raises it, a missed bolt resets it. The combo
+// multiplies all points (on top of the city multiplier).
+export const COMBO = {
+  step: 20, // bolts per combo level
+  perStep: 0.5, // multiplier added per level
+  max: 10, // highest combo multiplier
+};
+
+/** Points multiplier for a bolt combo of `n`. */
+export function comboMult(n) {
+  return Math.min(COMBO.max, 1 + Math.floor(Math.max(0, n) / COMBO.step) * COMBO.perStep);
+}
+
+// Boss: a swarm of Russian drones before every third project gate.
+export const BOSS = {
+  every: 3, // cities
+  drones: 6,
+  bonus: 5000, // points for getting through the whole swarm untouched
+};
+
+// Player levels: experience from every run, rewards at each level.
+export const LEVEL_MAX = 50;
+/** Total experience needed to reach `level` (level 1 needs none). */
+export function xpForLevel(level) {
+  return Math.round(300 * Math.pow(Math.max(0, level - 1), 1.7));
+}
+export function levelForXp(xp) {
+  let l = 1;
+  while (l < LEVEL_MAX && xp >= xpForLevel(l + 1)) l++;
+  return l;
+}
+/** Experience a run gives. */
+export function xpForRun(s) {
+  return Math.floor((s.distance || 0) / 5) + (s.bolts || 0) + 50 * (s.gates || 0) + 2 * Math.min(s.maxCombo || 0, s.bolts || 0);
+}
+/** Energy given when a level is reached. */
+export function levelReward(level) {
+  return 100 * level;
+}
+export const LEVEL_TITLES = [
+  [1, { lt: 'Praktikantas', en: 'Intern' }],
+  [5, { lt: 'Montuotojas', en: 'Fitter' }],
+  [10, { lt: 'Elektrikas', en: 'Electrician' }],
+  [15, { lt: 'Meistras', en: 'Foreman' }],
+  [20, { lt: 'Inžinierius', en: 'Engineer' }],
+  [25, { lt: 'Vyr. inžinierius', en: 'Lead engineer' }],
+  [30, { lt: 'Projektų vadovas', en: 'Project manager' }],
+  [40, { lt: 'Direktorius', en: 'Director' }],
+  [50, { lt: 'Legenda', en: 'Legend' }],
+];
+export function levelTitle(level) {
+  let t = LEVEL_TITLES[0][1];
+  for (const [l, title] of LEVEL_TITLES) if (level >= l) t = title;
+  return t;
+}
+
+/** Start-city runs carry the city in their seed: '<random>~c<city index>'. */
+export function seedStartCity(seed) {
+  const m = /~c(\d{1,2})$/.exec(String(seed));
+  return m ? Number(m[1]) : 0;
+}
 
 function baseSpeed(d) {
   return SPEED.min + (SPEED.max - SPEED.min) * (1 - Math.exp(-d / SPEED.ramp));
@@ -46,7 +110,8 @@ export function speedAt(distance) {
   const i = legIndex(d);
   const s = legStart(i);
   const u = legStart(i + 1) + ((d - s) / cityLength(i)) * cityLength(i + 1);
-  return baseSpeed(u);
+  // the pace never stops rising: after the first lap of Europe it keeps climbing slowly
+  return baseSpeed(u) + Math.max(0, d - SPEED.endlessFrom) * SPEED.endlessPerM;
 }
 
 // cumulative leg starts, cached (speedAt runs every step and in long integrals)
@@ -69,6 +134,17 @@ function legIndex(d) {
 export function shieldTimeSaved() {
   const a = ABILITIES.shield;
   return Math.ceil(((a.speed - SPEED.min) * (a.duration + 1.5)) / SPEED.min);
+}
+
+/** Minimum time (s) to run from `from` to `from + distance` at the nominal speed curve. */
+export function minTimeBetween(from, distance) {
+  let t = 0;
+  const step = 2;
+  for (let d = 0; d < distance; d += step) {
+    const s = Math.min(step, distance - d);
+    t += s / speedAt(from + d + s / 2);
+  }
+  return t;
 }
 
 /** Minimum time (s) needed to cover `distance` at the nominal speed curve. */
@@ -374,8 +450,6 @@ export const ACHIEVEMENTS = [
   { id: 'bolts5000', reward: 400, lt: 'Elektrinė', en: 'Power plant', descLt: 'Iš viso surink 5 000 žaibų', descEn: 'Collect 5,000 bolts in total' },
   { id: 'runs25', reward: 300, lt: 'Atkaklumas', en: 'Persistence', descLt: 'Sužaisk 25 bėgimus (nuo 100 m)', descEn: 'Play 25 runs (100 m or more)' },
   { id: 'daily', reward: 100, lt: 'Dienos iššūkis', en: 'Daily challenger', descLt: 'Sužaisk dienos iššūkį', descEn: 'Play a daily challenge' },
-  { id: 'birthday', reward: 240, lt: 'Su gimtadieniu!', en: 'Happy birthday!', descLt: 'Bėk spalio 24-ąją', descEn: 'Run on October 24th' },
-  { id: 'bdaygift', reward: 1024, lt: 'Dovana Mindaugui', en: 'A gift for Mindaugas', descLt: 'Spalio 24-ąją surink bent 2 410 taškų', descEn: 'Score at least 2,410 on October 24th' },
   // route
   { id: 'raseiniai', reward: 40, lt: 'Žemaičių vartai', en: 'Gateway to Samogitia', descLt: 'Pasiek Raseinius', descEn: 'Reach Raseiniai' },
   { id: 'rietavas', reward: 60, lt: 'Turgaus diena', en: 'Market day', descLt: 'Pasiek Rietavo automobilių turgų', descEn: 'Reach the Rietavas car market' },

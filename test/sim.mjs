@@ -307,13 +307,13 @@ console.log('ok');
 {
   // the drone attacks in three equally likely ways and always flies on past the hero
   const { generateCity } = await import('../shared/worldgen.js');
-  const modes = { low: 0, head: 0, wave: 0 };
-  for (let k = 0; k < 60; k++) for (let ci = 1; ci < 6; ci++) for (const q of generateCity(`dq${k}`, ci).entities.filter((e) => e.k === 'quad')) {
+  const modes = { low: 0, head: 0, wave: 0, feint: 0 };
+  for (let k = 0; k < 60; k++) for (let ci = 1; ci < 6; ci++) for (const q of generateCity(`dq${k}`, ci).entities.filter((e) => e.k === 'quad' && e.boss === undefined)) {
     modes[q.mode]++;
     assert.ok(q.rush > 0, 'every drone flies at the hero');
   }
-  const n = modes.low + modes.head + modes.wave;
-  for (const m of Object.keys(modes)) assert.ok(modes[m] > n * 0.2, `${m} drones are common (${JSON.stringify(modes)})`);
+  const n = modes.low + modes.head + modes.wave + modes.feint;
+  for (const m of Object.keys(modes)) assert.ok(modes[m] > n * 0.1, `${m} drones are common (${JSON.stringify(modes)})`);
   const s = new Sim({ seed: 'phys' });
   s.loadedUntil = 99;
   s.entities = [{ k: 'quad', x: s.x + 30, w: 1.1, h: 0.55, y0: 1.0, y1: 1.55, diveY0: 1.0, diving: true, rush: 5, diveSpeed: 9, alive: true, id: 'qr', mode: 'head' }];
@@ -337,4 +337,53 @@ console.log('ok');
     assert.equal(s.stats.tunnels, 0);
     assert.ok(s.entities.some((e) => e.alive && e.x > s.x && e.x < p.x0 + p.len && e.k !== 'tunnelOut' && e.k !== 'tunnelIn'), 'the road under it is there');
   }
+}
+{
+  // v2: bolt combo multiplies points, a missed bolt resets it; speed never stops rising
+  const { speedAt, comboMult } = await import('../shared/config.js');
+  assert.ok(speedAt(60000) > speedAt(30000) + 2 && speedAt(30000) > speedAt(15000), 'endless speed');
+  const s = new Sim({ seed: 'phys' });
+  s.loadedUntil = 99;
+  s.entities = [];
+  for (let i = 0; i < 45; i++) s.entities.push({ k: 'bolt', x: s.x + 2 + i * 0.6, y: 0.8, alive: true, id: `c${i}` });
+  s.entities.push({ k: 'bolt', x: s.x + 40, y: 5, alive: true, id: 'high' }); // out of reach on foot
+  s.entities.push({ k: 'bolt', x: s.x + 46, y: 0.8, alive: true, id: 'after' });
+  run(s, 2.4);
+  assert.ok(s.combo >= 40 && comboMult(s.combo) >= 2, `combo builds (${s.combo})`);
+  run(s, 2);
+  assert.ok(s.combo <= 2 && s.maxCombo >= 45, `a missed bolt resets it (${s.combo}, max ${s.maxCombo})`);
+  // boss: a drone swarm before every third gate, a clean run through gives the bonus
+  const { generateCity } = await import('../shared/worldgen.js');
+  const { BOSS } = await import('../shared/config.js');
+  const swarm = generateCity('bossT', 2).entities.filter((e) => e.boss !== undefined);
+  assert.equal(swarm.length, BOSS.drones);
+  assert.equal(generateCity('bossT', 1).entities.filter((e) => e.boss !== undefined).length, 0);
+}
+
+{
+  // v2: drones hunt a hero who jumps too early; a head-height one can't be single-jumped
+  const mk = (mode) => {
+    const s = new Sim({ seed: 'phys' });
+    s.loadedUntil = 99;
+    const y = mode === 'head' ? 1.0 : 0.25;
+    s.entities = [{ k: 'quad', x: s.x + 14, w: 1.1, h: 0.55, y0: y, y1: y + 0.55, diveY0: y, diving: true, rush: 4, diveSpeed: 9, alive: true, id: 'h', mode }];
+    return s;
+  };
+  let jumpedOver = 0;
+  for (let f = 0; f < 60; f++) {
+    const s = mk('head');
+    for (let i = 0; i < 160 && !s.dead; i++) s.step(1 / 120, { jump: i === f, jumpHeld: true });
+    if (!s.dead) jumpedOver++;
+  }
+  assert.equal(jumpedOver, 0, 'no single jump clears a head-height hunter');
+  const sl = mk('head');
+  for (let i = 0; i < 160 && !sl.dead; i++) sl.step(1 / 120, { slide: true });
+  assert.ok(!sl.dead, 'sliding under it works');
+  let lowOk = 0;
+  for (let f = 0; f < 60; f++) {
+    const s = mk('low');
+    for (let i = 0; i < 160 && !s.dead; i++) s.step(1 / 120, { jump: i === f, jumpHeld: true });
+    if (!s.dead) lowOk++;
+  }
+  assert.ok(lowOk > 0 && lowOk < 40, `a low hunter needs a well-timed jump (${lowOk}/60 timings work)`);
 }

@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
-import { normalizeName, nameKey, GAME_VERSION } from '../shared/config.js';
+import { normalizeName, nameKey, GAME_VERSION, CITIES, levelForXp } from '../shared/config.js';
 import { normalizeData, emptyPlayerData, validateRun, applyRun, buy, equip, grantWorkshop, mergeData } from './rules.mjs';
 import { vilniusDay, isoWeekKey, isBirthday } from './time.mjs';
 import { normalizeEmail, maskEmail, newCode, makeHasher, sameHash, CODE_TTL_MS, MAX_ATTEMPTS, RESEND_AFTER_S } from './email.mjs';
@@ -43,6 +43,8 @@ function publicProfile(p) {
     stats: d.stats,
     achievements: d.achievements,
     cityStars: d.cityStars,
+    xp: d.xp || 0,
+    level: levelForXp(d.xp || 0),
     secured: !!p.email,
     email: maskEmail(p.email),
   };
@@ -198,6 +200,7 @@ export function createApp({ store, adminToken = '', birthdayMode = 'auto', trust
       energy: result?.energy || 0,
       unlocked: result?.unlocked || [],
       newBest: result?.newBest || false,
+      xp: result?.xp || null,
       replayed,
       profile: publicProfile(player),
       ranks,
@@ -351,11 +354,15 @@ export function createApp({ store, adminToken = '', birthdayMode = 'auto', trust
       if (!limits.runStart(p.id)) return [429, { error: 'rate_limited' }];
       const mode = body.mode === 'daily' ? 'daily' : 'normal';
       const now = clock();
-      const seed = mode === 'daily' ? `daily-${vilniusDay(now)}` : crypto.randomBytes(8).toString('hex');
       const d = normalizeData(p.data);
+      // a normal run may start from any city of the first lap the player has already reached
+      const reached = Math.min(CITIES.length - 1, d.stats.bestCity || 0);
+      const startCity = mode === 'normal' ? Math.max(0, Math.min(reached, Math.floor(Number(body.startCity) || 0))) : 0;
+      let seed = mode === 'daily' ? `daily-${vilniusDay(now)}` : crypto.randomBytes(8).toString('hex');
+      if (startCity > 0) seed += `~c${startCity}`;
       const run = { id: crypto.randomUUID(), playerId: p.id, seed, mode, upgrades: d.upgrades, startedAt: now.toISOString() };
       await store.createRun(run);
-      return { runId: run.id, seed, mode, upgrades: d.upgrades, day: vilniusDay(now) };
+      return { runId: run.id, seed, mode, upgrades: d.upgrades, day: vilniusDay(now), startCity };
     },
 
     'POST /api/run/finish': async (req, res, body) => {
@@ -458,6 +465,7 @@ export function createApp({ store, adminToken = '', birthdayMode = 'auto', trust
         score: r.score,
         distance: r.distance,
         cityIndex: r.cityIndex,
+        level: levelForXp(r.xp || 0),
         me: p ? r.playerId === p.id : false,
       }));
       let me = null;

@@ -23,6 +23,7 @@ export class Hud {
       <div class="hud-top">
         <div>
           <div class="hud-score"><div class="num" id="h-score">0</div><div class="mult" id="h-mult">x1</div></div>
+          <div class="combo" id="h-combo" hidden></div>
           <div class="powers" id="h-powers"></div>
         </div>
         <div class="hud-route">
@@ -35,6 +36,7 @@ export class Hud {
     this.el = {
       score: this.root.querySelector('#h-score'),
       mult: this.root.querySelector('#h-mult'),
+      combo: this.root.querySelector('#h-combo'),
       cur: this.root.querySelector('#h-cur'),
       next: this.root.querySelector('#h-next'),
       bar: this.root.querySelector('#h-bar'),
@@ -123,6 +125,12 @@ export class Hud {
     if (!e) return;
     const l = this.last;
     if (l.score !== s.score) e.score.textContent = fmtNum(s.score);
+    // bolt combo: shown from 5 bolts in a row, with its points multiplier
+    if (l.combo !== s.combo) {
+      const on = s.combo >= 5;
+      if (e.combo.hidden === on) e.combo.hidden = !on;
+      if (on) e.combo.innerHTML = `${t('combo')} <b>${s.combo}</b>${s.comboMult > 1 ? ` <i>×${String(s.comboMult).replace('.', ',')}</i>` : ''}`;
+    }
     if (l.mult !== s.mult || l.double !== s.double) {
       e.mult.textContent = `x${s.mult * (s.double ? 2 : 1)}`;
       e.mult.classList.toggle('double', s.double);

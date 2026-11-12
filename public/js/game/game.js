@@ -259,6 +259,8 @@ export class Game {
     return {
       score: Math.floor(s.score),
       mult: s.mult,
+      combo: s.combo,
+      comboMult: s.comboMult,
       bolts: s.stats.bolts + s.stats.tunnelBolts * (TUNNEL.bonus - 1), // tunnel bolts count ×5
       energy: s.energyEarned(),
       distance: Math.floor(s.x - s.startX),
@@ -427,6 +429,20 @@ export class Game {
           if (real) {
             audio.sfx('helmet');
             buzz([30, 30, 30]);
+          }
+          break;
+        case 'combo':
+        case 'comboLost':
+        case 'bossIn':
+          if (real) this.ui.event(ev.type, ev);
+          break;
+        case 'bossDown':
+          fx.ring(sim.x, 2, '#FFD800', 3);
+          fx.sparks(sim.x, 2, 30, '#FFD800', 8);
+          if (real) {
+            audio.sfx('record');
+            buzz([40, 40, 40]);
+            this.ui.event('bossDown', ev);
           }
           break;
         case 'tunnelIn':

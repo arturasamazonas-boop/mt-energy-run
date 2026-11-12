@@ -143,7 +143,7 @@ export function createMemoryStore() {
         if (!p || p.banned) continue;
         const cur = best.get(r.playerId);
         if (!cur || r.score > cur.score || (r.score === cur.score && r.finishedAt < cur.finishedAt)) {
-          best.set(r.playerId, { playerId: r.playerId, name: p.name, outfit: p.data?.cosmetics?.equipped || 'suit', score: r.score, distance: r.distance, cityIndex: r.cityIndex, finishedAt: r.finishedAt });
+          best.set(r.playerId, { playerId: r.playerId, name: p.name, outfit: p.data?.cosmetics?.equipped || 'suit', xp: p.data?.xp || 0, score: r.score, distance: r.distance, cityIndex: r.cityIndex, finishedAt: r.finishedAt });
         }
       }
       return [...best.values()].sort((a, b) => b.score - a.score || (a.finishedAt < b.finishedAt ? -1 : 1));

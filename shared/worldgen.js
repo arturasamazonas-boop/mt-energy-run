@@ -3,7 +3,7 @@
 // everybody gets the identical course in the daily challenge.
 
 import { createRng } from './rng.js';
-import { CITIES, cityLength, cityStart, speedAt, PHYSICS } from './config.js';
+import { CITIES, cityLength, cityStart, cityAt, speedAt, PHYSICS, BOSS } from './config.js';
 
 // Obstacle dimensions in meters. y0/y1 = vertical collision band (bottom/top).
 export const DIM = {
@@ -59,6 +59,9 @@ function makeCtx(list, x0, v, rng) {
     // bolts following a jump started at time t (absolute x of take-off)
     jumpArc(t, n = 5, base = 0, dbl = false) {
       const x = X(t);
+      // keeping the combo takes some skill: part of the arcs follow a double jump
+      // (higher and longer, still always reachable)
+      if (!dbl && base === 0 && ctx.hardBolts && rng.chance(ctx.hardBolts)) dbl = true;
       const air = dbl ? AIR * 1.55 : AIR;
       for (let i = 0; i < n; i++) {
         const tau = ((i + 0.5) / n) * air;
@@ -187,16 +190,28 @@ const PATTERNS = [
       // (the camera shows about clamp(v·1.15 + 6.5, 17.5, 34) m with the hero at 24 %)
       const viewM = clamp(c.v * 1.15 + 6.5, 17.5, 34);
       const hover = Math.min(0.8 * c.v + 3, 0.46 * viewM);
-      const mode = c.rng.pick(['low', 'head', 'wave']);
-      const rush = c.rng.range(4, 7);
+      //  feint – comes in low, lifts to head height ~0.55 s before the hero: slide
+      // every one of them climbs after a hero who jumps too early (see sim)
+      const mode = c.rng.weighted([['low', 3], ['head', 3], ['wave', 2], ['feint', 2]]);
+      const rush = c.rng.range(4, 9);
       const extra = { y0: 2.1, baseY0: 2.1, h: DIM.quad.h, hover, hoverT, diveY0: mode === 'head' ? 1.0 : 0.25, diveSpeed: 9, rush };
       if (mode === 'wave') Object.assign(extra, { wave: c.rng.range(4, 5.5), wavePh: c.rng.range(0, Math.PI * 2) });
+      if (mode === 'feint') extra.feint = true;
       const o = c.ob('quad', 1.0, extra);
       // the attack starts hoverT later than its starting place suggests, and it closes in
       const t = 1.0 + hoverT - (rush * 0.6) / c.v;
       if (mode === 'low') c.jumpArc(t - LEAD, 4);
       else if (mode === 'head') c.line(t - 0.15, t + 0.15, 0.45, 3);
       o.mode = mode;
+      // sometimes a second one right behind it, at the other height: jump, then slide (or back)
+      if ((mode === 'low' || mode === 'head') && c.rng.chance(0.3)) {
+        const mode2 = mode === 'low' ? 'head' : 'low';
+        const r2 = c.rng.range(3, 5);
+        const meet = c.X(t + 0.8);
+        const y = mode2 === 'head' ? 1.0 : 0.25;
+        c.ob('quad', 0, { x: meet + (r2 * 60) / (c.v + r2), y0: y, diveY0: y, h: DIM.quad.h, diving: true, diveSpeed: 9, rush: r2, mode: mode2 });
+        return 1.0 + hoverT + 1.6;
+      }
       return 1.0 + hoverT + 0.9;
     },
   },
@@ -277,18 +292,18 @@ const PATTERNS = [
   {
     id: 'gauntlet', tier: 4, w: 3, f: (c) => {
       let t = 0.35;
-      let last = 'none';
-      for (let i = 0; i < 4; i++) {
-        const k = c.rng.pick(['cone', 'barrier', 'drum', 'beam', 'cable', 'beam']);
+      const kinds = [0, 1, 2, 3].map(() => c.rng.pick(['cone', 'barrier', 'drum', 'beam', 'cable', 'beam']));
+      kinds.forEach((k, i) => {
         if (k === 'beam') {
           c.ob('beam', t); c.line(t - 0.12, t + 0.15, 0.45, 2);
         } else {
           c.ob(k, t); c.jumpArc(t - LEAD, 3);
         }
-        const gap = k === 'beam' || last === 'beam' ? 0.74 : 0.8;
-        last = k;
-        t += gap;
-      }
+        // the gap to the NEXT obstacle: a slide and a jump can follow closely,
+        // two jumps in a row need a little more room (a jump is ~0.6 s in the air)
+        const next = kinds[i + 1];
+        t += k === 'beam' || next === 'beam' ? 0.74 : 0.86;
+      });
       return t + 0.15;
     },
   },
@@ -321,6 +336,8 @@ const POWER_WEIGHTS = [
   ['excavator', 15],
 ];
 
+const HARD_ARC_PATTERNS = new Set(['cone', 'barrier', 'cable', 'crate', 'drum']);
+const BOSS_GAP = 1.3; // s between two drones of a boss swarm
 const ENTRY_CLEAR = 30; // meters of calm road after the city sign
 const GATE_ZONE = 75; // meters reserved for the project gate
 
@@ -336,7 +353,11 @@ export function generateCity(seed, index) {
   let x = start + (index === 0 ? 45 : ENTRY_CLEAR);
   let prev = '';
   let guard = 0;
-  while (x < end - GATE_ZONE - 15 && guard++ < 500) {
+  // boss: a Russian drone swarm guards every third project gate
+  const boss = index % BOSS.every === BOSS.every - 1;
+  const bossV = speedAt(end - GATE_ZONE);
+  const bossLen = boss ? (BOSS.drones * BOSS_GAP + 2.5) * bossV : 0;
+  while (x < end - GATE_ZONE - 15 - bossLen && guard++ < 500) {
     const tier = tierAt(x);
     const options = PATTERNS.filter((p) => p.tier <= tier && p.id !== prev).map((p) => {
       let w = p.w;
@@ -348,12 +369,36 @@ export function generateCity(seed, index) {
     const v = speedAt(x);
     const sub = [];
     const ctx = makeCtx(sub, x, v, rng);
+    // (only over a lone obstacle: after a double jump there is room to land)
+    ctx.hardBolts = tier >= 1 && HARD_ARC_PATTERNS.has(pat.id) ? 0.35 : 0;
     const lenT = pat.f(ctx);
     const patEnd = x + lenT * v;
-    if (patEnd > end - GATE_ZONE) break;
+    if (patEnd > end - GATE_ZONE - bossLen) break;
     for (const e of sub) list.push(e);
     prev = pat.id;
-    x = patEnd + restGap(tier, rng) * v;
+    // every lap of Europe the obstacles come a little closer together
+    x = patEnd + restGap(tier, rng) * v * Math.max(0.7, 1 - 0.1 * Math.floor(index / CITIES.length));
+  }
+
+  if (boss) {
+    // six drones one after another, each needing its own move (jump / slide / timing);
+    // they fly in at their attack height and come at the hero
+    const modes = ['low', 'head', 'feint', 'wave', 'head', 'low'];
+    const x0 = end - GATE_ZONE - bossLen + 1.5 * bossV;
+    for (let k = 0; k < BOSS.drones; k++) {
+      const mode = modes[k % modes.length];
+      const rush = 3;
+      const meet = x0 + k * BOSS_GAP * bossV; // where the hero meets it
+      const drone = {
+        k: 'quad', x: meet + (rush * 60) / (bossV + rush), w: DIM.quad.w, h: DIM.quad.h,
+        y0: mode === 'head' ? 1.0 : 0.25, diveY0: mode === 'head' ? 1.0 : 0.25, diveSpeed: 9,
+        diving: true, rush, mode, boss: index, landable: false,
+      };
+      if (mode === 'wave') Object.assign(drone, { wave: rng.range(4, 5.5), wavePh: rng.range(0, Math.PI * 2) });
+      if (mode === 'feint') drone.feint = true;
+      drone.y1 = drone.y0 + drone.h;
+      list.push(drone);
+    }
   }
 
   // Calm bolt trail toward the gate
@@ -420,14 +465,24 @@ export function generateCity(seed, index) {
   return { index, start, end, len, gateX: gx, entities: list };
 }
 
-/** Count what was obtainable up to `distance` (used by server validation). */
-export function countAvailable(seed, distance, slack = 10) {
-  const out = { bolts: 0, parts: 0, tasks: 0, tokens: 0, powers: 0, excavators: 0, gates: 0 };
-  for (let i = 0; i < 10000; i++) {
+/**
+ * Count what was obtainable on a run of `distance` metres (used by server validation).
+ * `from` is where the run started (0 for Vilnius, a city start for a start-city run).
+ */
+export function countAvailable(seed, distance, slack = 10, from = 0) {
+  const out = { bolts: 0, parts: 0, tasks: 0, tokens: 0, powers: 0, excavators: 0, gates: 0, bosses: 0 };
+  const to = from + distance;
+  const bossSeen = new Set();
+  for (let i = cityAt(from).index; i < 10000; i++) {
     const c = generateCity(seed, i);
-    if (c.start > distance + slack) break;
+    if (c.start > to + slack) break;
     for (const e of c.entities) {
-      if (e.x > distance + slack) break;
+      if (e.x < from - slack) continue;
+      if (e.x > to + slack) break;
+      if (e.boss !== undefined && !bossSeen.has(e.boss)) {
+        bossSeen.add(e.boss);
+        out.bosses++;
+      }
       if (e.k === 'bolt') out.bolts++;
       else if (e.k === 'part') out.parts++;
       else if (e.k === 'task') out.tasks++;

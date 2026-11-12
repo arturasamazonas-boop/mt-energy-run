@@ -1,14 +1,15 @@
 // Server-side game rules: run validation, progression, shop.
 import {
   SCORE, UPGRADES, UPGRADE_BY_ID, COSMETIC_BY_ID, ACHIEVEMENTS, ACHIEVEMENT_BY_ID,
-  ABILITIES, minTimeFor, shieldTimeSaved, cityAt, cityStart,
+  ABILITIES, minTimeBetween, shieldTimeSaved, cityAt, cityStart, comboMult, BOSS, seedStartCity,
+  levelForXp, levelReward, xpForRun,
 } from '../shared/config.js';
 import { countAvailable } from '../shared/worldgen.js';
 import { computeEnergy } from '../shared/sim.js';
 import { TUNNEL, tunnelBoltsAvailable } from '../shared/tunnel.js';
 
 const REAL_RUN_M = 100; // shorter runs don't count towards the run-count achievements
-const INT_FIELDS = ['distance', 'score', 'bolts', 'tunnelBolts', 'parts', 'tokens', 'tasks', 'tasksFailed', 'gates', 'stars', 'perfectCities', 'maxMult', 'cityIndex', 'powerups', 'smashed', 'shields'];
+const INT_FIELDS = ['distance', 'score', 'bolts', 'tunnelBolts', 'parts', 'tokens', 'tasks', 'tasksFailed', 'gates', 'stars', 'perfectCities', 'maxMult', 'cityIndex', 'powerups', 'smashed', 'shields', 'maxCombo', 'bosses'];
 
 export function emptyPlayerData() {
   return {
@@ -33,6 +34,7 @@ export function normalizeData(data) {
   d.cityStars = { ...(data?.cityStars || {}) };
   // repair records damaged by unknown shop ids (energy NaN/null, junk outfits)
   if (!Number.isFinite(d.energy) || d.energy < 0) d.energy = 0;
+  if (!Number.isFinite(d.xp) || d.xp < 0) d.xp = 0;
   d.cosmetics.owned = d.cosmetics.owned.filter((id) => COSMETIC_BY_ID[id]);
   if (!d.cosmetics.owned.includes(d.cosmetics.equipped)) d.cosmetics.equipped = 'suit';
   for (const k of Object.keys(d.upgrades)) {
@@ -68,14 +70,18 @@ export function validateRun(run, raw, elapsedSec) {
   if (starSum > s.stars) reasons.push('city_stars');
 
   const base = 1 + (run.upgrades?.startMult || 0);
+  // a start-city run carries its city in the seed: everything is measured from there
+  const from = cityStart(seedStartCity(run.seed));
   // each shield is a few seconds of super run; it costs ABILITIES.shield.cost bolts of charge
   if (s.shields * ABILITIES.shield.cost > s.bolts) reasons.push('shields');
-  if (minTimeFor(s.distance) > elapsedSec + 4 + s.shields * shieldTimeSaved()) reasons.push('too_fast');
+  if (minTimeBetween(from, s.distance) > elapsedSec + 4 + s.shields * shieldTimeSaved()) reasons.push('too_fast');
   if (s.distance > 200000) reasons.push('too_far');
 
-  const avail = countAvailable(run.seed, s.distance, 12);
+  const avail = countAvailable(run.seed, s.distance, 12, from);
   // bolts = road bolts + bonus tunnel bolts (each tunnel bolt counts ×TUNNEL.bonus)
-  if (s.tunnelBolts > s.bolts || s.tunnelBolts > tunnelBoltsAvailable(run.seed, cityStart(0), s.distance)) reasons.push('tunnel_bolts');
+  if (s.tunnelBolts > s.bolts || s.tunnelBolts > tunnelBoltsAvailable(run.seed, from, s.distance)) reasons.push('tunnel_bolts');
+  if (s.maxCombo > s.bolts) reasons.push('combo');
+  if (s.bosses > avail.bosses) reasons.push('bosses');
   if (s.bolts - s.tunnelBolts > avail.bolts) reasons.push('bolts');
   if (s.parts > avail.parts) reasons.push('parts');
   if (s.tokens > avail.tokens) reasons.push('tokens');
@@ -88,7 +94,7 @@ export function validateRun(run, raw, elapsedSec) {
   if (s.maxMult > Math.min(SCORE.maxMult, base + s.tasks + s.perfectCities) || s.maxMult < 1) reasons.push('mult');
   // obstacles are only smashed with an excavator: a handful per pickup at most
   if (s.smashed > s.distance / 2 + 5 || s.smashed > avail.excavators * 20) reasons.push('smashed');
-  if (Math.abs(cityAt(s.distance).index - s.cityIndex) > 1) reasons.push('city');
+  if (Math.abs(cityAt(from + s.distance).index - s.cityIndex) > 1) reasons.push('city');
 
   const lastCity = Math.max(0, s.cityIndex);
   const bound =
@@ -100,7 +106,8 @@ export function validateRun(run, raw, elapsedSec) {
       s.parts * SCORE.part +
       s.tasks * SCORE.taskSuccess +
       s.gates * (SCORE.gateBase + SCORE.gatePerCity * lastCity + SCORE.gatePerStar * 3) +
-      s.smashed * 25) + 50;
+      s.smashed * 25 +
+      s.bosses * BOSS.bonus) * comboMult(s.maxCombo) + 50;
   if (s.score > bound) reasons.push('score');
 
   return { ok: reasons.length === 0, reasons, summary: s };
@@ -162,8 +169,6 @@ export function applyRun(data, s, run, { birthday = false } = {}) {
   if (st.totalBolts >= 5000) give('bolts5000');
   if (st.realRuns >= 25) give('runs25');
   if (run.mode === 'daily') give('daily');
-  if (birthday) give('birthday');
-  if (birthday && s.score >= 2410) give('bdaygift');
   // route (distances are from the start in Vilnius)
   if (s.distance >= 200) give('raseiniai');
   if (s.distance >= 400) give('rietavas');
@@ -202,7 +207,17 @@ export function applyRun(data, s, run, { birthday = false } = {}) {
   for (const id of workshopAchievements(d)) give(id);
 
   d.energy += energy;
-  return { energy, unlocked, newBest };
+
+  // player level: experience from every run, energy for every level reached
+  const xpBefore = Number.isFinite(d.xp) ? d.xp : 0;
+  const levelBefore = levelForXp(xpBefore);
+  const xpGained = xpForRun(s);
+  d.xp = xpBefore + xpGained;
+  const level = levelForXp(d.xp);
+  let levelEnergy = 0;
+  for (let l = levelBefore + 1; l <= level; l++) levelEnergy += levelReward(l);
+  d.energy += levelEnergy;
+  return { energy, unlocked, newBest, xp: { gained: xpGained, total: d.xp, level, levelBefore, levelEnergy } };
 }
 
 /** Workshop achievements the player currently qualifies for. */
@@ -233,6 +248,7 @@ export function mergeData(src, dst) {
   const b = normalizeData(dst);
   const out = normalizeData(dst);
   out.energy = a.energy + b.energy;
+  out.xp = (a.xp || 0) + (b.xp || 0);
   for (const [k, v] of Object.entries(a.upgrades)) out.upgrades[k] = Math.max(v, b.upgrades[k] || 0);
   out.cosmetics.owned = [...new Set([...b.cosmetics.owned, ...a.cosmetics.owned])];
   for (const k of ['runs', 'totalDistance', 'totalBolts', 'totalTasks', 'totalTokens', 'dailyRuns']) out.stats[k] = (a.stats[k] || 0) + (b.stats[k] || 0);

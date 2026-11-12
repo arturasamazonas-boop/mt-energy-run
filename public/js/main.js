@@ -1,5 +1,5 @@
 // App controller: boot, screens, account, shop, leaderboards, runs.
-import { CITIES, UPGRADES, COSMETICS, ACHIEVEMENTS, GAME_VERSION, ACHIEVEMENT_BY_ID } from '/shared/config.js';
+import { CITIES, UPGRADES, COSMETICS, ACHIEVEMENTS, GAME_VERSION, ACHIEVEMENT_BY_ID, xpForLevel, levelTitle, LEVEL_MAX } from '/shared/config.js';
 import { api } from './api.js';
 import { createRunOutbox } from './run-outbox.js';
 import { prefs } from './prefs.js';
@@ -473,7 +473,7 @@ function homeScreen() {
         <div class="brand"><img class="logo" src="/assets/mt-logo-light.png" alt="MT GROUP">${installButton()}</div>
         <div class="right">
           <span class="chip" title="${t('energy')}"><span class="bolt">${ICON.bolt}</span>${fmtNum(p.energy)}</span>
-          <button class="chip" data-go="profile">${ICON.user}${esc(p.name)}</button>
+          <button class="chip" data-go="profile">${ICON.user}${esc(p.name)}${p.level ? `<span class="lv">${p.level}</span>` : ''}</button>
           <button class="icon-btn ${audioOn ? '' : 'off'}" data-audio aria-label="${t('audioAll')}" title="${t('audioAll')}">${audioOn ? ICON.sound : ICON.mute}</button>
           <button class="chip" data-lang>${ICON.globe}${getLang().toUpperCase()}</button>
         </div>
@@ -486,6 +486,7 @@ function homeScreen() {
           <button class="btn primary big" data-play>${ICON.play}${t('play')}</button>
           <button class="daily-btn" data-daily><b>${ICON.calendar}${t('daily')}</b><span>${t('dailySub')}${state.config?.today ? ` · ${state.config.today}` : ''}</span></button>
         </div>
+        ${maxStartCity() > 0 ? `<button class="chip start-pick" data-start>📍 ${t('startFrom')}: <b>${cityLabel(startCityPick())}</b></button>` : ''}
         <div class="nav-row">
           <button class="btn" data-go="shop">${ICON.wrench}${t('shop')}</button>
           <button class="btn" data-go="board">${ICON.trophy}${t('board')}</button>
@@ -500,6 +501,12 @@ function homeScreen() {
   bindInstallButton(el);
   click($('[data-play]', el), () => startRun('normal'));
   click($('[data-daily]', el), () => startRun('daily'));
+  // start city: every city of the first lap already reached, in turn
+  click($('[data-start]', el), () => {
+    const next = startCityPick() >= maxStartCity() ? 0 : startCityPick() + 1;
+    prefs.set('startCity', next);
+    homeScreen();
+  });
   el.querySelectorAll('[data-go]').forEach((b) =>
     click(b, () => {
       const go = b.dataset.go;
@@ -686,7 +693,7 @@ async function boardScreen(kind = 'all') {
     const row = (e) => `
       <div class="board-row ${e.me ? 'me' : ''}">
         <div class="pos ${e.rank <= 3 ? `g${e.rank}` : ''}">${e.rank}</div>
-        <div class="who"><b>${esc(e.name)}${e.me ? ` · ${t('you')}` : ''}</b><small>${cityLabel(e.cityIndex || 0)} · ${fmtDist(e.distance || 0)}</small></div>
+        <div class="who"><b>${e.level ? `<span class="lv">${e.level}</span>` : ''}${esc(e.name)}${e.me ? ` · ${t('you')}` : ''}</b><small>${cityLabel(e.cityIndex || 0)} · ${fmtDist(e.distance || 0)}</small></div>
         <div class="pts">${fmtNum(e.score)}</div>
       </div>`;
     let html = r.entries.length ? `<div class="muted" style="margin-bottom:8px">${tn(r.total, 'players')}</div><div class="board-list">${r.entries.map(row).join('')}</div>` : `<div class="empty">${t('noScores')}</div>`;
@@ -788,6 +795,7 @@ function profileScreen() {
         <form class="inline" data-name><input class="field" name="n" maxlength="21" value="${esc(p.name)}" ${p.guest ? 'disabled' : ''}><button class="btn" ${p.guest ? 'disabled' : ''}>${t('save')}</button></form>
         <div class="error" data-name-err></div>
       </div>
+      ${p.guest ? '' : levelHtml(p)}
       <div class="prof-sec">
         <h3>${t('stats')}</h3>
         <div class="stats-grid">
@@ -798,7 +806,7 @@ function profileScreen() {
         </div>
       </div>
       <div class="prof-sec">
-        <h3>${t('achievements')} · ${Object.keys(p.achievements).length}/${ACHIEVEMENTS.length}</h3>
+        <h3>${t('achievements')} · ${ACHIEVEMENTS.filter((a) => p.achievements[a.id]).length}/${ACHIEVEMENTS.length}</h3>
         <div class="ach-grid">${ach}</div>
       </div>
       <div class="prof-sec">
@@ -896,6 +904,28 @@ function birthdayScreen() {
 // ---------------------------------------------------------------------------
 // Runs
 // ---------------------------------------------------------------------------
+/** Highest city a run may start from: any city of the first lap already reached. */
+function maxStartCity() {
+  return Math.min(CITIES.length - 1, state.profile?.stats?.bestCity || 0);
+}
+function startCityPick() {
+  return Math.max(0, Math.min(maxStartCity(), Number(prefs.get('startCity', 0)) || 0));
+}
+
+/** Player level with its title and progress to the next one. */
+function levelHtml(p) {
+  const lv = p.level || 1;
+  const xp = p.xp || 0;
+  const lo = xpForLevel(lv);
+  const hi = xpForLevel(Math.min(LEVEL_MAX, lv + 1));
+  const pct = lv >= LEVEL_MAX ? 100 : Math.round((100 * (xp - lo)) / Math.max(1, hi - lo));
+  return `<div class="prof-sec level-sec">
+    <h3>${t('level')} ${lv} · ${esc(L(levelTitle(lv)))}</h3>
+    <div class="xp-bar"><i style="width:${pct}%"></i></div>
+    <small class="muted">${lv >= LEVEL_MAX ? t('levelMax') : t('xpToNext', { xp: fmtNum(Math.max(0, hi - xp)), level: lv + 1 })}</small>
+  </div>`;
+}
+
 async function startRun(mode) {
   audio.unlock();
   if (state.busy) return;
@@ -916,8 +946,9 @@ async function startRun(mode) {
   state.busy = true;
   clearPortraits();
   // without the server a daily run still uses today's shared course
-  const localSeed = mode === 'daily' ? `daily-${state.config?.today || vilniusToday()}` : `local-${Date.now()}`;
-  let run = { mode, seed: params.get('seed') || localSeed, upgrades: state.profile.upgrades || {}, runId: null };
+  const startCity = mode === 'normal' ? startCityPick() : 0;
+  const localSeed = mode === 'daily' ? `daily-${state.config?.today || vilniusToday()}` : `local-${Date.now()}${startCity ? `~c${startCity}` : ''}`;
+  let run = { mode, seed: params.get('seed') || localSeed, upgrades: state.profile.upgrades || {}, runId: null, startCity };
   const boardReq = state.online && !state.profile.guest ? fetchBoardQuick(mode === 'daily' ? 'daily' : 'all') : Promise.resolve(null);
   if (state.online && !state.profile.guest && !params.has('practice') && !(DEBUG && params.has('autoplay'))) {
     // a registered player's run only counts if the server started it: never play it "offline" silently
@@ -926,7 +957,7 @@ async function startRun(mode) {
     let started = null;
     for (let attempt = 1; attempt <= 2 && !started; attempt++) {
       try {
-        started = await api.startRun(mode);
+        started = await api.startRun(mode, startCity);
       } catch (e) {
         if (e.status === 429 || attempt === 2) break;
       }
@@ -937,7 +968,7 @@ async function startRun(mode) {
       if (!started) toast(t('startFailed'), 'MT GROUP', ICON.globe);
       return;
     }
-    run = { mode, seed: started.seed, upgrades: started.upgrades, runId: started.runId };
+    run = { mode, seed: started.seed, upgrades: started.upgrades, runId: started.runId, startCity: started.startCity || 0 };
   }
   const markers = runMarkers(await boardReq);
   state.busy = false;
@@ -951,7 +982,7 @@ async function startRun(mode) {
     seed: run.seed,
     upgrades: run.upgrades,
     tutorial,
-    startCity: DEBUG ? Number(params.get('city') || 0) : 0,
+    startCity: DEBUG && params.has('city') ? Number(params.get('city')) : run.startCity || 0,
     startAt: DEBUG && params.has('at') ? Number(params.get('at')) : null,
     autoplay: DEBUG && params.has('autoplay'),
     tunnels: TUNNELS,
@@ -1063,6 +1094,19 @@ function onGameEvent(type, ev) {
       break;
     // no banner on the way into a tunnel (it hid the first obstacles): any banner still
     // up is cleared and the controls are explained in one small line at the bottom
+    // bolt combo and the drone swarm boss
+    case 'combo':
+      if (ev.mult >= 2 && Number.isInteger(ev.mult)) hud.banner(t('combo'), `×${ev.mult}`, t('comboSub', { n: ev.n }));
+      break;
+    case 'comboLost':
+      toast(t('comboLost', { n: ev.n }), t('combo'), '💥');
+      break;
+    case 'bossIn':
+      hud.banner('⚠️', t('bossTitle'), t('bossSub'));
+      break;
+    case 'bossDown':
+      hud.banner('🏆', t('bossDown'), `+${fmtNum(ev.points)}`);
+      break;
     case 'tunnelIn':
       hud.clearBanners();
       if (tunnelTipDue()) hud.tunnelTip(t(isTouchDevice() ? 'tunnelHintTouch' : 'tunnelHintKeys'));
@@ -1302,6 +1346,17 @@ async function onRunOver(info) {
       $('[data-goals]', el).innerHTML = goalsHtml(goals);
       maybeSuggestProtect(el);
       if (!quiet) showUnlocked(r.unlocked);
+      // experience and a new level
+      if (r.xp) {
+        goals.unshift(t('xpGained', { xp: fmtNum(r.xp.gained), level: r.xp.level }));
+        $('[data-goals]', el).innerHTML = goalsHtml(goals);
+        if (r.xp.level > r.xp.levelBefore && !quiet) {
+          setTimeout(() => {
+            toast(`${t('levelUp', { level: r.xp.level })} · ⚡${fmtNum(r.xp.levelEnergy)}`, L(levelTitle(r.xp.level)));
+            audio.sfx('record');
+          }, 300);
+        }
+      }
     } catch {
       $('[data-notice]', el).innerHTML = `${t('pendingSave')} <button class="btn small" data-retry-save>${t('retry')}</button>`;
       click($('[data-retry-save]', el), () => saveResult());
@@ -1333,6 +1388,7 @@ function deathTip(info) {
   let kind = info.cause === 'fall' ? 'fall' : HIT_TIP[info.kind];
   if (!kind) return '';
   if (kind === 'quad' && info.mode === 'head') kind = 'quadHead';
+  else if (kind === 'quad' && info.mode === 'feint') kind = 'quadFeint';
   else if (kind === 'quad' && info.mode === 'wave') kind = 'quadWave';
   if (kind === 'fall' || isTouchDevice()) return t(`tip_${kind}`);
   return t(`tip_${kind}Keys`);

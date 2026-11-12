@@ -2362,3 +2362,65 @@ h3 {
 .banner .badge img {
   filter: brightness(0);
 }
+
+/* ---- v2: bolt combo, levels, start city */
+.hud-top .combo {
+  margin-top: 4px;
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.45);
+  font-family: var(--cond);
+  font-weight: 800;
+  font-size: 16px;
+  letter-spacing: 0.04em;
+  color: #fff;
+}
+.hud-top .combo b {
+  color: var(--y);
+}
+.hud-top .combo i {
+  font-style: normal;
+  color: #ff9f1a;
+}
+.lv {
+  display: inline-grid;
+  place-items: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 5px;
+  margin: 0 6px 0 4px;
+  border-radius: 999px;
+  background: var(--y);
+  color: var(--k);
+  font-family: var(--cond);
+  font-weight: 800;
+  font-size: 13px;
+  vertical-align: 2px;
+}
+.board-row .who .lv {
+  margin: 0 6px 0 0;
+}
+.start-pick {
+  margin-top: 10px;
+  cursor: pointer;
+  align-self: flex-start;
+  justify-self: start;
+  width: auto;
+  max-width: 100%;
+}
+.start-pick b {
+  color: var(--y);
+}
+.xp-bar {
+  height: 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  overflow: hidden;
+  margin: 8px 0 4px;
+}
+.xp-bar i {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, #ffd800, #ff9f1a);
+}
