@@ -1,7 +1,7 @@
 // Server-side game rules: run validation, progression, shop.
 import {
   SCORE, UPGRADES, UPGRADE_BY_ID, COSMETIC_BY_ID, ACHIEVEMENTS, ACHIEVEMENT_BY_ID,
-  ABILITIES, minTimeBetween, shieldTimeSaved, cityAt, cityStart, comboMult, BOSS, seedStartCity,
+  ABILITIES, minTimeBetween, shieldTimeSaved, cityAt, cityStart, comboMult, BOSS, seedStartCity, speedBonus, speedAt,
   levelForXp, levelReward, xpForRun, abilityCost,
 } from '../shared/config.js';
 import { countAvailable } from '../shared/worldgen.js';
@@ -107,7 +107,7 @@ export function validateRun(run, raw, elapsedSec) {
       s.tasks * SCORE.taskSuccess +
       s.gates * (SCORE.gateBase + SCORE.gatePerCity * lastCity + SCORE.gatePerStar * 3) +
       s.smashed * 25 +
-      s.bosses * BOSS.bonus) * comboMult(s.maxCombo) + 50;
+      s.bosses * BOSS.bonus) * comboMult(s.maxCombo) * speedBonus(speedAt(from + s.distance + 50)) + 50;
   if (s.score > bound) reasons.push('score');
 
   return { ok: reasons.length === 0, reasons, summary: s };

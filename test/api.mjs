@@ -15,7 +15,7 @@ const sendCode = async (m) => {
   mailbox.push(m);
 };
 const lastCode = (email) => [...mailbox].reverse().find((m) => m.email === email)?.code;
-const server = createApp({ store, adminToken: 'admin-secret-token', clock: () => now, log: { warn() {}, error: console.error }, sendCode, secret: 'test-secret' });
+const server = createApp({ store, adminToken: 'admin-secret-token', clock: () => now, log: { warn() {}, error: console.error }, sendCode, secret: 'test-secret', seasonStart: '2026-10-01T00:00:00Z' });
 server.keepAliveTimeout = 120000;
 await new Promise((r) => server.listen(0, r));
 const base = `http://127.0.0.1:${server.address().port}`;
@@ -94,6 +94,19 @@ const board = (await B('GET', '/api/leaderboard?board=all')).data;
 assert.equal(board.total, 1);
 assert.equal(board.entries[0].name, 'Mindaugas Z');
 assert.equal(board.me, null);
+// a new season: the board starts empty, the earlier records move to the Hall of Fame
+{
+  const s2app = createApp({ store, clock: () => now, log: { warn() {}, error: console.error }, seasonStart: new Date(now.getTime() + 1000).toISOString() });
+  await new Promise((r) => s2app.listen(0, r));
+  const u = `http://127.0.0.1:${s2app.address().port}`;
+  const all = await (await fetch(u + '/api/leaderboard?board=all')).json();
+  const hof = await (await fetch(u + '/api/leaderboard?board=hof')).json();
+  assert.equal(all.total, 0, 'the new season starts empty');
+  assert.equal(hof.board, 'hof');
+  assert.equal(hof.entries[0].name, 'Mindaugas Z', 'old records stay in the Hall of Fame');
+  s2app.closeAllConnections?.();
+  await new Promise((r) => s2app.close(r));
+}
 
 // shop (the energy for a first purchase is given here: the birthday achievements that
 // used to pay for it are gone)

@@ -1499,6 +1499,96 @@ h3 {
 }
 
 /* ---- leaderboard */
+.hof-head {
+  text-align: center;
+  margin: 2px 0 14px;
+}
+
+.hof-title {
+  font-family: var(--cond);
+  font-weight: 800;
+  font-size: 26px;
+  letter-spacing: 0.5px;
+  background: linear-gradient(180deg, #fff3a8, #ffd800 55%, #c99a00);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.hof-head small {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.hof-podium {
+  display: grid;
+  grid-template-columns: 1fr 1.15fr 1fr;
+  align-items: end;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.hof-card {
+  border-radius: 14px;
+  padding: 10px 6px 12px;
+  text-align: center;
+  min-width: 0;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.hof-card.g1 {
+  order: 2;
+  padding-top: 18px;
+  background: linear-gradient(180deg, rgba(255, 216, 0, 0.28), rgba(255, 216, 0, 0.06));
+  border-color: rgba(255, 216, 0, 0.7);
+  box-shadow: 0 0 24px rgba(255, 216, 0, 0.25);
+}
+
+.hof-card.g2 {
+  order: 1;
+  background: linear-gradient(180deg, rgba(220, 228, 236, 0.22), rgba(220, 228, 236, 0.04));
+  border-color: rgba(220, 228, 236, 0.5);
+}
+
+.hof-card.g3 {
+  order: 3;
+  background: linear-gradient(180deg, rgba(222, 140, 70, 0.24), rgba(222, 140, 70, 0.04));
+  border-color: rgba(222, 140, 70, 0.55);
+}
+
+.hof-medal {
+  font-size: 30px;
+  line-height: 1.1;
+}
+
+.hof-card.g1 .hof-medal {
+  font-size: 40px;
+}
+
+.hof-card b {
+  display: block;
+  margin-top: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hof-pts {
+  font-family: var(--cond);
+  font-weight: 800;
+  font-size: 18px;
+  color: #ffd800;
+}
+
+.hof-card small {
+  display: block;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.55);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .board-list {
   display: grid;
   gap: 6px;

@@ -36,7 +36,7 @@ export const SPEED = {
 // Bolt combo: every bolt in a row raises it, a missed bolt resets it. The combo
 // multiplies all points (on top of the city multiplier).
 export const COMBO = {
-  step: 20, // bolts per combo level
+  step: 15, // bolts per combo level
   perStep: 0.5, // multiplier added per level
   max: 10, // highest combo multiplier
 };
@@ -109,6 +109,19 @@ function baseSpeed(d) {
  * curve's value at Klaipėda), Klaipėda starts at 15.4 (its value at Ryga), and so on,
  * rising smoothly within each leg.
  */
+// Speed bonus: the faster the run, the more every point is worth (×1.5 at 27 m/s,
+// ×2.5 at 31 m/s, ×4 at 37 m/s). It follows the road pace, not SuperSpeed.
+export const SPEED_BONUS = { from: 25, per: 4 };
+export function speedBonus(speed) {
+  return Math.max(1, 1 + (speed - SPEED_BONUS.from) / SPEED_BONUS.per);
+}
+
+// Seasons: the leaderboards count runs from SEASON.start; earlier records stay in the Hall of Fame.
+export const SEASON = {
+  start: '2026-11-12T20:00:00.000Z',
+  hof: { lt: '1 sezonas · 2026 ruduo', en: 'Season 1 · autumn 2026' },
+};
+
 export function speedAt(distance) {
   const d = Math.max(0, distance);
   const i = legIndex(d);

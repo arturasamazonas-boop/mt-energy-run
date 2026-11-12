@@ -2,7 +2,7 @@
 // Used by the browser game, by the test bot and (for counting) by the server.
 // Units: meters and seconds. `x` is the distance run (player feet centre).
 
-import { PHYSICS, SCORE, ABILITIES, speedAt, cityAt, cityStart, powerupDuration, boltValue, CITIES, comboMult, BOSS, abilityCost, abilityDuration, magnetRadius } from './config.js';
+import { PHYSICS, SCORE, ABILITIES, speedAt, cityAt, cityStart, powerupDuration, boltValue, CITIES, comboMult, BOSS, speedBonus, abilityCost, abilityDuration, magnetRadius } from './config.js';
 import { generateCity } from './worldgen.js';
 import { TUNNEL, generateTunnel, tunnelInLeg, enterTunnel, stepTunnel } from './tunnel.js';
 
@@ -287,7 +287,7 @@ export class Sim {
   }
 
   addScore(points) {
-    const p = Math.round(points * (this.power.double > 0 ? 2 : 1) * comboMult(this.combo));
+    const p = Math.round(points * (this.power.double > 0 ? 2 : 1) * comboMult(this.combo) * speedBonus(speedAt(this.x)));
     this.score += p;
     return p;
   }
@@ -733,7 +733,7 @@ export class Sim {
     // ---- score ---------------------------------------------------------------
     const gained = (this.x - this.lastScoredX) * this.mult;
     this.lastScoredX = this.x;
-    this.scoreFrac += gained * (this.power.double > 0 ? 2 : 1) * comboMult(this.combo);
+    this.scoreFrac += gained * (this.power.double > 0 ? 2 : 1) * comboMult(this.combo) * speedBonus(speedAt(this.x));
     if (this.scoreFrac >= 1) {
       const w = Math.floor(this.scoreFrac);
       this.score += w;

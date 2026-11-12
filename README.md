@@ -176,3 +176,9 @@ Domeno keitimas neperkelia prisijungimo slapuko ar naršyklės siuntimų eilės.
 - **Mentorius** (5 lyg.) – +10 % patirties (XP) už lygį.
 
 Serveris atsižvelgia į juos tikrindamas bėgimą (pigesnis įkrovimas, ilgesnis super greitis).
+
+## Greičio bonusas ir sezonai
+
+- **Greičio bonusas:** kuo greitesnis bėgimas, tuo daugiau verti visi taškai (`speedBonus`: ×1,5 prie 27 m/s, ×2,5 prie 31 m/s, ×4 prie 37 m/s). Skaičiuojamas pagal kelio greitį, ne pagal super greitį. Greitis neribojamas.
+- **Combo** kyla greičiau: +0,5 kas 15 žaibų (buvo kas 20).
+- **Sezonai:** lyderių lentelės skaičiuoja bėgimus nuo `SEASON.start`; ankstesni rekordai lieka „Šlovės galerijoje“ (`/api/leaderboard?board=hof`).

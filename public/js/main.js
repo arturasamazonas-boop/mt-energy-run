@@ -1,5 +1,5 @@
 // App controller: boot, screens, account, shop, leaderboards, runs.
-import { CITIES, UPGRADES, COSMETICS, ACHIEVEMENTS, GAME_VERSION, ACHIEVEMENT_BY_ID, xpForLevel, levelTitle, LEVEL_MAX } from '/shared/config.js';
+import { CITIES, UPGRADES, COSMETICS, ACHIEVEMENTS, GAME_VERSION, ACHIEVEMENT_BY_ID, xpForLevel, levelTitle, LEVEL_MAX, SEASON } from '/shared/config.js';
 import { api } from './api.js';
 import { createRunOutbox } from './run-outbox.js';
 import { prefs } from './prefs.js';
@@ -678,6 +678,7 @@ async function boardScreen(kind = 'all') {
     ['all', t('allTime')],
     ['week', t('thisWeek')],
     ['daily', t('dailyBoard')],
+    ['hof', `🏆 ${t('hofTab')}`],
   ]
     .map(([k, label]) => `<button class="tab ${k === kind ? 'on' : ''}" data-tab="${k}">${label}</button>`)
     .join('')}</div>`;
@@ -696,8 +697,23 @@ async function boardScreen(kind = 'all') {
         <div class="who"><b>${e.level ? `<span class="lv">${e.level}</span>` : ''}${esc(e.name)}${e.me ? ` · ${t('you')}` : ''}</b><small>${cityLabel(e.cityIndex || 0)} · ${fmtDist(e.distance || 0)}</small></div>
         <div class="pts">${fmtNum(e.score)}</div>
       </div>`;
-    let html = r.entries.length ? `<div class="muted" style="margin-bottom:8px">${tn(r.total, 'players')}</div><div class="board-list">${r.entries.map(row).join('')}</div>` : `<div class="empty">${t('noScores')}</div>`;
-    if (r.me && !r.entries.some((e) => e.me)) html += `<div class="board-me">${row({ ...r.me, me: true })}</div>`;
+    let html;
+    if (kind === 'hof') {
+      // the Hall of Fame: the first season's records, top 3 on a podium
+      const medal = ['🥇', '🥈', '🥉'];
+      const podium = r.entries
+        .slice(0, 3)
+        .map(
+          (e, i) => `<div class="hof-card g${i + 1} ${e.me ? 'me' : ''}"><div class="hof-medal">${medal[i]}</div>
+            <b>${esc(e.name)}</b><div class="hof-pts">${fmtNum(e.score)}</div><small>${cityLabel(e.cityIndex || 0)} · ${fmtDist(e.distance || 0)}</small></div>`,
+        )
+        .join('');
+      html = `<div class="hof-head"><div class="hof-title">${t('hallOfFame')}</div><small>${esc(L(SEASON.hof))} · ${t('hofSub')}</small></div>
+        ${r.entries.length ? `<div class="hof-podium">${podium}</div><div class="board-list">${r.entries.slice(3).map(row).join('')}</div>` : `<div class="empty">${t('noScores')}</div>`}`;
+    } else {
+      html = r.entries.length ? `<div class="muted" style="margin-bottom:8px">${tn(r.total, 'players')}</div><div class="board-list">${r.entries.map(row).join('')}</div>` : `<div class="empty">${t('noScores')}</div>`;
+      if (r.me && !r.entries.some((e) => e.me)) html += `<div class="board-me">${row({ ...r.me, me: true })}</div>`;
+    }
     $('.sheet-body', el).innerHTML = html;
   } catch {
     $('.sheet-body', el).innerHTML = `<div class="empty">${t('offline')}</div>`;
