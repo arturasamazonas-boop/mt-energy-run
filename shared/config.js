@@ -54,10 +54,11 @@ export const BOSS = {
 };
 
 // Player levels: experience from every run, rewards at each level.
-export const LEVEL_MAX = 50;
-/** Total experience needed to reach `level` (level 1 needs none). */
+export const LEVEL_MAX = 100;
+/** Total experience needed to reach `level` (level 1 needs none).
+ *  A strong player earns ~30 000 XP per hour, so level 100 (~2.94 M XP) is ~100 hours of play. */
 export function xpForLevel(level) {
-  return Math.round(300 * Math.pow(Math.max(0, level - 1), 1.7));
+  return Math.round(300 * Math.pow(Math.max(0, level - 1), 2));
 }
 export function levelForXp(xp) {
   let l = 1;
@@ -76,12 +77,15 @@ export const LEVEL_TITLES = [
   [1, { lt: 'Praktikantas', en: 'Intern' }],
   [5, { lt: 'Montuotojas', en: 'Fitter' }],
   [10, { lt: 'Elektrikas', en: 'Electrician' }],
-  [15, { lt: 'Meistras', en: 'Foreman' }],
-  [20, { lt: 'Inžinierius', en: 'Engineer' }],
-  [25, { lt: 'Vyr. inžinierius', en: 'Lead engineer' }],
-  [30, { lt: 'Projektų vadovas', en: 'Project manager' }],
-  [40, { lt: 'Direktorius', en: 'Director' }],
-  [50, { lt: 'Legenda', en: 'Legend' }],
+  [20, { lt: 'Meistras', en: 'Foreman' }],
+  [30, { lt: 'Inžinierius', en: 'Engineer' }],
+  [40, { lt: 'Vyr. inžinierius', en: 'Lead engineer' }],
+  [50, { lt: 'Projektų vadovas', en: 'Project manager' }],
+  [60, { lt: 'Skyriaus vadovas', en: 'Head of department' }],
+  [70, { lt: 'Direktorius', en: 'Director' }],
+  [80, { lt: 'Generalinis direktorius', en: 'CEO' }],
+  [90, { lt: 'Valdybos pirmininkas', en: 'Chairman of the board' }],
+  [100, { lt: 'Legenda', en: 'Legend' }],
 ];
 export function levelTitle(level) {
   let t = LEVEL_TITLES[0][1];

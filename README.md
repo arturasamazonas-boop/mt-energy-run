@@ -162,7 +162,7 @@ Domeno keitimas neperkelia prisijungimo slapuko ar naršyklės siuntimų eilės.
 - **Combo:** kiekvienas žaibas iš eilės didina combo; kas 20 žaibų taškų daugiklis +×0,5 (iki ×10), taikomas visiems taškams. Praleistas kelio žaibas combo nuneša, atsitrenkimas – ne. Dangaus energija combo nekeičia. Dalis šuolio lankų virš pavienių kliūčių reikalauja dvigubo šuolio.
 - **Rusų dronai:** puola žemai, galvos aukštyje, banguotai arba apgaulingai (atskrenda žemai, ~0,55 s prieš herojų pakyla); kiekvienas pakyla paskui per anksti pašokusį herojų (galvos aukščio – iki 2,6 m, žemas – iki 1,2 m); kartais skrenda poromis.
 - **Bosas:** prieš kas trečius projekto vartus – šešių dronų spiečius; įveikus be smūgio +5000 taškų.
-- **Lygiai 1–50:** patirtis už kiekvieną bėgimą (`xpForRun`), energija už kiekvieną lygį (`levelReward`), titulai (`LEVEL_TITLES`).
+- **Lygiai 1–100** (~100 val. geram žaidėjui, `xpForLevel = 300·(l−1)²`): patirtis už kiekvieną bėgimą (`xpForRun`), energija už kiekvieną lygį (`levelReward`), titulai (`LEVEL_TITLES`).
 - **Startas nuo miesto:** įprastą bėgimą galima pradėti nuo bet kurio jau pasiekto pirmo rato miesto; miestas keliauja sėkloje (`<seed>~c<n>`), serveris tikrina nuo to miesto (`minTimeBetween`, `countAvailable(..., from)`).
 - Gimtadienio pasiekimai („Su gimtadieniu!“, „Dovana Mindaugui“) išimti.
 - Testinė versija buvo išbandyta atskirame Render servise `mt-energy-run-test` (atmintis be DB, `NODE_ENV=development`).

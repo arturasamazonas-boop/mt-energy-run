@@ -115,3 +115,13 @@ console.log('ok');
   assert.equal(res.xp.level, levelForXp(d.xp));
   if (res.xp.level > 1) assert.ok(res.xp.levelEnergy > 0, 'energy for a new level');
 }
+{
+  // levels 1–100: level 100 is about 100 hours for a strong player (~30 000 XP/h)
+  const { xpForLevel, levelForXp, LEVEL_MAX, levelTitle } = await import('../shared/config.js');
+  assert.equal(LEVEL_MAX, 100);
+  const hours = xpForLevel(100) / 30000;
+  assert.ok(hours > 90 && hours < 110, `level 100 ≈ 100 h (${hours.toFixed(0)} h)`);
+  assert.equal(levelForXp(xpForLevel(100) * 2), 100);
+  assert.equal(levelForXp(xpForLevel(37)), 37);
+  assert.equal(levelTitle(100).en, 'Legend');
+}
