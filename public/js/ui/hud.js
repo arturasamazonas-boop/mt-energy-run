@@ -16,6 +16,16 @@ export class Hud {
     this.upgrades = {};
   }
 
+  /** A combo broke: its count lights up where the combo was and slowly fades away. */
+  comboLost(n) {
+    const el = this.el?.comboLost;
+    if (!el) return;
+    el.textContent = String(n);
+    el.classList.remove('on');
+    void el.offsetWidth;
+    el.classList.add('on');
+  }
+
   mount(upgrades = {}, { faint = false } = {}) {
     this.upgrades = upgrades;
     this.root.hidden = false;
@@ -24,6 +34,7 @@ export class Hud {
         <div>
           <div class="hud-score"><div class="num" id="h-score">0</div><div class="mult" id="h-mult">x1</div></div>
           <div class="combo" id="h-combo" hidden></div>
+          <div class="combo-lost" id="h-combo-lost"></div>
           <div class="powers" id="h-powers"></div>
         </div>
         <div class="hud-route">
@@ -37,6 +48,7 @@ export class Hud {
       score: this.root.querySelector('#h-score'),
       mult: this.root.querySelector('#h-mult'),
       combo: this.root.querySelector('#h-combo'),
+      comboLost: this.root.querySelector('#h-combo-lost'),
       cur: this.root.querySelector('#h-cur'),
       next: this.root.querySelector('#h-next'),
       bar: this.root.querySelector('#h-bar'),
