@@ -82,13 +82,15 @@ export class Game {
   /** Begin a real run. opts: { seed, upgrades, runId, mode, tutorial, startCity } */
   play(opts) {
     this.opts = opts;
-    this.mode = 'run';
+    // ready: crouched on the start line, nothing moves until go()
+    this.mode = opts.ready ? 'ready' : 'run';
     this.sim = new Sim({ seed: opts.seed, upgrades: opts.upgrades || {}, startCity: opts.startCity || 0, startAt: opts.startAt ?? null, tunnels: !!opts.tunnels });
     this.input.swipeMode = false;
     this.bot = opts.autoplay ? new Bot() : null;
     this.input.reset();
-    this.input.enabled = true;
+    this.input.enabled = !opts.ready;
     this.resetHero();
+    if (opts.ready) this.hero.crouch = true;
     this.renderer.fx.clear();
     this.renderer.ppm = 0;
     this.timeScale = 1;
@@ -109,8 +111,20 @@ export class Game {
     this.prevY = 0;
   }
 
+  /** GO: off the start line, flat out. */
+  go() {
+    if (this.mode !== 'ready') return;
+    this.mode = 'run';
+    this.hero.crouch = false;
+    this.hero.squash = 0.8;
+    this.input.reset();
+    this.input.enabled = true;
+    this.runStart = performance.now();
+  }
+
   pause() {
-    if (this.mode !== 'run') return;
+    if (this.mode !== 'run' && this.mode !== 'ready') return;
+    this.pausedFrom = this.mode;
     this.mode = 'paused';
     this.input.enabled = false;
     this.input.reset();
@@ -119,7 +133,8 @@ export class Game {
 
   resume() {
     if (this.mode !== 'paused') return;
-    this.mode = 'run';
+    this.mode = this.pausedFrom === 'ready' ? 'ready' : 'run';
+    if (this.mode === 'ready') return; // still on the start line, waiting for GO
     this.input.enabled = true;
     this.slowT = 0.5; // ease back in
   }

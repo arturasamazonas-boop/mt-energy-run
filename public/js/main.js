@@ -36,7 +36,7 @@ try { resultStorage = window.localStorage; } catch { /* blocked storage */ }
 const runOutbox = createRunOutbox({ finishRun: api.finishRun, storage: resultStorage });
 let retryingResults = false;
 let pendingOverSave = null; // the open game-over screen's save, re-run once the connection is back
-const RUNNING = ['run', 'paused', 'task', 'dying'];
+const RUNNING = ['run', 'ready', 'paused', 'task', 'dying'];
 async function retrySavedRuns() {
   const playerId = state.profile?.id;
   if (!playerId || state.profile.guest || retryingResults) return;
@@ -165,7 +165,7 @@ const game = new Game({
 input.onAnyAction = (kind) => hud.pulse(kind);
 input.hitTest = (x, y) => hud.abilityAt(x, y);
 input.onPause = () => {
-  if (game.mode === 'run') game.pause();
+  if (game.mode === 'run' || game.mode === 'ready') game.pause();
   else if (game.mode === 'paused') {
     if (cancelCountdown()) showPause();
     else resumeGame();
@@ -176,7 +176,7 @@ renderer.lang = getLang();
 window.addEventListener('resize', onResize);
 $('#rotate-back').addEventListener('click', () => {
   state.waitingRotate = null;
-  if (['run', 'paused', 'task', 'dying'].includes(game.mode)) {
+  if (RUNNING.includes(game.mode)) {
     abandonRun();
     homeScreen();
   }
@@ -185,7 +185,7 @@ $('#rotate-back').addEventListener('click', () => {
 window.addEventListener('orientationchange', () => setTimeout(onResize, 200));
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) {
-    if (game.mode === 'run') game.pause();
+    if (game.mode === 'run' || game.mode === 'ready') game.pause();
     else if (cancelCountdown()) showPause();
     audio.ctx?.suspend?.();
   } else audio.ctx?.resume?.();
@@ -201,10 +201,10 @@ function isPortraitTouch() {
 }
 
 function checkOrientation() {
-  const needLandscape = ['run', 'paused', 'task', 'dying'].includes(game.mode) || state.waitingRotate;
+  const needLandscape = RUNNING.includes(game.mode) || state.waitingRotate;
   const show = needLandscape && isPortraitTouch();
   $('#rotate').hidden = !show;
-  if (show && game.mode === 'run') game.pause();
+  if (show && (game.mode === 'run' || game.mode === 'ready')) game.pause();
   else if (show && cancelCountdown()) showPause();
   if (!show && state.waitingRotate) {
     const go = state.waitingRotate;
@@ -993,19 +993,60 @@ async function startRun(mode) {
   show('', { shadeMode: 'none' });
   // the touch icons step back once a player knows the controls
   hud.mount(run.upgrades, { faint: (state.profile.stats.runs || 0) >= 10 });
-  const tutorial = !prefs.get('tutDone') && !(state.profile.stats.runs > 0) && !params.has('autoplay');
+  const daily = mode === 'daily';
+  const tutorial = !daily && !prefs.get('tutDone') && !(state.profile.stats.runs > 0) && !params.has('autoplay');
   game.play({
     seed: run.seed,
     upgrades: run.upgrades,
     tutorial,
+    ready: daily, // crouched on the start line until GO
     startCity: DEBUG && params.has('city') ? Number(params.get('city')) : run.startCity || 0,
     startAt: DEBUG && params.has('at') ? Number(params.get('at')) : null,
     autoplay: DEBUG && params.has('autoplay'),
     tunnels: TUNNELS,
-    markers,
+    markers: daily ? [] : markers,
   });
   if (tutorial) game.sim.helmet = true;
-  hud.cityBanner(game.sim.cityIndex);
+  if (daily) startCountdown();
+  else hud.cityBanner(game.sim.cityIndex);
+}
+
+/** The daily challenge's start: a short 3-2-1-GO with the runner crouched on the line. */
+function startCountdown() {
+  clearInterval(countdownTimer);
+  let n = 3;
+  const el = show(`<div class="countdown start"><b>${n}</b></div>`, { shadeMode: 'none' });
+  const num = $('b', el);
+  const pop = () => {
+    num.style.animation = 'none';
+    void num.offsetWidth;
+    num.style.animation = '';
+  };
+  audio.sfx('tick');
+  countdownTimer = setInterval(() => {
+    if (game.mode !== 'ready') {
+      clearInterval(countdownTimer);
+      countdownTimer = null;
+      return;
+    }
+    n--;
+    if (n > 0) {
+      num.textContent = String(n);
+      pop();
+      audio.sfx('tick');
+      return;
+    }
+    clearInterval(countdownTimer);
+    countdownTimer = null;
+    num.textContent = 'GO!';
+    num.classList.add('go');
+    pop();
+    audio.sfx('mult');
+    game.go();
+    setTimeout(() => {
+      if (num.isConnected && game.mode !== 'paused') show('', { shadeMode: 'none' });
+    }, 450);
+  }, 480);
 }
 
 /** Leaderboard for the road flags; never holds up the start of a run for long. */
@@ -1031,6 +1072,11 @@ let countdownTimer = null;
 function resumeGame() {
   if (game.mode !== 'paused') return;
   clearInterval(countdownTimer);
+  if (game.pausedFrom === 'ready') {
+    // paused before the start: back on the line, the 3-2-1-GO starts over
+    game.resume();
+    return startCountdown();
+  }
   let n = 3;
   const el = show(`<div class="countdown"><b>${n}</b></div>`, { shadeMode: 'none' });
   const num = $('b', el);
@@ -1076,7 +1122,12 @@ function tunnelTipDue() {
   return n < 3;
 }
 
+// the daily challenge is pure action: no banners, hints or explanations during the run
+const QUIET_EVENTS = new Set(['city', 'gate', 'checkpoint', 'power', 'jet', 'bossIn', 'bossDown', 'tunnelOut', 'abilityReady']);
+
 function onGameEvent(type, ev) {
+  if (state.run?.mode === 'daily' && QUIET_EVENTS.has(type)) return;
+  if (state.run?.mode === 'daily' && type === 'tunnelIn') return hud.clearBanners();
   // nothing pops up over the tunnel view: it would hide the obstacles
   if (game.sim?.tunnel && (type === 'checkpoint' || type === 'city' || type === 'abilityReady')) {
     if (type === 'abilityReady' && (!pendingReady || ev.sky)) pendingReady = ev;
@@ -1111,14 +1162,9 @@ function onGameEvent(type, ev) {
     // no banner on the way into a tunnel (it hid the first obstacles): any banner still
     // up is cleared and the controls are explained in one small line at the bottom
     // bolt combo and the drone swarm boss
-    case 'combo':
-      if (ev.mult >= 2 && Number.isInteger(ev.mult)) hud.banner(t('combo'), `×${ev.mult}`, t('comboSub', { n: ev.n }));
-      break;
+    // the combo only lives in its HUD pill: a lost combo flashes its count there and fades
     case 'comboLost':
-      toast(t('comboLost', { n: ev.n }), t('combo'), '💥');
-      break;
-    case 'comboSaved':
-      toast(t('comboSaved', { n: ev.left }), t('combo'), '🛡️');
+      hud.comboLost(ev.n);
       break;
     case 'bossIn':
       hud.banner('⚠️', t('bossTitle'), t('bossSub'));

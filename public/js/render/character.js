@@ -85,6 +85,21 @@ export function idlePose(t, wave = 0) {
   };
 }
 
+/** A sprinter's "set" position on the start line (the daily challenge). */
+export function crouchStartPose(t) {
+  const b = Math.sin(t * 9) * 0.015; // a tense little quiver
+  return {
+    hipY: 0.55 + b,
+    lean: 0.85,
+    legF: [1.5, -2.2],
+    legB: [-0.1, -1.9],
+    armF: [0.25, 0],
+    armB: [0.15, 0],
+    head: 0.35,
+    rot: 0,
+  };
+}
+
 export function hangPose(t) {
   return {
     hipY: 0.74,

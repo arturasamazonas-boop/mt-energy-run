@@ -1483,6 +1483,15 @@ h3 {
   animation: countPop 0.7s ease both;
 }
 
+.countdown.start b {
+  animation-duration: 0.48s;
+}
+
+.countdown b.go {
+  color: #fff;
+  font-size: clamp(80px, 18vh, 150px);
+}
+
 @keyframes countPop {
   0% {
     transform: scale(1.6);
@@ -2474,6 +2483,39 @@ h3 {
 }
 .hud-top .combo b {
   color: var(--y);
+}
+
+/* a lost combo: its count lights up and slowly fades away */
+.hud-top .combo-lost {
+  height: 0;
+  font-family: var(--cond);
+  font-weight: 800;
+  font-size: 15px;
+  color: #ffb000;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.hud-top .combo-lost.on {
+  animation: comboLost 1.8s ease-out both;
+}
+
+@keyframes comboLost {
+  0% {
+    opacity: 0;
+    transform: scale(1.5);
+    text-shadow: 0 0 14px #ffd800;
+  }
+  12% {
+    opacity: 1;
+    transform: scale(1);
+    text-shadow: 0 0 10px #ffd800;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(6px);
+    text-shadow: none;
+  }
 }
 .hud-top .combo i {
   font-style: normal;

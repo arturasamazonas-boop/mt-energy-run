@@ -4,7 +4,7 @@ import { THEMES } from './palette.js';
 import { Scenery, GROUND_FRAC } from './scenery.js';
 import { drawObstacle, drawBolt, drawToken, drawPower, drawTask, drawPart, drawCitySign, drawGateSign } from './entities.js';
 import { drawFacility } from './projects.js';
-import { drawCharacter, runPose, jumpPose, slidePose, hangPose, idlePose, cheerPose, drawDrone, drawExcavator, drawShield } from './character.js';
+import { drawCharacter, runPose, jumpPose, slidePose, hangPose, idlePose, cheerPose, crouchStartPose, drawDrone, drawExcavator, drawShield } from './character.js';
 import { FX } from './fx.js';
 import { SpriteCache, clamp, lerp } from './util.js';
 import { TunnelView } from './tunnel.js';
@@ -581,6 +581,8 @@ export class Renderer {
         y = Math.max(0, h.deathY + 1.2 * Math.sin(Math.min(1, h.deathT / 0.5) * Math.PI) * (1 - k * 0.5)) - k * 0.2;
       }
       expression = 'ouch';
+    } else if (h.crouch) {
+      pose = crouchStartPose(t);
     } else if (view.attract && view.idle) {
       pose = idlePose(t, h.wave || 0);
     } else if (h.cheer > 0) {
