@@ -678,7 +678,7 @@ async function boardScreen(kind = 'all') {
     ['all', t('allTime')],
     ['week', t('thisWeek')],
     ['daily', t('dailyBoard')],
-    ['hof', `🏆 ${t('hallOfFame')}`],
+    ['hof', `🏆 ${t('hofTab')}`],
   ]
     .map(([k, label]) => `<button class="tab ${k === kind ? 'on' : ''}" data-tab="${k}">${label}</button>`)
     .join('')}</div>`;
