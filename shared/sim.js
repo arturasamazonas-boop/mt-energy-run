@@ -2,7 +2,7 @@
 // Used by the browser game, by the test bot and (for counting) by the server.
 // Units: meters and seconds. `x` is the distance run (player feet centre).
 
-import { PHYSICS, SCORE, ABILITIES, speedAt, cityAt, cityStart, powerupDuration, boltValue, CITIES, comboMult, BOSS, speedBonus, abilityCost, abilityDuration, magnetRadius } from './config.js';
+import { PHYSICS, SCORE, ABILITIES, speedAt, cityAt, cityStart, powerupDuration, boltValue, CITIES, comboMult, BOSS, speedBonus, speedFloorFor, abilityCost, abilityDuration, magnetRadius } from './config.js';
 import { generateCity } from './worldgen.js';
 import { TUNNEL, generateTunnel, tunnelInLeg, enterTunnel, stepTunnel } from './tunnel.js';
 
@@ -23,6 +23,7 @@ export class Sim {
   constructor({ seed, upgrades = {}, startCity = 0, startAt = null, tunnels = false } = {}) {
     this.seed = seed;
     this.upgrades = upgrades;
+    this.speedFloor = speedFloorFor(seed); // the daily challenge starts flat out
     this.x = startAt ?? cityStart(startCity);
     if (startAt !== null) startCity = cityAt(startAt).index;
     this.startX = this.x;
@@ -92,7 +93,7 @@ export class Sim {
   }
 
   get speed() {
-    return speedAt(this.x) + this.boost;
+    return speedAt(this.x, this.speedFloor) + this.boost;
   }
 
   get flying() {
@@ -229,7 +230,7 @@ export class Sim {
     const p = this.tunnelPlan.find((q) => q.i === this.tunnel.def.i);
     this.tunnel = null;
     // the regular course comes back a little way ahead
-    p.cut = this.x + Math.max(25, speedAt(this.x) * 1.8); // ~2 s of open road to get your bearings
+    p.cut = this.x + Math.max(25, speedAt(this.x, this.speedFloor) * 1.8); // ~2 s of open road to get your bearings
     for (const e of this.entities) {
       if (e.tunnelCleared === p.i && e.x >= p.cut) {
         e.alive = true;
@@ -287,7 +288,7 @@ export class Sim {
   }
 
   addScore(points) {
-    const p = Math.round(points * (this.power.double > 0 ? 2 : 1) * comboMult(this.combo) * speedBonus(speedAt(this.x)));
+    const p = Math.round(points * (this.power.double > 0 ? 2 : 1) * comboMult(this.combo) * speedBonus(speedAt(this.x, this.speedFloor)));
     this.score += p;
     return p;
   }
@@ -421,7 +422,7 @@ export class Sim {
     const prevY = this.y;
     // the shield is a super run: up to SUPER_SPEED while it lasts, then eases back
     // to the course speed (not underground: the tunnel keeps its own pace)
-    const base = speedAt(this.x);
+    const base = speedAt(this.x, this.speedFloor);
     // (at the endless high speeds it still gives a clear push)
     const want = this.shieldT > 0 && !this.tunnel ? Math.max(3, SUPER_SPEED - base) : 0;
     this.boost += (want - this.boost) * Math.min(1, dt * (want > this.boost ? 5 : 2.5));
@@ -733,7 +734,7 @@ export class Sim {
     // ---- score ---------------------------------------------------------------
     const gained = (this.x - this.lastScoredX) * this.mult;
     this.lastScoredX = this.x;
-    this.scoreFrac += gained * (this.power.double > 0 ? 2 : 1) * comboMult(this.combo) * speedBonus(speedAt(this.x));
+    this.scoreFrac += gained * (this.power.double > 0 ? 2 : 1) * comboMult(this.combo) * speedBonus(speedAt(this.x, this.speedFloor));
     if (this.scoreFrac >= 1) {
       const w = Math.floor(this.scoreFrac);
       this.score += w;

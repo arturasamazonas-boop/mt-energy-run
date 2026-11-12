@@ -5,7 +5,7 @@
 // hero back onto the road (the run goes on).
 // Local units: z = meters into the tunnel, lane centres at -1/0/1 × TUNNEL.lane.
 
-import { PHYSICS, speedAt, cityStart, cityLength, cityAt } from './config.js';
+import { PHYSICS, speedAt, cityStart, cityLength, cityAt, speedFloorFor } from './config.js';
 import { createRng } from './rng.js';
 
 export const TUNNEL = {
@@ -76,7 +76,8 @@ export function generateTunnel(seed, i, x0, len = tunnelLength(x0)) {
   const obs = [];
   const bolts = [];
   const corners = [];
-  const vAt = (z) => speedAt(x0 + z);
+  const floor = speedFloorFor(seed);
+  const vAt = (z) => speedAt(x0 + z, floor);
   let z = vAt(0) * 1.6; // a calm first moment to get your bearings
   let nextCorner = z + vAt(z) * rng.range(3.5, 5);
   const endZ = len - vAt(len) * 2.2;
@@ -313,7 +314,7 @@ export function stepTunnel(sim, tn, dt, input, v) {
 /** Simple look-ahead autopilot for tunnels (demo, debug autoplay and tests). */
 export function tunnelBotInput(sim) {
   const tn = sim.tunnel;
-  const v = speedAt(sim.x);
+  const v = speedAt(sim.x, sim.speedFloor);
   const inp = {};
   const c = pendingCorner(tn);
   if (c && !c.ok && inTurnWindow(tn, v) && c.z - tn.z < v * 0.6) {

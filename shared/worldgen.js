@@ -3,7 +3,7 @@
 // everybody gets the identical course in the daily challenge.
 
 import { createRng } from './rng.js';
-import { CITIES, cityLength, cityStart, cityAt, speedAt, PHYSICS, BOSS } from './config.js';
+import { CITIES, cityLength, cityStart, cityAt, speedAt, PHYSICS, BOSS, speedFloorFor } from './config.js';
 
 // Obstacle dimensions in meters. y0/y1 = vertical collision band (bottom/top).
 export const DIM = {
@@ -355,7 +355,8 @@ export function generateCity(seed, index) {
   let guard = 0;
   // boss: a Russian drone swarm guards every third project gate
   const boss = index % BOSS.every === BOSS.every - 1;
-  const bossV = speedAt(end - GATE_ZONE);
+  const floor = speedFloorFor(seed); // the daily challenge runs at 30 m/s or more
+  const bossV = speedAt(end - GATE_ZONE, floor);
   const bossLen = boss ? (BOSS.drones * BOSS_GAP + 2.5) * bossV : 0;
   while (x < end - GATE_ZONE - 15 - bossLen && guard++ < 500) {
     const tier = tierAt(x);
@@ -366,7 +367,7 @@ export function generateCity(seed, index) {
       return [p, w];
     });
     const pat = rng.weighted(options);
-    const v = speedAt(x);
+    const v = speedAt(x, floor);
     const sub = [];
     const ctx = makeCtx(sub, x, v, rng);
     // (only over a lone obstacle: after a double jump there is room to land)
