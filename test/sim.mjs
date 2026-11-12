@@ -387,3 +387,32 @@ console.log('ok');
   }
   assert.ok(lowOk > 0 && lowOk < 40, `a low hunter needs a well-timed jump (${lowOk}/60 timings work)`);
 }
+{
+  // workshop: charger, longer abilities, magnet coil, combo insurance
+  const { abilityCost, abilityDuration, magnetRadius, UPGRADES } = await import('../shared/config.js');
+  const up = { quickCharge: 5, shieldTime: 5, jetTime: 3, magnetRange: 3, comboGuard: 1 };
+  assert.ok(abilityCost('shield', up) < ABILITIES.shield.cost && abilityCost('jet', up) === Math.round(ABILITIES.jet.cost * 0.6));
+  assert.equal(abilityDuration('shield', up), ABILITIES.shield.duration + 2.5);
+  assert.equal(abilityDuration('jet', up), ABILITIES.jet.duration + 1.5);
+  assert.equal(magnetRadius(up), 12);
+  for (const u of UPGRADES) assert.ok(u.costs.every((c, i) => !i || c > u.costs[i - 1]), `${u.id} prices rise`);
+  const s = new Sim({ seed: 'phys', upgrades: up });
+  s.loadedUntil = 99;
+  s.entities = [];
+  s.charge.shield = abilityCost('shield', up);
+  assert.equal(s.useAbility('shield'), true, 'a cheaper charge is enough');
+  assert.equal(s.shieldT, abilityDuration('shield', up));
+  const g = new Sim({ seed: 'phys', upgrades: { comboGuard: 1 } });
+  g.loadedUntil = 99;
+  g.entities = [];
+  for (let i = 0; i < 10; i++) g.entities.push({ k: 'bolt', x: g.x + 2 + i * 0.6, y: 0.8, alive: true, id: `g${i}` });
+  g.entities.push({ k: 'bolt', x: g.x + 12, y: 5, alive: true, id: 'h1' });
+  g.entities.push({ k: 'bolt', x: g.x + 16, y: 0.8, alive: true, id: 'a1' });
+  g.entities.push({ k: 'bolt', x: g.x + 34, y: 5, alive: true, id: 'h2' });
+  g.entities.push({ k: 'bolt', x: g.x + 38, y: 0.8, alive: true, id: 'a2' });
+  run(g, 1.6);
+  assert.ok(g.combo >= 11, `the insured miss keeps the combo (${g.combo})`);
+  assert.equal(g.comboGuards, 0);
+  run(g, 1.8);
+  assert.ok(g.combo <= 1, `the next miss breaks it (${g.combo})`);
+}

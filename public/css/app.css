@@ -1631,6 +1631,12 @@ h3 {
   height: 40px;
 }
 
+.card .ico.svg svg {
+  width: 34px;
+  height: 34px;
+  color: #ffd800;
+}
+
 .card h3 {
   font-size: 21px;
   line-height: 1.05;

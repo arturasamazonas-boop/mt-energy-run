@@ -166,3 +166,13 @@ Domeno keitimas neperkelia prisijungimo slapuko ar naršyklės siuntimų eilės.
 - **Startas nuo miesto:** įprastą bėgimą galima pradėti nuo bet kurio jau pasiekto pirmo rato miesto; miestas keliauja sėkloje (`<seed>~c<n>`), serveris tikrina nuo to miesto (`minTimeBetween`, `countAvailable(..., from)`).
 - Gimtadienio pasiekimai („Su gimtadieniu!“, „Dovana Mindaugui“) išimti.
 - Testinė versija buvo išbandyta atskirame Render servise `mt-energy-run-test` (atmintis be DB, `NODE_ENV=development`).
+
+## Dirbtuvių patobulinimai (v2.1)
+
+- **Greitas įkroviklis** (5 lyg.) – super greitis ir jetpack įsikrauna 8 % greičiau už lygį.
+- **Sportbačiai** (5 lyg.) – super greitis +0,5 s už lygį; **Didesnis kuro bakas** (5 lyg.) – jetpack +0,5 s.
+- **Stipresnė ritė** (3 lyg.) – magneto spindulys +1,5 m už lygį.
+- **Combo draudimas** (3 lyg.) – per bėgimą tiek praleistų žaibų combo nenutraukia.
+- **Mentorius** (5 lyg.) – +10 % patirties (XP) už lygį.
+
+Serveris atsižvelgia į juos tikrindamas bėgimą (pigesnis įkrovimas, ilgesnis super greitis).
