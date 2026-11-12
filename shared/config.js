@@ -131,9 +131,9 @@ function legIndex(d) {
  * (plus the short hold over an obstacle or trench and the ease back) at the
  * slowest course speed.
  */
-export function shieldTimeSaved() {
+export function shieldTimeSaved(upgrades = {}) {
   const a = ABILITIES.shield;
-  return Math.ceil(((a.speed - SPEED.min) * (a.duration + 1.5)) / SPEED.min);
+  return Math.ceil(((a.speed - SPEED.min) * (abilityDuration('shield', upgrades) + 1.5)) / SPEED.min);
 }
 
 /** Minimum time (s) to run from `from` to `from + distance` at the nominal speed curve. */
@@ -386,6 +386,13 @@ export const UPGRADES = [
   { id: 'startMult', icon: 'mult', costs: [9000, 22000], lt: 'Patirtis', en: 'Experience', descLt: 'Bėgimą pradedi su didesniu daugikliu', descEn: 'Start each run with a higher multiplier' },
   { id: 'startHelmet', icon: 'helmet', costs: [15000], lt: 'Auksinis šalmas', en: 'Golden helmet', descLt: 'Kiekvieną bėgimą pradedi su apsauga', descEn: 'Start every run protected' },
   { id: 'secondChance', icon: 'heart', costs: [25000], lt: 'Antras šansas', en: 'Second chance', descLt: 'Kartą per bėgimą tęsi po smūgio', descEn: 'Continue once per run after a crash' },
+  // gear for the abilities, the combo and the levels
+  { id: 'quickCharge', svg: 'bolt', costs: [3000, 6500, 11000, 17000, 25000], lt: 'Greitas įkroviklis', en: 'Fast charger', descLt: 'Super greitis ir jetpack įsikrauna 8 % greičiau', descEn: 'SuperSpeed and jetpack charge 8 % faster' },
+  { id: 'shieldTime', svg: 'abShield', costs: [2500, 5500, 9500, 15000, 22000], lt: 'Sportbačiai', en: 'Running shoes', descLt: 'Super greitis trunka +0,5 s ilgiau', descEn: 'SuperSpeed lasts +0.5 s longer' },
+  { id: 'jetTime', svg: 'abJet', costs: [2500, 5500, 9500, 15000, 22000], lt: 'Didesnis kuro bakas', en: 'Bigger fuel tank', descLt: 'Jetpack skrenda +0,5 s ilgiau', descEn: 'Jetpack flies +0.5 s longer' },
+  { id: 'magnetRange', icon: 'magnet', costs: [4000, 9000, 16000], lt: 'Stipresnė ritė', en: 'Stronger coil', descLt: 'Magnetas traukia iš +1,5 m toliau', descEn: 'The magnet pulls from +1.5 m further' },
+  { id: 'comboGuard', svg: 'star', costs: [6000, 15000, 30000], lt: 'Combo draudimas', en: 'Combo insurance', descLt: 'Per bėgimą 1 praleistas žaibas combo nenutraukia (+1 už lygį)', descEn: 'Per run, 1 missed bolt does not break the combo (+1 per level)' },
+  { id: 'xpBoost', svg: 'medal', costs: [5000, 11000, 19000, 30000, 45000], lt: 'Mentorius', en: 'Mentor', descLt: '+10 % patirties už kiekvieną bėgimą', descEn: '+10 % experience from every run' },
 ];
 
 // lookups have no prototype: ids such as 'constructor' or '__proto__' must not resolve to anything
@@ -395,6 +402,22 @@ export const UPGRADE_BY_ID = byId(UPGRADES);
 export function powerupDuration(kind, upgrades = {}) {
   const p = POWERUPS[kind];
   return p.base + p.perLevel * (upgrades[kind] || 0);
+}
+
+/** Bolts needed to charge an ability (Fast charger: −8 % per level). */
+export function abilityCost(kind, upgrades = {}) {
+  return Math.round(ABILITIES[kind].cost * (1 - 0.08 * (upgrades.quickCharge || 0)));
+}
+
+/** How long an ability lasts (Running shoes / Bigger fuel tank: +0.5 s per level). */
+export function abilityDuration(kind, upgrades = {}) {
+  const lvl = kind === 'shield' ? upgrades.shieldTime || 0 : kind === 'jet' ? upgrades.jetTime || 0 : 0;
+  return ABILITIES[kind].duration + 0.5 * lvl;
+}
+
+/** Magnet pull radius (Stronger coil: +1.5 m per level). */
+export function magnetRadius(upgrades = {}) {
+  return 7.5 + 1.5 * (upgrades.magnetRange || 0);
 }
 
 export function boltValue(upgrades = {}) {

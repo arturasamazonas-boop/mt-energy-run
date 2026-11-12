@@ -2,7 +2,7 @@
 import {
   SCORE, UPGRADES, UPGRADE_BY_ID, COSMETIC_BY_ID, ACHIEVEMENTS, ACHIEVEMENT_BY_ID,
   ABILITIES, minTimeBetween, shieldTimeSaved, cityAt, cityStart, comboMult, BOSS, seedStartCity,
-  levelForXp, levelReward, xpForRun,
+  levelForXp, levelReward, xpForRun, abilityCost,
 } from '../shared/config.js';
 import { countAvailable } from '../shared/worldgen.js';
 import { computeEnergy } from '../shared/sim.js';
@@ -73,8 +73,8 @@ export function validateRun(run, raw, elapsedSec) {
   // a start-city run carries its city in the seed: everything is measured from there
   const from = cityStart(seedStartCity(run.seed));
   // each shield is a few seconds of super run; it costs ABILITIES.shield.cost bolts of charge
-  if (s.shields * ABILITIES.shield.cost > s.bolts) reasons.push('shields');
-  if (minTimeBetween(from, s.distance) > elapsedSec + 4 + s.shields * shieldTimeSaved()) reasons.push('too_fast');
+  if (s.shields * abilityCost('shield', run.upgrades || {}) > s.bolts) reasons.push('shields');
+  if (minTimeBetween(from, s.distance) > elapsedSec + 4 + s.shields * shieldTimeSaved(run.upgrades || {})) reasons.push('too_fast');
   if (s.distance > 200000) reasons.push('too_far');
 
   const avail = countAvailable(run.seed, s.distance, 12, from);
@@ -211,7 +211,7 @@ export function applyRun(data, s, run, { birthday = false } = {}) {
   // player level: experience from every run, energy for every level reached
   const xpBefore = Number.isFinite(d.xp) ? d.xp : 0;
   const levelBefore = levelForXp(xpBefore);
-  const xpGained = xpForRun(s);
+  const xpGained = Math.floor(xpForRun(s) * (1 + 0.1 * (run.upgrades?.xpBoost || 0))); // Mentor: +10 % per level
   d.xp = xpBefore + xpGained;
   const level = levelForXp(d.xp);
   let levelEnergy = 0;

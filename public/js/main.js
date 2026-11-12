@@ -565,7 +565,7 @@ function shopScreen(tab = 'upgrades') {
       const can = cost !== null && p.energy >= cost && !p.guest;
       body += `
         <div class="card">
-          <div class="top"><div class="ico"><canvas width="80" height="80" data-icon="${u.icon}"></canvas></div><div><h3>${L(u)}</h3><p>${L(u, 'desc')}</p></div></div>
+          <div class="top"><div class="ico${u.svg ? ' svg' : ''}">${u.svg ? ICON[u.svg] : `<canvas width="80" height="80" data-icon="${u.icon}"></canvas>`}</div><div><h3>${L(u)}</h3><p>${L(u, 'desc')}</p></div></div>
           <div class="pips">${Array.from({ length: max }, (_, i) => `<i class="${i < lvl ? 'on' : ''}"></i>`).join('')}</div>
           ${cost === null
             ? `<button class="btn small" disabled>${t('maxed')}</button>`
@@ -1100,6 +1100,9 @@ function onGameEvent(type, ev) {
       break;
     case 'comboLost':
       toast(t('comboLost', { n: ev.n }), t('combo'), '💥');
+      break;
+    case 'comboSaved':
+      toast(t('comboSaved', { n: ev.left }), t('combo'), '🛡️');
       break;
     case 'bossIn':
       hud.banner('⚠️', t('bossTitle'), t('bossSub'));

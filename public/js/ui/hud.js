@@ -1,5 +1,5 @@
 // In-run heads-up display (DOM), banners and tutorial hints.
-import { CITIES, ABILITIES, powerupDuration } from '/shared/config.js';
+import { CITIES, ABILITIES, powerupDuration, abilityCost, abilityDuration } from '/shared/config.js';
 import { t, L, fmtNum, fmtDist } from '../i18n.js';
 import { ICON } from './icons.js';
 import { drawPowerIcon } from '../render/entities.js';
@@ -173,8 +173,8 @@ export class Hud {
         const a = this.abilities[k];
         const left = k === 'shield' ? s.shieldT : s.jetT;
         // while it runs the ring drains with the time left; otherwise it shows the charge
-        const ring = left > 0 ? Math.min(1, left / ABILITIES[k].duration) : Math.min(1, s.charge[k] / ABILITIES[k].cost);
-        const frac = Math.min(1, s.charge[k] / ABILITIES[k].cost);
+        const ring = left > 0 ? Math.min(1, left / abilityDuration(k, this.upgrades || {})) : Math.min(1, s.charge[k] / abilityCost(k, this.upgrades || {}));
+        const frac = Math.min(1, s.charge[k] / abilityCost(k, this.upgrades || {}));
         const key = Math.round(ring * 100) + (left > 0 ? 1000 : 0);
         if (a.key !== key) {
           a.key = key;

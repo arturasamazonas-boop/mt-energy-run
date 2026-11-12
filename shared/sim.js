@@ -2,7 +2,7 @@
 // Used by the browser game, by the test bot and (for counting) by the server.
 // Units: meters and seconds. `x` is the distance run (player feet centre).
 
-import { PHYSICS, SCORE, ABILITIES, speedAt, cityAt, cityStart, powerupDuration, boltValue, CITIES, comboMult, BOSS } from './config.js';
+import { PHYSICS, SCORE, ABILITIES, speedAt, cityAt, cityStart, powerupDuration, boltValue, CITIES, comboMult, BOSS, abilityCost, abilityDuration, magnetRadius } from './config.js';
 import { generateCity } from './worldgen.js';
 import { TUNNEL, generateTunnel, tunnelInLeg, enterTunnel, stepTunnel } from './tunnel.js';
 
@@ -12,7 +12,6 @@ const DRONE_MIN = 1.2; // the player steers between these (jump = up, slide = do
 const DRONE_MAX = 6.5;
 const DRONE_CLIMB = 7; // m/s
 const DRONE_PULL_R = 3; // the drone only gathers bolts close by, so steering matters
-const MAGNET_R = 7.5;
 const DOUBLE_MIN_PEAK = 3.4; // m: a double jump always clears a permit stack (2.75 m)
 const DRONE_SHOW_T = 0.6;
 const DRONE_FEINT_T = 0.55; // s before the hero when a feinting drone lifts to head height
@@ -71,6 +70,7 @@ export class Sim {
       shields: 0, jets: 0, tunnels: 0, tunnelBolts: 0, tunnelCrashes: 0, bosses: 0,
     };
     this.combo = 0; // bolts collected in a row (a missed one resets it)
+    this.comboGuards = upgrades.comboGuard || 0;
     this.maxCombo = 0;
     this.bossGroups = {}; // swarm id -> { passed, hit, announced }
     this.partsByCity = {};
@@ -626,14 +626,18 @@ export class Sim {
           if (e.k === 'bolt' && !e.sky && !e.pulled && e.x < this.x - 3) {
             if (!e.missed) {
               e.missed = true;
-              this.comboBreak();
+              // Combo insurance (workshop): a few missed bolts per run are forgiven
+              if (this.combo > 0 && this.comboGuards > 0) {
+                this.comboGuards--;
+                this.emit('comboSaved', { left: this.comboGuards });
+              } else this.comboBreak();
             }
             break;
           }
           let dx = e.x - cx;
           let dy = e.y - cy;
           const airborne = this.flying || this.jetT > 0;
-          const pullR = e.sky && !airborne ? 0 : this.power.magnet > 0 ? MAGNET_R : airborne ? DRONE_PULL_R : 0;
+          const pullR = e.sky && !airborne ? 0 : this.power.magnet > 0 ? magnetRadius(this.upgrades) : airborne ? DRONE_PULL_R : 0;
           // pulled bolts (magnet or drone) keep flying to the hero
           if (e.k === 'bolt' && (e.pulled || (pullR && dx > -3 && dx < pullR && Math.abs(dy) < pullR))) {
             e.pulled = true;
@@ -855,7 +859,7 @@ export class Sim {
 
   addCharge() {
     for (const k of ['shield', 'jet']) {
-      const cost = ABILITIES[k].cost;
+      const cost = abilityCost(k, this.upgrades);
       if (this.charge[k] >= cost) continue;
       this.charge[k]++;
       if (this.charge[k] === cost) {
@@ -868,15 +872,15 @@ export class Sim {
   /** Trigger an ability if it is fully charged. */
   useAbility(kind) {
     const a = ABILITIES[kind];
-    if (!a || this.charge[kind] < a.cost || this.dead) return false;
+    if (!a || this.charge[kind] < abilityCost(kind, this.upgrades) || this.dead) return false;
     if (kind === 'jet' && this.tunnel) return false; // no room to fly underground
     if ((kind === 'shield' && this.shieldT > 0) || (kind === 'jet' && this.jetT > 0)) return false;
     this.charge[kind] = 0;
     if (kind === 'shield') {
-      this.shieldT = a.duration;
+      this.shieldT = abilityDuration('shield', this.upgrades);
       this.stats.shields++;
     } else {
-      this.jetT = a.duration;
+      this.jetT = abilityDuration('jet', this.upgrades);
       this.stats.jets++;
       if (!this.flying) {
         this.droneY = this.y;
