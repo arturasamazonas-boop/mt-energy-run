@@ -191,6 +191,8 @@ const adm = await A('GET', '/api/admin/overview', null, { 'x-admin-token': 'admi
 assert.equal(adm.status, 200);
 assert.equal(adm.data.players.length, 4, 'Mindaugas Z, Žydrūnė, Brute, Tuscias (guests merged or removed)');
 assert.equal(adm.data.flagged.length, 1);
+assert.equal(adm.data.counts.withEmail, adm.data.players.filter((p) => p.hasEmail).length);
+assert.ok(adm.data.players.every((p) => !('email' in p)), 'addresses never leave the server');
 
 // logout
 await A('POST', '/api/logout', {});

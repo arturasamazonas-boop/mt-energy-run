@@ -483,13 +483,14 @@ export function createApp({ store, adminToken = '', birthdayMode = 'auto', trust
       const rows = await board('all');
       const best = new Map(rows.map((r, i) => [r.playerId, { rank: i + 1, score: r.score }]));
       return {
-        counts,
+        counts: { ...counts, withEmail: players.filter((p) => p.email).length },
         players: players.map((p) => ({
           id: p.id,
           name: p.name,
           createdAt: p.createdAt,
           lastSeen: p.lastSeen,
           banned: p.banned,
+          hasEmail: !!p.email, // only whether an email is linked, never the address
           runs: p.data?.stats?.runs || 0,
           energy: p.data?.energy || 0,
           best: best.get(p.id) || null,
