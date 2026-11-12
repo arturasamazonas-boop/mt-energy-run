@@ -228,6 +228,8 @@ function show(html, { shadeMode = 'on' } = {}) {
 }
 
 function toast(title, sub = 'MT GROUP', icon = ICON.medal) {
+  // nothing pops up during a run: the corner is right next to the jump and ability buttons
+  if (['run', 'ready', 'dying', 'task'].includes(game.mode)) return;
   const el = document.createElement('div');
   el.className = 'toast';
   el.innerHTML = `<div class="medal">${icon}</div><div><small>${sub}</small><b>${title}</b></div>`;
@@ -1107,7 +1109,6 @@ function cancelCountdown() {
   return true;
 }
 
-let pendingReady = null; // an 'ability ready' earned underground, shown back on the road
 const TUNNEL_TIPS_KEY = 'mter.tunnelTips';
 
 /** The swipe controls are explained (small, at the bottom) in a player's first few tunnels. */
@@ -1130,7 +1131,6 @@ function onGameEvent(type, ev) {
   if (state.run?.mode === 'daily' && type === 'tunnelIn') return hud.clearBanners();
   // nothing pops up over the tunnel view: it would hide the obstacles
   if (game.sim?.tunnel && (type === 'checkpoint' || type === 'city' || type === 'abilityReady')) {
-    if (type === 'abilityReady' && (!pendingReady || ev.sky)) pendingReady = ev;
     return;
   }
   switch (type) {
@@ -1179,22 +1179,14 @@ function onGameEvent(type, ev) {
     case 'tunnelCrash':
     case 'tunnelOut': {
       hud.tunnelTip(null);
-      // a greeting plane on screen is not covered: the crash reason goes to a small toast
-      // instead (checked once the road is drawn again, a moment after leaving the tunnel)
-      const why = t(`hit_${ev.kind}`);
-      const reason = why === `hit_${ev.kind}` ? '' : why;
-      setTimeout(() => {
-        if (type === 'tunnelCrash') {
-          if (renderer.greetingVisible) toast(t('tunnelCrash'), reason || 'MT GROUP', '💥');
-          else hud.banner('💥', t('tunnelCrash'), reason);
-        } else if (!renderer.greetingVisible) hud.banner('☀️', t('tunnelOut'));
-      }, 120);
-      const ready = pendingReady;
-      pendingReady = null;
-      if (ready) {
+      // only a crash is explained (never over a greeting plane); leaving a tunnel is silent,
+      // and an ability charged underground just lights up its button
+      if (type === 'tunnelCrash') {
+        const why = t(`hit_${ev.kind}`);
+        const reason = why === `hit_${ev.kind}` ? '' : why;
         setTimeout(() => {
-          if (game.sim && !game.sim.dead && !game.sim.tunnel && (game.mode === 'run' || game.mode === 'paused')) onGameEvent('abilityReady', ready);
-        }, 2000);
+          if (!renderer.greetingVisible) hud.banner('💥', t('tunnelCrash'), reason);
+        }, 120);
       }
       break;
     }

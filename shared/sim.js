@@ -16,7 +16,9 @@ const DOUBLE_MIN_PEAK = 3.4; // m: a double jump always clears a permit stack (2
 const DRONE_SHOW_T = 0.6;
 const DRONE_FEINT_T = 0.55; // s before the hero when a feinting drone lifts to head height
 const DRONE_HUNT_M = 14; // m ahead within which a drone climbs after a jumping hero
-const DRONE_HUNT_SPEED = 7; // m/s it climbs at // s of hovering at its attack height before a drone attacks
+const DRONE_HUNT_SPEED = 7; // m/s it climbs at
+const DRONE_HUNT_CAP = 4.6; // above the top of a double jump
+const DRONE_HUNT_SPEED_HIGH = 13; // m/s after a double jump // s of hovering at its attack height before a drone attacks
 const SUPER_SPEED = ABILITIES.shield.speed; // m/s while the shield is on
 
 export class Sim {
@@ -367,16 +369,19 @@ export class Sim {
       }
       want = e.waveY;
     }
-    // a hunter: while the hero is in the air close ahead of it, it climbs to meet them
-    // (a head-height one up to 2.6 m: only a well-timed double jump clears it, sliding is
-    // the safe answer; a low one only up to 1.2 m: jump it at the top of the jump)
+    // a hunter: while the hero is in the air close ahead of it, it climbs to meet them.
+    // No drone is cleared by a double jump: it follows a hero that high all the way up.
+    // A head-height one is passed by sliding under it; a low one by a single, well-timed
+    // jump (it climbs to 1.2 m at most then).
     let climb = 0;
     if (e.diving && d > -0.5 && d < DRONE_HUNT_M && !this.onGround && !this.flying && this.jetT === 0 && !this.tunnel) {
-      const cap = e.mode === 'low' ? 1.2 : 2.6;
+      // (a weaving one coming in low counts as low)
+      const low = e.mode === 'low' || (e.wave && e.waveY < P.slideHeight - 0.03); // too low to slide under
+      const cap = low && this.jumps < 2 ? 1.2 : DRONE_HUNT_CAP;
       const hunt = Math.min(cap, this.y + 0.35);
       if (hunt > want) {
         want = hunt;
-        climb = DRONE_HUNT_SPEED;
+        climb = this.jumps >= 2 ? DRONE_HUNT_SPEED_HIGH : DRONE_HUNT_SPEED;
       }
     }
     const step = (climb && want > e.y0 ? climb : e.diveSpeed || 6) * dt;

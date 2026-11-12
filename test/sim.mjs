@@ -428,3 +428,34 @@ console.log('ok');
   assert.ok(speedAt(60000, 30) === speedAt(60000), 'later on the curve is already faster');
   assert.ok(minTimeBetween(0, 3000, 30) < minTimeBetween(0, 3000) - 30, 'the server expects a faster daily');
 }
+{
+  // no drone is cleared by a double jump: it follows a hero that high (slide under a head-height
+  // one, single-jump a low one at the right moment)
+  const mk = (mode) => {
+    const s = new Sim({ seed: 'phys' });
+    s.loadedUntil = 99;
+    const y = mode === 'head' ? 1.0 : 0.25;
+    s.entities = [{ k: 'quad', x: s.x + 14, w: 1.1, h: 0.55, y0: y, y1: y + 0.55, diveY0: y, diving: true, rush: 4, diveSpeed: 9, alive: true, id: 'h', mode }];
+    return s;
+  };
+  const tryIt = (mode, f, g) => {
+    const s = mk(mode);
+    for (let i = 0; i < 200 && !s.dead; i++) s.step(1 / 120, { jump: i === f || i === f + g, jumpHeld: true });
+    return !s.dead;
+  };
+  let head = 0;
+  let lowRescued = 0;
+  let lowTries = 0;
+  for (let f = 0; f < 90; f += 3) {
+    const lowSingle = tryIt('low', f, 1e9);
+    for (let g = 8; g < 60; g += 4) {
+      if (tryIt('head', f, g)) head++;
+      if (!lowSingle) {
+        lowTries++;
+        if (tryIt('low', f, g)) lowRescued++;
+      }
+    }
+  }
+  assert.equal(head, 0, 'no double jump clears a head-height drone');
+  assert.ok(lowRescued / lowTries < 0.03, `a double jump does not save a mistimed jump over a low drone (${lowRescued}/${lowTries})`);
+}
